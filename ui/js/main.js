@@ -4,7 +4,9 @@
 // team (or grid hindsight). Its only numbers: field names, one week label, and at season end the profit finale.
 // The Critic objection and Coordinator reason show as one short caption in objection or storm weeks only.
 // Season with ?view2d=1 (or after a WebGL / shader failure): the R1 2D side view (fieldSvg.js), kept as the
-// fallback. Agents: the full weekly chat for one run (agents.js). Results, Gym, Serving: placeholders.
+// fallback. Agents: the full weekly chat for one run (agents.js). Results: A's dev baselines
+// (results_baseline/summary.md "Split: dev" table, eval.csv dev rows for the season). Gym, Serving: placeholders.
+// Real data only, dev seasons only (data.js).
 //
 // Week semantics (STATE.md): position k in 0..W-1 shows week k's decision and its outcome (obs at the end of
 // week k); k = W is harvest (the final line). Every number on screen comes from data.js. Theme: js/theme.js.
@@ -23,7 +25,7 @@ const $ = (id) => document.getElementById(id);
 const PAGES = [
   { id: "season", label: "Season", icon: "sprout" },
   { id: "agents", label: "Agents", icon: "chats" },
-  { id: "results", label: "Results", icon: "bars", file: "results/eval.csv" },
+  { id: "results", label: "Results", icon: "bars" },
   { id: "gym", label: "Gym", icon: "loop", file: "results/iterations.json" },
   { id: "serving", label: "Serving", icon: "chip", file: "results/vllm_metrics.json" },
 ];
@@ -35,7 +37,7 @@ const REDUCE = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motio
 const SIDES = ["left", "right"];
 
 const state = {
-  index: null, task: null, pair: { left: null, right: null }, runs: { left: null, right: null },
+  index: null, task: null, configs: [], pair: { left: null, right: null }, runs: { left: null, right: null },
   days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right",
 };
 const fields = {};       // 2D FieldViews (view2d only)
@@ -110,18 +112,20 @@ function setView(view) {
   $("stage3d").hidden = !s3d || view !== "season";
   if (s3d) s3d.setActive(view === "season");
   $("agents").hidden = view !== "agents";
+  $("results").hidden = view !== "results";
   $("placeholder").hidden = !page.file;
   if (page.file) {
     $("placeholder-title").textContent = page.label;
     $("placeholder-file").textContent = `Needs ${page.file}`;
   }
   if (view === "agents") renderAgents();
+  if (view === "results") renderResults();
 }
 
 // ---------------------------------------------------------------- chrome
 
 function renderTaskPicker() {
-  const tasks = data.sortTasks(state.index);
+  const tasks = data.seasons();
   const html = tasks.map((t) => {
     const p = data.parseTaskId(t);
     return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>${esc(p ? p.year : t)}</option>`;
@@ -129,19 +133,15 @@ function renderTaskPicker() {
   document.querySelectorAll("select.task").forEach((s) => (s.innerHTML = html));
 }
 
-// One source label top right: dev, test or FAKE (FAKE wins), from the runs on screen.
+// One source label top right: the split from the runs on screen (always dev here).
 function renderBadges() {
   const runs = SIDES.map((s) => state.runs[s]).filter(Boolean);
-  const fake = data.FAKE || runs.some((r) => r.fake);
-  const split = (runs.find((r) => r.split) || {}).split || null;
-  const label = fake ? (split ? `FAKE · ${split}` : "FAKE") : split;
+  const label = (runs.find((r) => r.split) || {}).split || null;
   $("src").textContent = label || "";
   $("src").hidden = !label;
-  $("src").classList.toggle("fake", fake);
   const fin = document.querySelector("#s3-mid .fin-src");
   fin.textContent = label || "";
   fin.hidden = !label;
-  fin.classList.toggle("fake", fake);
 }
 
 // ---------------------------------------------------------------- season
@@ -175,23 +175,24 @@ function snapshot(run, k) {
     cumLeached: w.cum ? w.cum.nLeached : null };
 }
 
-// Field names in plain words; the 3D view capitalizes them ("Grid hindsight").
+// Field names in plain words (data.configName).
 function fieldName(side) {
   const config = state.pair[side];
-  if (!config) return "No run";
-  const label = data.fieldLabel(config, data.configsFor(state.index, state.task));
-  return s3d ? label.charAt(0).toUpperCase() + label.slice(1) : label;
+  return config ? data.configName(config) : "No run for this season";
 }
 
+// A side with no log for the selected season says so quietly.
 function renderFieldHeads() {
   if (s3d) {
-    for (const side of SIDES) document.querySelector(`#s3-head-${side} .s3-name`).textContent = fieldName(side);
+    for (const side of SIDES) {
+      document.querySelector(`#s3-head-${side} .s3-name`).textContent = fieldName(side);
+      document.querySelector(`#s3-head-${side} .s3-none`).hidden = !!state.runs[side] || !state.pair[side];
+    }
     return;
   }
-  const others = data.configsFor(state.index, state.task);
   for (const side of SIDES) {
     const config = state.pair[side], run = state.runs[side];
-    $(`name-${side}`).textContent = config ? data.fieldLabel(config, others) : "No run";
+    $(`name-${side}`).textContent = fieldName(side);
     const fb = run ? run.fallbackWeeks.length : 0;
     $(`fb-${side}`).textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
     $(`fb-${side}`).hidden = !fb;
@@ -218,7 +219,7 @@ function render3d(moved) {
 }
 
 // Season end only: each field's profit_usd_ha (final line) counts up, the gap between them sits in the middle
-// (right minus left), and N leached sits small under each field. One dev/test/FAKE label.
+// (right minus left), and N leached sits small under each field. One dev label.
 function renderFinale() {
   const finals = {};
   for (const side of SIDES) {
@@ -306,11 +307,10 @@ function renderTallies() {
 // Agents page: config switch (the two runs on Season), week stepper, the chat for that run and week.
 function renderAgents() {
   if (state.view !== "agents") return;
-  const others = data.configsFor(state.index, state.task);
   $("cfg").innerHTML = SIDES.map((side) => {
     const config = state.pair[side];
     return `<button data-side="${side}" class="${side === state.agentSide ? "on" : ""}"${config ? "" : " disabled"}>`
-      + `${esc(config ? data.fieldLabel(config, others) : "No run")}</button>`;
+      + `${esc(fieldName(side))}</button>`;
   }).join("");
   $("cfg").querySelectorAll("button").forEach((b) => (b.onclick = () => { state.agentSide = b.dataset.side; renderAgents(); }));
   const run = state.runs[state.agentSide];
@@ -320,6 +320,33 @@ function renderAgents() {
   $("a-fb").textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
   $("a-fb").hidden = !fb;
   $("agents-body").innerHTML = chatHtml(run, k);
+}
+
+// Results page: A's dev baselines only. The summary.md "Split: dev" table (config cells in plain labels), then
+// the eval.csv dev rows for the selected season. Hindsight reads "Grid hindsight" (STATE.md data rules).
+let summaryDev, evalDev;
+
+function plainConfigCell(cell) {
+  const config = String(cell).replace(/\s*\(.*\)\s*$/, "").trim();
+  return data.configName(config);
+}
+
+async function renderResults() {
+  if (summaryDev === undefined) [summaryDev, evalDev] = await Promise.all([data.loadSummaryDev(), data.loadEval()]);
+  if (state.view !== "results") return;
+  const table = (head, rows) => `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>`
+    + `<tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i ? "mono" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  let html = `<div class="res-head"><span class="label">Baselines, all dev seasons</span><span class="badge">dev</span></div>`;
+  html += summaryDev ? table(summaryDev.head, summaryDev.rows.map((r) => [plainConfigCell(r[0]), ...r.slice(1)]))
+    : `<div class="quiet">No dev summary: results_baseline/summary.md is missing.</div>`;
+  const p = data.parseTaskId(state.task);
+  const rows = (evalDev || []).filter((r) => r.task_id === state.task);
+  html += `<div class="res-head"><span class="label">Season ${esc(p ? p.year : state.task || "")}</span><span class="badge">dev</span></div>`;
+  const cols = ["profit_usd_ha", "grain_kg_ha", "n_applied", "n_leached", "irr_mm", "reward"];
+  html += rows.length ? table(["config", ...cols], data.sortConfigs(rows.map((r) => r.config))
+    .map((c) => rows.find((r) => r.config === c)).map((r) => [data.configName(r.config), ...cols.map((h) => fmt(r[h], h === "profit_usd_ha" || h === "grain_kg_ha" || h === "n_applied" || h === "irr_mm" ? 0 : 1))]))
+    : `<div class="quiet">No eval.csv dev rows for this season.</div>`;
+  $("results-body").innerHTML = html;
 }
 
 function renderTimeline() {
@@ -348,7 +375,8 @@ function renderTimeline() {
 
 async function selectTask(task) {
   state.task = task;
-  state.pair = data.defaultPair(state.index, task);
+  state.configs = await data.availableConfigs(state.index, task);
+  state.pair = data.defaultPair(state.configs);
   const loaded = await Promise.all(SIDES.map((s) => (state.pair[s] ? data.loadRun(state.pair[s], task) : null)));
   SIDES.forEach((s, i) => (state.runs[s] = loaded[i]));
   const ref = loaded.find(Boolean);
@@ -391,6 +419,7 @@ function setWeek(k, { force = false } = {}) {
     renderTallies();
   }
   renderAgents();
+  if (state.view === "results") renderResults();
 }
 
 // ---------------------------------------------------------------- playback and input
@@ -514,8 +543,7 @@ async function main() {
   state.index = await data.loadIndex();
   const task = state.index && data.defaultTask(state.index);
   if (!task) {
-    notice(data.FAKE ? "No fake data: run uv run python -m lanec.scripts.fake_logs --ui"
-      : "No runs yet: runs/index.json is missing or lists no task from tasks/. Play a season, or open with ?fake=1.");
+    notice("No dev seasons: tasks/dev.jsonl is missing or empty.");
     renderFieldHeads();
     setWeek(0, { force: true });
     loaded();

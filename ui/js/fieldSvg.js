@@ -198,7 +198,7 @@ export class FieldView {
     const share = (v, max) => (typeof v === "number" && max > 0 ? clamp(v / max, 0, 1) : 0);
     this.empty.hidden = !!snap;
     if (!snap) {
-      this.empty.textContent = "No log for this season";
+      this.empty.textContent = "No run for this season";
       this.drawPlants(0, 1, false);
       this.setWater(0);
       this.setGroundwater(0);

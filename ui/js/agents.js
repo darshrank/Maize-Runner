@@ -35,7 +35,7 @@ function toolText(v) {
 
 // Full chat for one run and week, in log order.
 export function chatHtml(run, k) {
-  if (!run) return `<div class="quiet">No log for this season.</div>`;
+  if (!run) return `<div class="quiet">No run for this season.</div>`;
   const w = run.weeks[Math.min(k, run.W)];
   if (!w || w.harvest) return `<div class="quiet">Harvest: no decision this week.</div>`;
   const d = w.decision;

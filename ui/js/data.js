@@ -1,49 +1,49 @@
 // Loaders and the log -> weeks model (UI_SPEC.md section 3). Everything else in the UI reads these structures.
 //
-// Sources:
-//   ?fake=1          ui/fake/ (written by `uv run python -m lanec.scripts.fake_logs --ui`)
-//   default          the repo root: runs/, data/weather/, results/
-//   ?runs=baseline   run logs from results_baseline/runs/ (A's frozen baselines), dev tasks only. The index
-//                    is built from tasks/dev.jsonl x BASELINE_CONFIGS; results_baseline/runs/index.json,
-//                    eval.csv and summary.md are never read (they include test years; pending ask to A).
+// Real sources only, dev seasons only (task ids from tasks/dev.jsonl, UFGA-1990..2009):
+//   B (agent runs)   runs/<config>/<task_id>.jsonl, listed in runs/index.json (fake_* configs ignored)
+//   A (baselines)    results_baseline/runs/<config>/<task_id>.jsonl for BASELINE_CONFIGS, dev task ids only
+//   A (results)      results_baseline/eval.csv rows with split = dev; results_baseline/summary.md "Split: dev" table
+// tasks/test.jsonl, test-year logs and test rows are never fetched or parsed: every run path is built from a dev
+// task id, and eval.csv / summary.md are cut to their dev rows before any value is read. results_baseline's
+// runs/index.json is never read (it lists test years). Fake mode is retired: ui/fake/ and
+// lanec/scripts/fake_logs.py stay on disk, unused.
 // A missing or broken file returns null; callers show a quiet placeholder.
-//
-// Real modes only show task ids listed in tasks/dev.jsonl or tasks/test.jsonl (stale skeleton runs such as
-// UFGA-s1 drop out), and take a missing split from there.
 //
 // Parsing rules (STATE.md): the line-level week is the decision week (0..W-1); the final line sits at week W
 // (harvest). A coordinator decision wins over the runner's policy/decision line. Critic messages are
-// {text, objection}; other messages {text} (or {content}); fallbacks {why} (UI_SPEC) or {text}.
+// {text, objection: bool}; other messages {text} or {content}; messages with neither (inference records,
+// proposal records) are not chat. Fallbacks {why} (UI_SPEC) or {text}.
 
 const params = new URLSearchParams(location.search);
-export const FAKE = params.get("fake") === "1";
 export const LITE = params.get("lite") === "1";
-export const BASELINE = !FAKE && params.get("runs") === "baseline";
 
-const ROOT = FAKE ? "fake/" : "../";
-const RUNS = BASELINE ? "../results_baseline/runs/" : `${ROOT}runs/`;
-export const paths = {
-  index: `${RUNS}index.json`,
-  run: (config, task) => `${RUNS}${config}/${task}.jsonl`,
-  tasks: (split) => `../tasks/${split}.jsonl`,
-  weather: (site, year) => `${ROOT}data/weather/${site}_${year}.json`,
-  eval: `${ROOT}results/eval.csv`,
-  iterations: `${ROOT}results/iterations.json`,
-  vllm: `${ROOT}results/vllm_metrics.json`,
-};
-
-// Baseline configs A froze in results_baseline/ (README.md, config.yaml eval.configs).
+// Baseline configs A froze in results_baseline/ (README.md, config.yaml eval.configs). These always load from
+// results_baseline/runs/, never from runs/ (runs/farmer holds local toy-sim runs).
 const BASELINE_CONFIGS = ["farmer_ufga", "farmer", "hindsight", "no_n"];
+export const paths = {
+  index: "../runs/index.json",
+  run: (config, task) => `../${BASELINE_CONFIGS.includes(config) ? "results_baseline/runs" : "runs"}/${config}/${task}.jsonl`,
+  devTasks: "../tasks/dev.jsonl",
+  weather: (site, year) => `../data/weather/${site}_${year}.json`,
+  eval: "../results_baseline/eval.csv",
+  summary: "../results_baseline/summary.md",
+  iterations: "../results/iterations.json",
+  vllm: "../results/vllm_metrics.json",
+};
 
 export const AGENTS = ["weather", "crop", "planner", "critic", "coordinator"];
 export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator" };
+// Plain labels, in picker order. Unknown configs show their raw name.
 const CONFIG_NAMES = {
-  farmer_ufga: "Farmer calendar", farmer: "Farmer calendar", multi: "FieldTwin agent team", single: "Single agent", no_n: "No nitrogen",
-  hindsight: "grid hindsight", multi_no_critic: "Team, no critic", multi_no_weather: "Team, no weather",
-  multi_no_tools: "Team, no tools", fake_multi: "FieldTwin agent team",
+  farmer_ufga: "Farmer practice", farmer: "Fixed split schedule", no_n: "No fertilizer", hindsight: "Grid hindsight",
+  single: "Single agent", multi: "FieldTwin agent team", multi_no_critic: "Team without Critic",
+  multi_no_weather: "Team without Weather", multi_no_tools: "Team without tools",
 };
+const CONFIG_ORDER = Object.keys(CONFIG_NAMES);
 const LEFT_ORDER = ["farmer_ufga", "farmer"];             // farmer practice = farmer_ufga (a-env config.yaml)
-const RIGHT_ORDER = ["multi", "single", "hindsight"];     // default for the right-hand (agent) side
+const LLM_ORDER = ["multi", "single", "multi_no_critic", "multi_no_weather", "multi_no_tools"];
+const RIGHT_ORDER = [...LLM_ORDER, "hindsight"];          // RIGHT: best available LLM config, else grid hindsight
 
 // ---------------------------------------------------------------- fetch helpers
 
@@ -68,20 +68,8 @@ async function fetchJson(url) {
 
 // ---------------------------------------------------------------- configs and tasks
 
-// Fake data never becomes a default real run: in real mode only runs/fake_* configs are fake.
-export function isFakeConfig(config) {
-  return FAKE || (typeof config === "string" && config.startsWith("fake_"));
-}
-
 export function configName(config) {
   return CONFIG_NAMES[config] || config;
-}
-
-// Both farmer configs read "Farmer calendar". When a task has both, farmer_ufga keeps that name and the
-// other shows its raw config name (STATE.md defines no second label).
-export function fieldLabel(config, others = []) {
-  if (config === "farmer" && others.includes("farmer_ufga")) return config;
-  return configName(config);
 }
 
 export function parseTaskId(id) {
@@ -89,73 +77,94 @@ export function parseTaskId(id) {
   return m ? { site: m[1], year: +m[2] } : null;
 }
 
-export function sortTasks(index) {
-  const tasks = [...new Set(Object.values(index || {}).flat())];
-  return tasks.sort((a, b) => a.length - b.length || a.localeCompare(b));
+// Known configs first (CONFIG_ORDER), then unknown ones by name.
+export function sortConfigs(configs) {
+  const rank = (c) => (CONFIG_ORDER.includes(c) ? CONFIG_ORDER.indexOf(c) : CONFIG_ORDER.length);
+  return [...configs].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 }
 
+// Configs the index lists for a task (a log may still be missing: see hasLog).
 export function configsFor(index, task) {
-  return Object.keys(index || {}).filter((c) => (index[c] || []).includes(task)).sort();
+  return sortConfigs(Object.keys(index || {}).filter((c) => (index[c] || []).includes(task)));
 }
 
-// Default pair for a task: LEFT farmer, RIGHT best agent run. In real mode fake_* configs are never defaults.
-export function defaultPair(index, task) {
-  const all = configsFor(index, task);
-  const real = all.filter((c) => !c.startsWith("fake_"));
-  const pool = FAKE ? all : real;
-  const left = LEFT_ORDER.find((c) => pool.includes(c)) || pool[0] || null;
-  const rest = pool.filter((c) => c !== left);
+// Default pair for a season among the configs that have a log: LEFT farmer practice, RIGHT the best LLM config.
+export function defaultPair(configs) {
+  const left = LEFT_ORDER.find((c) => configs.includes(c)) || configs[0] || null;
+  const rest = configs.filter((c) => c !== left);
   const right = RIGHT_ORDER.find((c) => rest.includes(c)) || rest[0] || null;
   return { left, right };
 }
 
-// First task that has both default sides, else the first task.
+// First dev season whose index lists both default sides, else the first dev season.
 export function defaultTask(index) {
-  const tasks = sortTasks(index);
-  return tasks.find((t) => { const p = defaultPair(index, t); return p.left && p.right; }) || tasks[0] || null;
+  return devTasks.find((t) => { const p = defaultPair(configsFor(index, t)); return p.left && p.right; }) || devTasks[0] || null;
 }
 
-// Known task ids and splits from tasks/*.jsonl ({task_id, site, year, split}). Baseline mode reads dev only.
-const taskSplits = new Map();
+// Dev seasons from tasks/dev.jsonl ({task_id, site, year, split}), in file order. Nothing else is a season here.
+const devTasks = [];
 
-async function loadTaskList(split) {
-  const text = await fetchText(paths.tasks(split));
+async function loadDevTasks() {
+  if (devTasks.length) return devTasks.length;
+  const text = await fetchText(paths.devTasks);
   if (text === null) return 0;
-  let n = 0;
   for (const line of text.split("\n")) {
     try {
       const t = JSON.parse(line);
-      if (t && typeof t.task_id === "string") { taskSplits.set(t.task_id, t.split || split); n++; }
+      if (t && typeof t.task_id === "string" && (t.split || "dev") === "dev") devTasks.push(t.task_id);
     } catch { /* blank or broken line */ }
   }
-  return n;
+  return devTasks.length;
 }
 
-export function taskSplit(task) {
-  return taskSplits.get(task) || null;
+export function seasons() {
+  return [...devTasks];
 }
 
+export function isDev(task) {
+  return devTasks.includes(task);
+}
+
+// {config: [dev task ids]}: A's baseline configs for every dev season, plus B's runs/index.json cut to dev
+// seasons. fake_* configs and A's configs listed in runs/index.json (local toy runs) are skipped.
 export async function loadIndex() {
-  if (FAKE) {
-    const index = await fetchJson(paths.index);
-    return index && typeof index === "object" && !Array.isArray(index) ? index : null;
+  if (!(await loadDevTasks())) return null;
+  const index = Object.fromEntries(BASELINE_CONFIGS.map((c) => [c, seasons()]));
+  const b = await fetchJson(paths.index);
+  if (b && typeof b === "object" && !Array.isArray(b)) {
+    for (const [c, ids] of Object.entries(b)) {
+      if (c.startsWith("fake_") || BASELINE_CONFIGS.includes(c) || !Array.isArray(ids)) continue;
+      const dev = ids.filter(isDev);
+      if (dev.length) index[c] = dev;
+    }
   }
-  if (BASELINE) {
-    if (!(await loadTaskList("dev"))) return null;
-    const dev = [...taskSplits.keys()];
-    return Object.fromEntries(BASELINE_CONFIGS.map((c) => [c, dev]));
+  return index;
+}
+
+// Does the log file exist? HEAD request, cached. Dev seasons only.
+const logExists = new Map();
+
+export function hasLog(config, task) {
+  if (!isDev(task)) return Promise.resolve(false);
+  const key = `${config}/${task}`;
+  if (!logExists.has(key)) {
+    logExists.set(key, fetch(paths.run(config, task), { method: "HEAD", cache: "no-store" })
+      .then((r) => r.ok).catch(() => false));
   }
-  const [index] = await Promise.all([fetchJson(paths.index), loadTaskList("dev"), loadTaskList("test")]);
-  if (!index || typeof index !== "object" || Array.isArray(index)) return null;
-  if (!taskSplits.size) return index;   // no tasks/ files: show everything rather than nothing
-  return Object.fromEntries(Object.entries(index)
-    .map(([c, ids]) => [c, (Array.isArray(ids) ? ids : []).filter((t) => taskSplits.has(t))]));
+  return logExists.get(key);
+}
+
+// Configs with a log for this season, in picker order.
+export async function availableConfigs(index, task) {
+  const listed = configsFor(index, task);
+  const ok = await Promise.all(listed.map((c) => hasLog(c, task)));
+  return listed.filter((_, i) => ok[i]);
 }
 
 // ---------------------------------------------------------------- run log -> weeks model
 
 export async function loadRun(config, task) {
-  if (BASELINE && taskSplit(task) !== "dev") return null;   // never open a non-dev baseline log
+  if (!isDev(task)) return null;   // never open a non-dev log
   const text = await fetchText(paths.run(config, task));
   if (text === null) return null;
   const events = [];
@@ -214,7 +223,9 @@ export function buildRun(config, task, events) {
       case "message":
         if (d.reset || !AGENTS.includes(e.agent)) break;
         {
-          const msg = { agent: e.agent, text: d.text || d.content || "", objection: e.agent === "critic" && d.objection === true, t: e.t };
+          const text = typeof d.text === "string" && d.text ? d.text : typeof d.content === "string" ? d.content : "";
+          if (!text.trim()) break;   // inference / proposal / review records: not chat
+          const msg = { agent: e.agent, text, objection: e.agent === "critic" && d.objection === true, t: e.t };
           w.chat.push(msg);
           (w.messages[e.agent] = w.messages[e.agent] || []).push(msg);
         }
@@ -250,13 +261,21 @@ export function buildRun(config, task, events) {
     }
   }
 
+  // Model name, when a line records one (B: data.inference.response_model).
+  let model = null;
+  for (const e of events) {
+    const d = e.data || {};
+    const m = (d.inference && d.inference.response_model) || d.model;
+    if (typeof m === "string" && m) { model = m; break; }
+  }
+
   const parsed = parseTaskId(task);
   return {
     config, task, W, weeks, final,
     site: meta.site || (parsed && parsed.site) || null,
     year: num(meta.year) || (parsed && parsed.year) || null,
-    split: meta.split || taskSplit(task) || null,
-    fake: isFakeConfig(config),
+    split: meta.split || (isDev(task) ? "dev" : null),
+    model,
     hasAgents: weeks.some((w) => w.chat.length > 0),
     fallbackWeeks: weeks.filter((w) => w.fallback).map((w) => w.week),
     objectionWeeks: weeks.filter((w) => w.objection).map((w) => w.week),
@@ -323,25 +342,51 @@ export function alignSeason(run, days, tolMm = 0.5) {
 
 // ---------------------------------------------------------------- results files
 
-// eval.csv: leading "# ..." lines are comments (the FAKE marker). Numeric cells become numbers.
-export function parseCsv(text) {
+// results_baseline/eval.csv, dev rows only: a row whose split cell is not "dev" is dropped before any other cell
+// is read. Leading "# ..." lines are comments. Numeric cells become numbers.
+export function parseDevCsv(text) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim() && !l.startsWith("#"));
   if (!lines.length) return [];
-  const split = (l) => l.split(",").map((c) => c.trim());
-  const head = split(lines[0]);
-  return lines.slice(1).map((l) => {
-    const cells = split(l), row = {};
+  const cut = (l) => l.split(",").map((c) => c.trim());
+  const head = cut(lines[0]);
+  const si = head.indexOf("split");
+  if (si < 0) return [];
+  const rows = [];
+  for (const l of lines.slice(1)) {
+    const cells = cut(l);
+    if (cells[si] !== "dev") continue;
+    const row = {};
     head.forEach((h, i) => {
       const v = cells[i];
       row[h] = v !== undefined && v !== "" && !Number.isNaN(Number(v)) && !["config", "task_id", "split"].includes(h) ? Number(v) : v;
     });
-    return row;
-  });
+    rows.push(row);
+  }
+  return rows;
 }
 
 export async function loadEval() {
   const text = await fetchText(paths.eval);
-  return text === null ? null : parseCsv(text);
+  return text === null ? null : parseDevCsv(text);
+}
+
+// results_baseline/summary.md, the "## Split: dev" table only: {head: [...], rows: [[...]]} or null. The text is
+// cut at the next "## " heading before the table is read.
+export async function loadSummaryDev() {
+  const text = await fetchText(paths.summary);
+  if (text === null) return null;
+  const lines = text.split(/\r?\n/);
+  const at = lines.findIndex((l) => /^##\s+Split:\s*dev\s*$/i.test(l.trim()));
+  if (at < 0) return null;
+  const section = [];
+  for (const l of lines.slice(at + 1)) {
+    if (/^##\s/.test(l)) break;
+    section.push(l);
+  }
+  const table = section.filter((l) => l.trim().startsWith("|"))
+    .map((l) => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim()));
+  if (table.length < 2) return null;
+  return { head: table[0], rows: table.slice(1).filter((r) => !r.every((c) => /^:?-+:?$/.test(c))) };
 }
 
 // Pending ask to B (STATE.md): absent until B writes it.
@@ -354,10 +399,4 @@ export async function loadIterations() {
 export async function loadVllmMetrics() {
   const m = await fetchJson(paths.vllm);
   return m && typeof m === "object" && !Array.isArray(m) ? m : null;
-}
-
-// Source label for every number: FAKE wins, else the split from the log.
-export function sourceLabel(run) {
-  if (!run) return null;
-  return run.fake ? (run.split ? `FAKE · ${run.split}` : "FAKE") : run.split;
 }

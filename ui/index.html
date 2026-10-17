@@ -32,10 +32,12 @@
     <div class="s3-anchor" id="s3-head-left"><div class="s3-in up">
       <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
       <div class="s3-name"></div>
+      <div class="s3-none quiet" hidden>No run for this season</div>
     </div></div>
     <div class="s3-anchor" id="s3-head-right"><div class="s3-in up">
       <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
       <div class="s3-name"></div>
+      <div class="s3-none quiet" hidden>No run for this season</div>
     </div></div>
     <div class="s3-anchor" id="s3-mid"><div class="s3-in up">
       <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge"></span></div>
@@ -55,7 +57,7 @@
     <div id="fields">
       <section class="field" id="field-left">
         <header class="field-head">
-          <h2 id="name-left">Farmer calendar</h2>
+          <h2 id="name-left">Farmer practice</h2>
           <span id="fb-left" class="badge fallback" hidden></span>
         </header>
         <div class="plot" id="plot-left"></div>
@@ -125,7 +127,12 @@
     </div>
   </main>
 
-  <!-- 3-5 Results, Gym, Serving: quiet placeholders until their units -->
+  <!-- 3 Results: A's dev baselines (summary.md "Split: dev", eval.csv dev rows) -->
+  <main id="results" class="view" hidden>
+    <div class="results-wrap" id="results-body"></div>
+  </main>
+
+  <!-- 4-5 Gym, Serving: quiet placeholders until their units -->
   <main id="placeholder" class="view" hidden>
     <div class="placeholder">
       <span class="label" id="placeholder-title"></span>
