@@ -1,0 +1,2 @@
+config,task_id,split,grain_kg_ha,n_applied,n_uptake,n_leached,n_gas,irr_mm,profit_usd_ha,reward,llm_calls,wall_s,fallbacks
+a_d1_multi,UFGA-1995,dev,7366.7,145.0,162.25,4.87,1.91,30.0,1164.12,1152.24,147,919.0,0
