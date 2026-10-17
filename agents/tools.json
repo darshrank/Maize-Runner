@@ -11,7 +11,7 @@
     "type": "function",
     "function": {
       "name": "get_crop_state",
-      "description": "Current maize state: stage (VE, V6, V10, VT, R1, R3, R6), gdd (cumulative growing degree days, C-days base 10), biomass_kg_ha (kg/ha dry matter), n_stress and water_stress (0 = severe stress, 1 = no stress). N demand peaks at V10 to VT.",
+      "description": "Current maize state: stage (VE = emergence, V<n> = vegetative with n leaves, R1 = silking, R3 = grain fill, R6 = physiological maturity; the toy simulator reports VE, V6, V10, VT, R1, R3, R6), gdd (cumulative thermal time since planting, C-days), biomass_kg_ha (above-ground dry matter, kg/ha), n_stress and water_stress (0 = severe stress, 1 = no stress). Nitrogen demand is highest from the late vegetative stages through silking.",
       "parameters": {"type": "object", "properties": {}, "required": []}
     }
   },
@@ -19,7 +19,7 @@
     "type": "function",
     "function": {
       "name": "get_soil",
-      "description": "Current soil state: soil_water_frac (0 to 1 fraction of the 150 mm root-zone capacity; below 0.4 the crop is water stressed, above 0.85 nitrate is lost as gas) and soil_n_kg_ha (plant-available nitrate, kg N/ha).",
+      "description": "Current soil state: soil_water_frac (0 to 1: plant-available water in the root zone, 0 = wilting point, 1 = field capacity; the crop becomes water stressed when it gets low, roughly below 0.35-0.4) and soil_n_kg_ha (estimated plant-available mineral nitrogen in the soil, kg N/ha).",
       "parameters": {"type": "object", "properties": {}, "required": []}
     }
   },
