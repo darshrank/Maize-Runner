@@ -77,3 +77,17 @@ Before: `results/local-skeleton-v1`; after: `results/local-skeleton-v2`.
 
 
 No real crop-performance claim is supported by synthetic fixtures.
+
+## Critic-role diagnostic (2026-10-17)
+
+Live Nemotron, ten constructed synthetic proposals (seven defective, three expected-acceptable), each repeated twice. No DSSAT season, policy-quality gain or model training is measured. The v3 critic already objected in 240/377 weeks of the completed real multi run; objection quality is the issue, not a missing rejection quota.
+
+| Critic version | Bad proposals rejected | Valid proposals accepted | Balanced accuracy |
+|---|---:|---:|---:|
+| v3 existing | 12/14 | 1/6 | 51.2% |
+| v4 detailed independent audit | 14/14 | 0/6 | 50.0% |
+| v5 balanced evidence/burden of proof | 14/14 | 2/6 | 66.7% |
+
+v4 caught errors but rejected everything. v5 reduced this bias but remains unreliable on expected-acceptable plans; neither is promoted. Both change only critic.txt relative to v3. These are development diagnostics; v5 was revised after inspecting v4 results on the same cases. See critic-review-summary.json and critic-review-logs.zip for complete decisions, inputs, prompt hashes and source hashes.
+
+Next: structured verifiable facts and final coordinator decision verification. The present critic reviews only the planner; it cannot catch new errors introduced by the coordinator. Full new season experiments remain paused.

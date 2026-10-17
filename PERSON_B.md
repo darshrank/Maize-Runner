@@ -190,3 +190,34 @@ progress file is `results/b3-progress.json`, with stdout/stderr in
 running anything again. See `results/dssat-dev-experiment-plan.json` for exact paths.
 Prompt selection, ablation validation and the final freeze remain pending review
 of the full results. All work uses dev years only; A owns held-out test evaluation.
+
+## Independent critic candidates and diagnostics
+
+v4 and v5 copy v3 except for critic.txt. They require evidence-linked objections,
+literal constraint/fact checks and one actionable correction, while forbidding
+invented objections or rejection merely to appear useful. The measured v1/v3
+prompts and shared default are preserved. Candidates are not final freezes.
+
+The focused live diagnostic contains both bad and expected-acceptable synthetic
+proposals. It records inputs, prompt/source hashes and every review without running
+a DSSAT season. From a checkout with access to the model endpoint:
+
+```bash
+uv run python scripts/check_critic.py --versions v3 v5 --repeats 2 --output results/critic-review-new
+```
+
+Choose a fresh output path each time; VLLM_BASE_URL/VLLM_MODEL can select the live
+endpoint. The copied Brev application does not automatically receive new local
+files when this Git branch is pushed. The diagnostic run in this session used
+the local checkout and the existing model SSH tunnel.
+
+v3 rejected 12/14 defective reviews and accepted 1/6 valid reviews; v4 rejected
+14/14 and accepted 0/6, so merely stronger rejection wording failed. v5 rejected
+14/14 and accepted 2/6. Neither candidate is promoted. Two stochastic repeats on
+ten development cases cannot establish general accuracy. All 60 logs are archived
+in results/critic-review-logs.zip; results/critic-review-summary.json and
+results/iterations.md retain the negative results as well as improvements.
+
+The existing critic reviews only the planner, before the coordinator acts. A final
+coordinator verification stage is still pending architecture work. No new full
+season experiment or model training was started during this wording follow-up.

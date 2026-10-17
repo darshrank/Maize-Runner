@@ -22,6 +22,8 @@ results/*
 !results/dssat-dev-v1-logs.zip
 !results/dssat-dev-v3-logs.zip
 !results/b3-iterations.md
+!results/critic-review-summary.json
+!results/critic-review-logs.zip
 /tmp/
 /build/
 /dist/

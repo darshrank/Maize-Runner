@@ -4,6 +4,27 @@ Last checked: **October 17, 2026, 3:20 PM America/New_York**.
 This is the current checkpoint; earlier chat status messages and intermediate
 snapshots described runs that have since finished.
 
+### Later critic follow-up (same day)
+
+The user paused new season experiments to discuss proper agent information and
+recording, then explicitly requested an independent, effective critic. New v4/v5
+prompt candidates change only critic.txt relative to v3; existing measured prompts
+and the shared v1 default remain unchanged. No new DSSAT season or training ran.
+
+`scripts/check_critic.py` ran ten constructed synthetic proposal cases twice per
+version with live Nemotron. Existing v3: reject bad 12/14, accept valid 1/6;
+v4: 14/14 and 0/6; v5: 14/14 and 2/6. v4 was an overly rejecting failure; v5 is
+still unreliable and unpromoted. See `results/critic-review-summary.json`,
+`results/critic-review-logs.zip`, and the diagnostic entry in `results/iterations.md`.
+These development cases were inspected during revision; they are not independent
+accuracy or crop-performance evidence. All 41 local tests pass (eight DSSAT skips).
+
+Important flow limitation: the critic reviews the planner before the coordinator,
+so it cannot catch a new mistake introduced in the coordinator's final action.
+The next architecture discussion should address verified facts, false objections
+and final-decision checks. Do not solve this by making the critic reject more:
+the completed v3 multi run already had 240 objections in 377 weeks.
+
 ## User request and working agreement
 
 - Work on **`person-B`** (case matters) in `https://github.com/darshrank/FieldTwin`.
@@ -225,7 +246,8 @@ Host facts:
 
 - `agents/policies/nemotron.py`: synchronous shared Policy adapter and call counts.
 - `fieldtwin_agents/agents.py`: role orchestration; protocol **2**; supported prompt
-  versions v1/v2/v3; strict outputs, permissions, six-turn bound, one revision.
+  versions v1/v2/v3 plus unpromoted critic candidates v4/v5; strict outputs,
+  permissions, six-turn bound, one revision.
 - `fieldtwin_agents/clients.py`: vLLM and env HTTP. Never retry `/step` automatically.
 - `fieldtwin_agents/contracts.py`: year-based Task with legacy seed compatibility,
   action/JSONL/CSV contracts; dev-only loader rejects test/unlabelled tasks.

@@ -9,7 +9,7 @@ from .contracts import Action, ROLE_TOOLS
 
 PROMPT_ROOT = Path(__file__).parent / "prompts"
 AGENT_PROTOCOL_VERSION = 2
-PROMPT_VERSIONS = ("v1", "v2", "v3")
+PROMPT_VERSIONS = ("v1", "v2", "v3", "v4", "v5")
 
 
 class PolicyFailure(Exception):

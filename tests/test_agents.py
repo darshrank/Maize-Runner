@@ -39,6 +39,16 @@ class GuardModel(StubModel):
 
 
 class AgentTests(unittest.IsolatedAsyncioTestCase):
+    def test_critic_diagnostic_penalizes_both_trivial_strategies(self):
+        from scripts.check_critic import metrics
+        for always_accept in (True, False):
+            rows = [{"expected_accept": expected, "actual_accept": always_accept,
+                     "correct": expected == always_accept} for expected in (False,)*7 + (True,)*3]
+            summary = metrics(rows)
+            self.assertEqual(summary["balanced_accuracy"], .5)
+            self.assertEqual(summary["false_accepts"], 7 if always_accept else 0)
+            self.assertEqual(summary["false_rejects"], 0 if always_accept else 3)
+
     async def test_real_run_rejects_toy_server_before_reset(self):
         from types import SimpleNamespace
         from unittest.mock import patch

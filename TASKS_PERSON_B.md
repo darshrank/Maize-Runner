@@ -2,6 +2,8 @@
 
 Last updated: October 17, 2026, approximately 3:20 PM America/New_York.
 Branch: `person-B`. Read [handoff.md](handoff.md) first in a new session.
+Latest follow-up: critic wording and focused role diagnostics below; full new
+season experiments remain paused at the user's request.
 This current checklist supersedes the earlier in-progress snapshots in chat/docs.
 The user authorized pushing person-B with the handoff; main/a-env stay unchanged.
 
@@ -42,6 +44,7 @@ and has excessive water/leaching. It is not selected as final.
 
 ## Pending, in priority order
 
+- [ ] Fix critic false objections using structured verifiable facts and assess how to verify the final coordinator decision. Critic wording alone remains insufficient; do not promote v4/v5 based on rejection frequency.
 - [ ] Inspect complete v3 worst-three role/tool traces. A concrete logged error reverses the irrigation comparison: moisture 0.93 is interpreted as triggering the below-0.35 rule.
 - [ ] Design and test one targeted next change for watering-condition reliability. Clearly distinguish prompt-only changes from code/protocol changes.
 - [ ] Diagnose and separately improve nitrogen efficiency if still needed; 300 kg is a cap, not a spending target. Keep A's prices/reward/caps fixed.
@@ -70,3 +73,14 @@ Earlier live/toy checks remain in results/b1-b2-live* and are labelled separatel
 The earlier toy/tunnel path had two HTTP fallbacks; its root cause is unconfirmed.
 The colocated real runs had no HTTP fallbacks. The only candidate fallback was a
 visible malformed-response fallback in single. No cost-saving claim is established.
+
+## Critic wording follow-up
+
+- [x] Inspect actual objections: the v3 critic rejected 240/377 weekly proposals, each followed by one planner revision. It was not accepting everything.
+- [x] Preserve v1/v3 measured prompts and create v4/v5 critic-only candidates. Instructions demand independent evidence, literal checks, one actionable correction and acceptance when no material defect exists.
+- [x] Create scripts/check_critic.py and ten synthetic role-review cases, including expected acceptances and rejections. Record prompts, inputs, hashes, calls and outcomes.
+- [x] Run 60 live role reviews: v3 rejected 12/14 bad proposals and accepted 1/6 valid ones; v4 14/14 and 0/6; v5 14/14 and 2/6. v4's reject-everything behavior and v5's remaining false objections are recorded, not hidden.
+- [x] Pass 41 local tests (eight DSSAT skips), including a diagnostic-scoring check that both always-accept and always-reject get only 50% balanced accuracy.
+- [x] Archive all review logs in results/critic-review-logs.zip and save results/critic-review-summary.json. Current shared default stays v1; neither candidate is selected for full seasons.
+- [ ] Validate future critic changes on fresh cases as well as development failures; these small constructed cases are not independent crop or general-accuracy evidence.
+- [ ] Address the flow blind spot: planner -> critic -> optional planner revision -> coordinator. There is no review of the coordinator's final action yet.
