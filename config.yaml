@@ -1,0 +1,20 @@
+env:
+  url: http://localhost:9000
+  simulator: toy            # later: dssat
+  weeks_per_season: 20
+  max_n_kg_ha_per_week: 120
+  max_irr_mm_per_week: 50
+  max_n_kg_ha_per_season: 300
+  outlook_noise: {rain_frac: 0.4, temp_c: 2.0}
+prices:                     # PLACEHOLDERS: A replaces with cited values
+  maize_usd_per_kg: 0.17
+  n_usd_per_kg: 0.90
+  water_usd_per_mm_ha: 0.50
+reward:
+  leach_penalty_usd_per_kg: 2.0
+eval:
+  configs: [no_n, farmer, hindsight]   # B adds: single, multi, multi_no_critic, multi_no_weather, multi_no_tools
+  parallel: 8
+agents:
+  base_url_env: VLLM_BASE_URL
+  model_env: VLLM_MODEL

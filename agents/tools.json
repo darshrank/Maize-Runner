@@ -1,0 +1,58 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Weather for the field. 'history' is the last 14 observed days; 'outlook' is a noisy forecast for the next 7 days (rain has about 40% relative error, temperature about 2 C). Each day: {day, tmax (C), tmin (C), rain_mm (mm)}. Use it to avoid applying nitrogen right before heavy rain, which leaches it.",
+      "parameters": {"type": "object", "properties": {}, "required": []}
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_crop_state",
+      "description": "Current maize state: stage (VE, V6, V10, VT, R1, R3, R6), gdd (cumulative growing degree days, C-days base 10), biomass_kg_ha (kg/ha dry matter), n_stress and water_stress (0 = severe stress, 1 = no stress). N demand peaks at V10 to VT.",
+      "parameters": {"type": "object", "properties": {}, "required": []}
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_soil",
+      "description": "Current soil state: soil_water_frac (0 to 1 fraction of the 150 mm root-zone capacity; below 0.4 the crop is water stressed, above 0.85 nitrate is lost as gas) and soil_n_kg_ha (plant-available nitrate, kg N/ha).",
+      "parameters": {"type": "object", "properties": {}, "required": []}
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_history",
+      "description": "List of past weeks this season, each {week, n_kg_ha (N applied, kg/ha), irr_mm (irrigation, mm), rain_mm (rain that week, mm), n_leached (kg N/ha lost to leaching), n_uptake (kg N/ha taken up by the crop)}.",
+      "parameters": {"type": "object", "properties": {}, "required": []}
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_budget",
+      "description": "Season budget so far: n_applied_total (kg N/ha), n_remaining_season_cap (kg N/ha still allowed this season, cap 300), irr_total_mm (mm), spend_usd (USD/ha spent on nitrogen and water).",
+      "parameters": {"type": "object", "properties": {}, "required": []}
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "submit_decision",
+      "description": "Submit this week's decision. It is applied on day 1 of the week. Values outside the limits are clamped (not rejected). Profit = grain * maize price - N cost - water cost; reward = profit - 2 USD per kg N leached.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "n_kg_ha": {"type": "number", "minimum": 0, "maximum": 120, "description": "Nitrogen to apply this week, kg N/ha (0 to 120; season total capped at 300)."},
+          "irr_mm": {"type": "number", "minimum": 0, "maximum": 50, "description": "Irrigation to apply this week, mm (0 to 50)."},
+          "reason": {"type": "string", "description": "One or two sentences explaining the decision, shown to the farmer."}
+        },
+        "required": ["n_kg_ha", "irr_mm", "reason"]
+      }
+    }
+  }
+]

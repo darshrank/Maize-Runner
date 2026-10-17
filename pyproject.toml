@@ -1,0 +1,21 @@
+[project]
+name = "fieldtwin"
+version = "0.1.0"
+description = "FieldTwin: a multi-agent crop advisor (walking skeleton)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "pyyaml",
+    "numpy",
+    "pytest",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
