@@ -35,6 +35,7 @@ import re
 import select
 import subprocess
 import time
+import uuid
 import weakref
 from pathlib import Path
 
@@ -149,7 +150,7 @@ class DssatSimulator(Simulator):
         out_dir = out_dir if out_dir.is_absolute() else ROOT / out_dir
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / f"UFGA{year}.jinja2"
-        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        tmp = path.with_suffix(f".{uuid.uuid4().hex}.tmp")   # unique: the server resets in parallel threads
         tmp.write_text(text)
         tmp.replace(path)
         return path

@@ -10,12 +10,26 @@ env:
   max_irr_mm_per_week: 50
   max_n_kg_ha_per_season: 300
   outlook_noise: {rain_frac: 0.4, temp_c: 2.0}
-prices:                     # PLACEHOLDERS: A replaces with cited values
-  maize_usd_per_kg: 0.17
-  n_usd_per_kg: 0.90
-  water_usd_per_mm_ha: 0.50
+prices:                     # fixed Oct 17, 2026; do not tune (plan: reward is set once)
+  # Maize: USDA WASDE Apr 2026, 2025/26 season-average farm price $4.15/bu
+  #   (https://www.agproud.com/articles/63301-corn-price-raised-to-415-per-bushel).
+  #   1 bu = 56 lb = 25.40 kg at 15.5% moisture; DSSAT grnwt is DRY matter, so
+  #   4.15 / (25.40 * 0.845) = $0.193 per kg dry grain.
+  maize_usd_per_kg: 0.193
+  # Nitrogen: DTN retail, last week of Sep 2026, UAN32 $483/short ton
+  #   (https://www.dtnpf.com/agriculture/web/ag/crops/article/2026/10/07/uan32-leads-fertilizer-prices-higher).
+  #   483 / 907.18 kg / 0.32 N = $1.66 per kg N (urea $683/t gives $1.64).
+  n_usd_per_kg: 1.66
+  # Water: pumping energy, USDA NASS 2023 Irrigation and Water Management Survey, Florida:
+  #   energy expenses $83.342M (Table 16) / 1,196,361 acre-ft applied (Table 7) = $5.81/acre-inch;
+  #   1 acre-inch = 25.4 mm on 0.4047 ha = 10.28 mm*ha -> $0.565 per mm per ha.
+  #   (https://www.nass.usda.gov/Publications/AgCensus/2022/Online_Resources/Farm_and_Ranch_Irrigation_Survey/)
+  water_usd_per_mm_ha: 0.565
 reward:
-  leach_penalty_usd_per_kg: 2.0
+  # Damage cost of nitrate reaching groundwater (Floridan aquifer under Gainesville):
+  #   Sobota et al. 2015, Environ. Res. Lett. 10:025006, Table 1, groundwater N loading, medians
+  #   (2008 USD/kg N): drinking-water nitrate 0.54 + taste/odor 0.14 + colon-cancer risk 1.76 = 2.44.
+  leach_penalty_usd_per_kg: 2.44
 eval:
   configs: [no_n, farmer, hindsight]   # B adds: single, multi, multi_no_critic, multi_no_weather, multi_no_tools
   parallel: 8

@@ -43,7 +43,7 @@
     "type": "function",
     "function": {
       "name": "submit_decision",
-      "description": "Submit this week's decision. It is applied on day 1 of the week. Values outside the limits are clamped (not rejected). Profit = grain * maize price - N cost - water cost; reward = profit - 2 USD per kg N leached.",
+      "description": "Submit this week's decision. It is applied on day 1 of the week. Values outside the limits are clamped (not rejected). Profit = grain * maize price - N cost - water cost; reward = profit - 2.44 USD per kg N leached (prices in config.yaml).",
       "parameters": {
         "type": "object",
         "properties": {

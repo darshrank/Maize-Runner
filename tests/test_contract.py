@@ -84,9 +84,12 @@ def test_full_season(client):
     final = s["final"]
     assert set(final) == FINAL_KEYS
     assert final["n_applied"] == 300   # 20 weeks x 20 kg would be 400; the season cap is 300
-    profit = final["grain_kg_ha"] * 0.17 - final["n_applied"] * 0.90 - final["irr_mm"] * 0.50
+    cfg = load_config()
+    prices, penalty = cfg["prices"], cfg["reward"]["leach_penalty_usd_per_kg"]
+    profit = (final["grain_kg_ha"] * prices["maize_usd_per_kg"] - final["n_applied"] * prices["n_usd_per_kg"]
+              - final["irr_mm"] * prices["water_usd_per_mm_ha"])
     assert final["profit_usd_ha"] == pytest.approx(profit, abs=0.02)
-    assert final["reward"] == pytest.approx(profit - 2.0 * final["n_leached"], abs=0.02)
+    assert final["reward"] == pytest.approx(profit - penalty * final["n_leached"], abs=0.02)
 
 
 def test_outlook_same_for_every_episode(client):
@@ -139,3 +142,13 @@ def test_outlook_is_the_real_weather_that_follows(sim_name):
     real = load_year("UFGA", 2015)[PLANTING_DOY - 1 + 15:PLANTING_DOY - 1 + 22]   # days 15-21 after planting
     assert [w["rain_mm"] for w in outlook] == [d["rain_mm"] for d in real]
     sim.close()
+
+
+@pytest.mark.skipif(not DSSAT_INSTALLED, reason="gym-DSSAT not installed")
+def test_dssat_xfile_parallel_writes():
+    """The server resets episodes in parallel threads; writing the same year's X file must not race."""
+    from concurrent.futures import ThreadPoolExecutor
+    from env.dssat_sim import DssatSimulator
+    with ThreadPoolExecutor(16) as pool:
+        paths = list(pool.map(lambda _: DssatSimulator({})._xfile_for_year(1995), range(100)))
+    assert len(set(paths)) == 1 and "95057" in paths[0].read_text()   # planting date moved to 1995

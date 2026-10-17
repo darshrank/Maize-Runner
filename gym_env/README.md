@@ -7,7 +7,7 @@ FieldTwin wrapped for [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) (tested wit
 | Dataset | 35 real seasons as JSONL, one row per (site, year): `dev` 20 (UFGA 1990-2009), `test` 15 (UFGA 2010-2024, held out) |
 | Resources server | `resources_servers/fieldtwin/app.py` (`GymnasiumServer`): a thin adapter over the FieldTwin env server on port 9000 |
 | Tools | the env server's 5 read tools + `submit_decision` (schemas from `agents/tools.json`) |
-| Verifier | the env's final `reward` (profit minus 2 USD/kg nitrate leached, USD/ha) when the season ends; 0 on every other step |
+| Verifier | the env's final `reward` (profit minus 2.44 USD/kg nitrate leached, USD/ha; prices in `config.yaml`) when the season ends; 0 on every other step |
 | Agent | NeMo Gym's built-in `gymnasium_agent` (`max_steps: 300`) |
 
 One rollout = one season: the model calls read tools and `submit_decision` once per week until the crop matures
@@ -62,12 +62,13 @@ cd gym_env && .venv/bin/gym eval run --no-serve --agent fieldtwin_gymnasium_agen
     --input environments/fieldtwin/data/example.jsonl --output results/example_rollouts.jsonl
 ```
 
-Checked results on the 3 example seasons (UFGA 1990-1992), all terminated, none truncated:
+Checked results on the 3 example seasons (UFGA 1990-1992) with the final prices in `config.yaml`,
+all terminated, none truncated:
 
 | simulator | rewards (1990, 1991, 1992) | mean/reward | same as our own runner? |
 |---|---|---|---|
-| toy | 1057.86, 524.94, 1079.07 | 887.29 | yes, identical to `agents.run --policy farmer` |
-| gym-DSSAT | 970.60, 1152.69, 1218.89 | 1114.06 | yes, equals the farmer mean in `scripts/smoke.sh` on DSSAT (1114.1) |
+| toy | 1099.19, 484.28, 1123.08 | 902.18 | yes, identical to `agents.run --policy farmer` season by season |
+| gym-DSSAT | 999.80, 1198.33, 1280.99 | 1159.71 | yes, equals the farmer mean in `scripts/smoke.sh` on DSSAT (1159.7) |
 
 ## Notes
 
