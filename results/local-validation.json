@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-17",
+  "branch": "person-B",
+  "synthetic": true,
+  "checks": {
+    "unittest": {"command": "python -m unittest discover -s tests -v", "passed": 12},
+    "in_process_seasons": {
+      "tasks_per_config": 20,
+      "configs": ["single", "multi", "multi_no_critic", "multi_no_weather", "multi_no_tools"],
+      "prompt_versions": ["v1", "v2"],
+      "concurrency": 8,
+      "completed": 200,
+      "paired_reward_delta_all_configs": 0.0
+    },
+    "http_integration": {"command": "python scripts/check_stub_http.py", "completed": 40, "concurrency": 8, "passed": true},
+    "editable_install": {"command": "python -m pip install -e .", "passed": true},
+    "compilation": {"command": "python -m compileall -q fieldtwin_agents scripts tests", "passed": true}
+  },
+  "pending": [
+    "Live BF16 Nemotron on Brev and tool smoke test",
+    "Person A simulator, authoritative dev tasks, N cap and fallback schedule",
+    "Real 20-season dev comparison, diagnosed one-change gain, final prompt selection",
+    "Person A held-out test evaluation and later team merge"
+  ],
+  "note": "Synthetic fixtures verify software plumbing only; no actual model, crop-performance or bounty completion claim. Full local runs are ignored by git; fixtures/replay.stub.jsonl is a tracked sample."
+}
