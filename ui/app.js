@@ -55,6 +55,7 @@ function buildRun(config, events) {
   }
   let lastObs = null;
   weeks.forEach((w) => {
+    w.decision = pickDecision(w.events);
     if (w.step) lastObs = w.step.obs;
     w.obs = w.step ? w.step.obs : lastObs;        // week 20 keeps the last observed state
     leachedCum += w.step ? w.step.weekly.n_leached : 0;
@@ -74,7 +75,24 @@ function configsFor(task) {
 
 function bestConfig(task, exclude) {
   const avail = configsFor(task).filter((c) => c !== exclude);
-  return BEST_ORDER.find((c) => avail.includes(c)) || avail[0] || exclude;
+  return BEST_ORDER.find((c) => avail.includes(c)) || firstReal(avail) || avail[0] || exclude;
+}
+
+// Fake logs (runs/fake_*) are for UI testing only: never a default when a real run exists.
+function isFake(config) {
+  return typeof config === "string" && config.startsWith("fake_");
+}
+
+function firstReal(configs) {
+  return configs.find((c) => !isFake(c));
+}
+
+// Coordinator decision wins over the runner's policy/decision line; baselines only have the latter.
+function pickDecision(events) {
+  const decisions = events.filter((e) => e.kind === "decision");
+  const chosen = decisions.find((e) => e.agent === "coordinator")
+    || decisions.find((e) => e.agent === "policy") || decisions[decisions.length - 1];
+  return chosen ? chosen.data : null;
 }
 
 // ---------------------------------------------------------------- 3D field
@@ -240,7 +258,7 @@ function counterHtml(key, value, cls = "") {
 function renderCounters(side) {
   const panel = $(`field-${side}`);
   const run = state.runs[side];
-  panel.querySelector(".config-name").textContent = run ? run.config : "(no run)";
+  panel.querySelector(".config-name").innerHTML = run ? configNameHtml(run.config) : "(no run)";
   const w = run ? run.weeks[state.week] : null;
   const obs = (w && w.obs) || {};
   const end = state.week === WEEKS && run && run.final;
@@ -300,10 +318,89 @@ function eventHtml(e) {
 
 function renderLog() {
   const run = state.runs[state.selected];
-  $("log-title").textContent = `${state.selected} · ${run ? run.config : "no run"} · week ${state.week}`;
+  $("log-title").innerHTML = `${state.selected} · ${run ? configNameHtml(run.config) : "no run"} · week ${state.week}`;
   const events = run ? run.weeks[state.week].events : [];
   $("log").innerHTML = events.length ? events.map(eventHtml).join("") : `<div class="bubble">No events.</div>`;
   document.querySelectorAll(".field-panel").forEach((p) => p.classList.toggle("selected", p.dataset.side === state.selected));
+  renderAgents();
+}
+
+// ---------------------------------------------------------------- agents panel
+
+const AGENT_ORDER = ["weather", "crop", "planner", "critic", "coordinator"];
+const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator" };
+
+function fakeBadge(config) {
+  return isFake(config) ? ` <span class="fake-badge" title="Fake log for UI testing, not a real run">FAKE</span>` : "";
+}
+
+function configNameHtml(config) {
+  return escapeHtml(config) + fakeBadge(config);
+}
+
+function messageText(d) {
+  return d && (d.text || d.content);
+}
+
+function hasAgents(run) {
+  return run.weeks.some((w) => w.events.some((e) => AGENT_ORDER.includes(e.agent)));
+}
+
+function fallbackWeekCount(run) {
+  return run.weeks.filter((w) => w.events.some((e) => e.kind === "fallback")).length;
+}
+
+function decisionHtml(d) {
+  return `<div class="decision-line">N ${fmt(d.n_kg_ha, 1)} kg/ha · irrigation ${fmt(d.irr_mm, 1)} mm</div>`
+    + `<div class="reason">${escapeHtml(d.reason || "")}</div>`;
+}
+
+// One block: message texts, tool call names, critic objection, fallbacks, coordinator decision.
+function agentBlockHtml(agent, events, decision) {
+  const mine = events.filter((e) => e.agent === agent);
+  const texts = mine.filter((e) => e.kind === "message").map((e) => messageText(e.data)).filter(Boolean);
+  const tools = mine.filter((e) => e.kind === "tool_call").map((e) => e.data && e.data.name).filter(Boolean);
+  const fallbacks = mine.filter((e) => e.kind === "fallback");
+  const objection = agent === "critic" && mine.some((e) => e.kind === "message" && e.data && e.data.objection === true);
+  const tags = (objection ? `<span class="tag objection">Objection</span>` : "")
+    + (fallbacks.length ? `<span class="tag fallback">Fallback</span>` : "");
+  const body = [
+    ...texts.map((t) => `<div class="msg">${escapeHtml(t)}</div>`),
+    ...fallbacks.map((e) => `<div class="msg fallback-text">${escapeHtml(messageText(e.data) || JSON.stringify(e.data))}</div>`),
+    tools.length ? `<div class="tools">tools: ${tools.map(escapeHtml).join(", ")}</div>` : "",
+    agent === "coordinator" && decision ? decisionHtml(decision) : "",
+  ].join("") || `<div class="msg muted">No events this week.</div>`;
+  const cls = ["agent-block", objection ? "objection" : "", fallbacks.length ? "fallback" : ""].join(" ");
+  return `<div class="${cls}" style="--agent:${AGENT_COLORS[agent]}">`
+    + `<div class="who">${AGENT_NAMES[agent]}${tags}</div>${body}</div>`;
+}
+
+function renderAgents() {
+  const el = $("agents-panel");
+  const run = state.runs[state.selected];
+  if (!run) {
+    el.innerHTML = `<div class="agents-head">No run loaded.</div>`;
+    return;
+  }
+  const w = run.weeks[state.week];
+  const weekFallback = w.events.some((e) => e.kind === "fallback");
+  const head = `<div class="agents-head"><span>${configNameHtml(run.config)} · week ${state.week === WEEKS ? "end" : state.week}`
+    + `${weekFallback ? ` <span class="tag fallback">Fallback</span>` : ""}</span>`
+    + `<span class="fb-count">Fallback weeks: ${fallbackWeekCount(run)}</span></div>`;
+  let body;
+  if (!hasAgents(run)) {
+    body = `<div class="agent-block baseline"><div class="who">No agents (baseline policy)</div>`
+      + (w.decision ? decisionHtml(w.decision) : `<div class="msg muted">No decision this week.</div>`) + `</div>`;
+  } else if (!w.decision && !w.events.some((e) => AGENT_ORDER.includes(e.agent))) {
+    body = `<div class="agent-block"><div class="msg muted">No agent activity this week.</div></div>`;
+  } else {
+    body = AGENT_ORDER.map((a) => agentBlockHtml(a, w.events, w.decision)).join("");
+  }
+  el.innerHTML = head + body;
+}
+
+function renderPickerBadges() {
+  for (const side of ["left", "right"]) $(`${side}-fake`).hidden = !isFake(state.configs[side]);
 }
 
 // Rain per week from whichever run is loaded (both sides share the season's weather).
@@ -327,6 +424,12 @@ function fillSelect(sel, values, selected) {
   sel.innerHTML = values.map((v) => `<option value="${v}" ${v === selected ? "selected" : ""}>${v}</option>`).join("");
 }
 
+// Config picker: fake configs get a FAKE suffix in the option text (options cannot hold HTML).
+function fillConfigSelect(sel, values, selected) {
+  sel.innerHTML = values.map((v) => `<option value="${escapeHtml(v)}" ${v === selected ? "selected" : ""}>`
+    + `${escapeHtml(v)}${isFake(v) ? " [FAKE]" : ""}</option>`).join("");
+}
+
 function setWeek(k) {
   state.week = Math.max(0, Math.min(WEEKS, k));
   $("week-slider").value = state.week;
@@ -342,16 +445,19 @@ function setWeek(k) {
 async function selectTask(task) {
   state.task = task;
   const configs = configsFor(task);
-  if (!configs.includes(state.configs.left)) state.configs.left = configs.includes("farmer") ? "farmer" : configs[0];
+  if (!configs.includes(state.configs.left)) {
+    state.configs.left = configs.includes("farmer") ? "farmer" : firstReal(configs) || configs[0];
+  }
   state.configs.right = bestConfig(task, state.configs.left);
-  fillSelect($("left-picker"), configs, state.configs.left);
-  fillSelect($("right-picker"), configs, state.configs.right);
+  fillConfigSelect($("left-picker"), configs, state.configs.left);
+  fillConfigSelect($("right-picker"), configs, state.configs.right);
   await loadSides();
 }
 
 async function loadSides() {
   [state.runs.left, state.runs.right] = await Promise.all(
     ["left", "right"].map((s) => loadRun(state.configs[s], state.task)));
+  renderPickerBadges();
   setWeek(state.week);
 }
 

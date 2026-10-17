@@ -19,8 +19,8 @@
   <header id="topbar">
     <div class="brand"><span class="logo">■</span> FieldTwin</div>
     <label>Task <select id="task-picker"></select></label>
-    <label>Left <select id="left-picker"></select></label>
-    <label>Right <select id="right-picker"></select></label>
+    <label>Left <select id="left-picker"></select><span class="fake-badge" id="left-fake" hidden>FAKE</span></label>
+    <label>Right <select id="right-picker"></select><span class="fake-badge" id="right-fake" hidden>FAKE</span></label>
     <button id="play-btn" title="Play / pause">▶</button>
     <label class="slider">Week <input id="week-slider" type="range" min="0" max="20" step="1" value="0">
       <span id="week-label">0</span></label>
@@ -50,6 +50,9 @@
     <!-- Agent log for the selected field and current week -->
     <aside id="log-panel">
       <div class="log-header">Agent log · <span id="log-title"></span></div>
+      <!-- One block per agent for the current week (line-level week) -->
+      <div id="agents-panel"></div>
+      <div class="log-subheader">Raw events</div>
       <div id="log"></div>
     </aside>
   </main>
