@@ -1,0 +1,67 @@
+{
+  "checked_at": "2026-10-17T19:00:51.745528+00:00",
+  "baseline_completed": {
+    "single": 20,
+    "multi": 15
+  },
+  "paired_task_ids": [
+    "UFGA-1990",
+    "UFGA-1991",
+    "UFGA-1992",
+    "UFGA-1993",
+    "UFGA-1994",
+    "UFGA-1995",
+    "UFGA-1996",
+    "UFGA-1997",
+    "UFGA-1998",
+    "UFGA-1999",
+    "UFGA-2000",
+    "UFGA-2001",
+    "UFGA-2002",
+    "UFGA-2003",
+    "UFGA-2004"
+  ],
+  "paired_means": {
+    "single": {
+      "reward": 344.82,
+      "grain_kg_ha": 4726.593333333333,
+      "n_applied": 295.6666666666667,
+      "n_leached": 22.68,
+      "irr_mm": 37.64
+    },
+    "multi": {
+      "reward": 688.8806666666667,
+      "grain_kg_ha": 6692.673333333333,
+      "n_applied": 297.3333333333333,
+      "n_leached": 22.060666666666666,
+      "irr_mm": 98.06
+    },
+    "farmer": {
+      "reward": 1088.176,
+      "grain_kg_ha": 7524.5199999999995,
+      "n_applied": 160.0,
+      "n_leached": 14.108,
+      "irr_mm": 113.33333333333333
+    }
+  },
+  "single_full_mean_reward": 343.002,
+  "farmer_full_mean_reward": 1024.0455,
+  "scope": "DSSAT simulated dev seasons; incomplete multi baseline; candidate untested; held-out test untouched.",
+  "multi_worst_completed": [
+    {
+      "task_id": "UFGA-1998",
+      "reward": -52.57,
+      "farmer_reward": 406.93
+    },
+    {
+      "task_id": "UFGA-2000",
+      "reward": 34.29,
+      "farmer_reward": 840.33
+    },
+    {
+      "task_id": "UFGA-1990",
+      "reward": 79.14,
+      "farmer_reward": 999.8
+    }
+  ]
+}

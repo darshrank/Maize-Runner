@@ -18,6 +18,7 @@ results/*
 !results/b1-b2-live.json
 !results/b1-b2-live-logs.zip
 !results/dssat-dev-experiment-plan.json
+!results/status-person-b.json
 /tmp/
 /build/
 /dist/

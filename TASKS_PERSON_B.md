@@ -124,3 +124,17 @@ The exact hypothesis and resume locations are recorded in
 `results/dssat-dev-experiment-plan.json`. Model/simulator execution is colocated
 on Brev; no HTTP disconnect fallback has been observed in the baseline so far.
 This does not establish the cause of the earlier tunnel-path disconnects.
+
+## Status snapshot: 2026-10-17, 3:00 PM America/New_York
+
+- [x] Verify current remote progress: single/v1 20 of 20 complete; multi/v1 15 of 20 complete (all 20 started). No fallback events observed across 680 completed weekly steps so far.
+- [x] Save a matched 15-year comparison in results/status-person-b.json: mean simulated reward single 344.82, multi 688.88, farmer 1088.18 USD/ha. Mean N single 295.67, multi 297.33, farmer 160.00 kg/ha.
+- [ ] Finish/audit baseline, then automatically run/audit the queued 40-season v3 comparison. The candidate job is still waiting for baseline audit; no v3 quality result exists yet.
+- [ ] Review whether v3 repairs dry-week irrigation without increasing harmful/costly inputs. Compare against farmer, single, nitrate leaching and model-call cost.
+- [ ] If results still trail farmer, diagnose nitrogen overspending (the 300 kg cap is an upper bound) and test a separate targeted prompt change before final selection/freeze.
+
+Assessment: multi's provisional matched reward is about twice single's, but about
+37% below farmer's and uses about 86% more nitrogen. Reliability is encouraging;
+current dev policy quality does not yet justify a performance or cost-saving claim.
+The multi comparison is incomplete, uses one stochastic rollout per dev year and
+does not establish that the team architecture causes the observed difference.
