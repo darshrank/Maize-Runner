@@ -51,3 +51,12 @@ Last updated: 2026-10-17. This checklist distinguishes local implementation from
 - [x] Update README/PERSON_B.md, save results/person-b-integration.json and commit the merge and integration.
 
 No crop-performance, live-GPU, or bounty milestone is complete based on a synthetic run.
+
+## B0 deployment session
+
+- [x] Inspect local access: SSH is installed; alias `dev` exists. No Brev CLI, Docker, NVIDIA runtime or VLLM endpoint is configured locally.
+- [x] Prepare a read-only GPU/Docker/disk/port preflight and a smoke command that checks model discovery and saves successful verification evidence.
+- [x] Pass 32 automated tests, including successful smoke evidence capture and rejection of a mismatched served model before inference. These are mocked checks, not live B0 verification.
+- [ ] Identify the intended GPU host (asked user whether to use `dev`, another existing host, or a new Brev instance).
+- [ ] Run host preflight, launch vLLM with the pinned serving flags, and establish the local tunnel.
+- [ ] Run the live smoke command; save its output and host configuration evidence before marking B0 complete.

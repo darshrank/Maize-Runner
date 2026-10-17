@@ -205,6 +205,47 @@ class AgentTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await model.close()
 
+    async def test_live_smoke_checks_discovery_and_saves_evidence(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from fieldtwin_agents.cli import smoke
+        def handler(request):
+            if request.url.path == "/v1/models":
+                return httpx.Response(200, json={"data": [{"id": "nemotron-alias"}]})
+            return httpx.Response(200, json={"choices": [{"message": {
+                "role": "assistant", "content": None, "tool_calls": [{"id": "live-check", "type": "function",
+                "function": {"name": "get_weather", "arguments": "{}"}}]}}]})
+        client = VLLMClient("http://model/v1", model="nemotron-alias", transport=httpx.MockTransport(handler))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "smoke.json"
+            args = SimpleNamespace(vllm_url="http://model/v1", model="nemotron-alias", output=str(path))
+            with patch("fieldtwin_agents.cli.VLLMClient", return_value=client), redirect_stdout(StringIO()):
+                await smoke(args)
+            evidence = json.loads(path.read_text())
+            self.assertTrue(evidence["tool_call_valid"])
+            self.assertEqual(evidence["advertised_models"], ["nemotron-alias"])
+            self.assertIn("checked_at", evidence)
+
+    async def test_live_smoke_rejects_wrong_model_before_inference(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from fieldtwin_agents.cli import smoke
+        requests = []
+        def handler(request):
+            requests.append(request.url.path)
+            return httpx.Response(200, json={"data": [{"id": "different-model"}]})
+        client = VLLMClient("http://model/v1", transport=httpx.MockTransport(handler))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "smoke.json"
+            args = SimpleNamespace(vllm_url="http://model/v1", model=client.model, output=str(path))
+            with patch("fieldtwin_agents.cli.VLLMClient", return_value=client):
+                with self.assertRaisesRegex(ValueError, "not advertised"):
+                    await smoke(args)
+            self.assertEqual(requests, ["/v1/models"])
+            self.assertFalse(path.exists())
+
 
 class ContractTests(unittest.TestCase):
     def test_strict_action_numbers_and_paths(self):

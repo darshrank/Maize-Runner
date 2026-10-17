@@ -4,18 +4,24 @@ import argparse
 import asyncio
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .clients import MODEL, EnvironmentClient, VLLMClient
 from .contracts import CONFIGS, load_dev_tasks
 from .evaluation import analyze, record_iteration
-from .runner import load_schedule, prompt_hashes, run_batch
+from .runner import endpoint_identity, load_schedule, prompt_hashes, run_batch
 from .stub import StubEnvironment, StubModel, serve_stub
 
 
 async def smoke(args):
     client = VLLMClient(args.vllm_url, args.model)
     try:
+        response = await client.http.get("models")
+        response.raise_for_status()
+        advertised = [item["id"] for item in response.json()["data"]]
+        if args.model not in advertised:
+            raise ValueError(f"Requested model is not advertised by /v1/models: {advertised}")
         # Use auto choice so this tests the deployed parser, not forced JSON generation.
         msg = await client.complete([
             {"role": "system", "content": "Call get_weather exactly once with {} arguments. Do not answer in text."},
@@ -23,7 +29,16 @@ async def smoke(args):
         calls = msg.get("tool_calls", [])
         if len(calls) != 1 or calls[0]["function"]["name"] != "get_weather" or json.loads(calls[0]["function"]["arguments"]) != {}:
             raise ValueError("Tool-call smoke test failed")
-        print(json.dumps({"tool_call_valid": True, "model": args.model, "message": msg}, indent=2))
+        result = {"checked_at": datetime.now(timezone.utc).isoformat(), "tool_call_valid": True,
+                  "model": args.model, "advertised_models": advertised,
+                  "endpoint": endpoint_identity(client), "message": msg}
+        if args.output:
+            path = Path(args.output)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("x", encoding="utf-8") as out:
+                json.dump(result, out, indent=2)
+                out.write("\n")
+        print(json.dumps(result, indent=2))
     finally:
         await client.close()
 
@@ -67,6 +82,7 @@ def main(argv=None):
     r.add_argument("--prompt-version", choices=("v1", "v2"), default="v1")
     r.add_argument("--freeze-manifest")
     s = sub.add_parser("smoke", help="Actual vLLM automatic tool-call smoke test")
+    s.add_argument("--output", help="Save successful live verification evidence to a new JSON file")
     for cmd in (r, s):
         cmd.add_argument("--vllm-url", default=os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:8000/v1"))
         cmd.add_argument("--model", default=os.environ.get("VLLM_MODEL") or MODEL)

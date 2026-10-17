@@ -47,8 +47,9 @@ B does not run test.
 
 ## GPU serving (pending execution)
 
-On a Brev Linux H100 80 GB host with Docker and NVIDIA Container Toolkit, run
-`bash scripts/serve_vllm.sh`. It pins vLLM `v0.27.1`, the BF16 30B Nemotron 3.5
+On a Brev Linux H100 80 GB host with Docker and NVIDIA Container Toolkit, first run
+`bash scripts/check_b0_host.sh` to inspect GPU memory, Docker, disk, active GPU
+processes and port 8000. Then run `bash scripts/serve_vllm.sh`. It pins vLLM `v0.27.1`, the BF16 30B Nemotron 3.5
 Lightning checkpoint, 64 concurrent sequences, prefix caching, `qwen3_coder` tool
 parser and `nemotron_v3` reasoning parser. The recipe follows the
 [NVIDIA BF16 model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16#vllm)
@@ -61,12 +62,14 @@ serving alias. `.env.example` is a reference; no automatic dotenv loading is ass
 Set `VLLM_API_KEY` only if the server requires it; never put tokens in source or git.
 
 ```bash
-uv run python -m fieldtwin_agents smoke
+uv run python -m fieldtwin_agents smoke --output results/b0-smoke.json
 uv run python -m agents.run --policy multi --task-id UFGA-s3 --split dev
 ```
 
 `smoke` requires one real automatically parsed `get_weather({})` call and checks its
-JSON arguments. Actual GPU serving has not been verified locally. No OpenAI API key
+JSON arguments after checking the advertised model ID, then saves successful evidence
+when `--output` is supplied. Existing evidence files are not overwritten. Actual GPU
+serving has not been verified locally. No OpenAI API key
 or OpenAI service is used. `FIELDTWIN_MODEL_BACKEND=stub` explicitly selects a
 deterministic synthetic model for shared policies; the default is `vllm`.
 
