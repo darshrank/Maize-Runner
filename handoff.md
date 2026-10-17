@@ -12,6 +12,8 @@ The **local decision pipeline and reproducible script are implemented**, with
 the scope/limits in [LOCAL_MILESTONE.md](LOCAL_MILESTONE.md). Configurable thinking,
 live role validation and full-season comparisons remain pending. The architecture
 review's larger research proposals are not implemented by this milestone.
+User-run transfer, pilot, full dev, audit and backup commands are in
+[RUN_ON_BREV.md](RUN_ON_BREV.md); writing this guide did not launch remote jobs.
 Read [NEXT_STEPS.md](NEXT_STEPS.md) before changing behavior.
 
 1. Run/inspect the local script and protocol-3 facts, identities, exact final-action
