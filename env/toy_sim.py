@@ -148,18 +148,7 @@ class ToySimulator(Simulator):
         return [dict(w) for w in self.weather[max(0, self.day - days):self.day]]
 
     def weather_outlook(self, days: int, rng) -> list[dict]:
-        noise = self.env_config.get("outlook_noise", {})
-        rain_frac, temp_c = noise.get("rain_frac", 0.4), noise.get("temp_c", 2.0)
-        out = []
-        for w in self.weather[self.day:self.day + days]:
-            rain = w["rain_mm"] * max(0.0, 1 + rng.normal(0, rain_frac))
-            out.append({
-                "day": w["day"],
-                "tmax": round(w["tmax"] + rng.normal(0, temp_c), 1),
-                "tmin": round(w["tmin"] + rng.normal(0, temp_c), 1),
-                "rain_mm": round(float(rain), 1),
-            })
-        return out
+        return self.noisy_outlook(self.weather[self.day:self.day + days], rng)
 
     def crop_state(self) -> dict:
         return {

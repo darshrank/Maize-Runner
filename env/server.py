@@ -26,7 +26,11 @@ TOOLS = ["get_weather", "get_crop_state", "get_soil", "get_history", "get_budget
 def load_config(path: str | os.PathLike | None = None) -> dict:
     path = path or os.environ.get("FIELDTWIN_CONFIG", ROOT / "config.yaml")
     with open(path) as f:
-        return yaml.safe_load(f)
+        cfg = yaml.safe_load(f)
+    # Lets machines without gym-DSSAT run the toy simulator: FIELDTWIN_SIMULATOR=toy
+    if os.environ.get("FIELDTWIN_SIMULATOR"):
+        cfg["env"]["simulator"] = os.environ["FIELDTWIN_SIMULATOR"]
+    return cfg
 
 
 class ResetRequest(BaseModel):

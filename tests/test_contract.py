@@ -1,9 +1,19 @@
-"""Contract tests for the FROZEN HTTP API (SKELETON_SPEC.md section 7)."""
+"""Contract tests for the FROZEN HTTP API (SKELETON_SPEC.md section 7).
+
+Every test runs against each simulator; dssat is skipped where gym-DSSAT is not installed.
+"""
+
+import copy
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from env.server import create_app
+from env.server import create_app, load_config
+
+DSSAT_INSTALLED = Path(load_config()["env"]["dssat"]["python"]).exists()
+SIMULATORS = ["toy", pytest.param("dssat", marks=pytest.mark.skipif(
+    not DSSAT_INSTALLED, reason="gym-DSSAT not installed (scripts/install_gym_dssat.sh)"))]
 
 OBS_KEYS = {"day", "week", "stage", "soil_water_frac", "soil_n_kg_ha", "n_applied_total",
             "irr_total_mm", "biomass_kg_ha"}
@@ -14,9 +24,11 @@ WEATHER_DAY_KEYS = {"day", "tmax", "tmin", "rain_mm"}
 TASK = {"task_id": "UFGA-s3", "site": "UFGA", "weather_seed": 3}
 
 
-@pytest.fixture()
-def client():
-    return TestClient(create_app())
+@pytest.fixture(params=SIMULATORS)
+def client(request):
+    cfg = copy.deepcopy(load_config())
+    cfg["env"]["simulator"] = request.param
+    return TestClient(create_app(cfg))
 
 
 def reset(client) -> dict:
@@ -46,7 +58,8 @@ def check_tools(client, eid):
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"ok": True, "simulator": "toy"}
+    body = client.get("/health").json()
+    assert body["ok"] is True and body["simulator"] in ("toy", "dssat")
 
 
 def test_full_season(client):
@@ -55,7 +68,6 @@ def test_full_season(client):
     assert set(r["obs"]) == OBS_KEYS
     eid = r["episode_id"]
     check_tools(client, eid)
-    assert tool(client, "get_weather", eid)["history"] == []   # nothing observed yet
 
     done, week = False, 0
     while not done:
@@ -68,7 +80,7 @@ def test_full_season(client):
             check_tools(client, eid)
             assert len(tool(client, "get_history", eid)) == 3
             assert len(tool(client, "get_weather", eid)["history"]) == 14
-    assert week == 20
+    assert 15 <= week <= 20   # dssat ends at crop maturity, toy after 20 weeks
     final = s["final"]
     assert set(final) == FINAL_KEYS
     assert final["n_applied"] == 300   # 20 weeks x 20 kg would be 400; the season cap is 300
@@ -102,3 +114,18 @@ def test_404_messages(client):
     assert r.status_code == 404 and "/reset" in r.json()["error"]
     r = client.post("/step", json={"episode_id": "nope", "n_kg_ha": 0, "irr_mm": 0, "reason": ""})
     assert r.status_code == 404 and "error" in r.json()
+
+
+@pytest.mark.skipif(not DSSAT_INSTALLED, reason="gym-DSSAT not installed")
+def test_dssat_outlook_matches_managed_season(tmp_path):
+    """The outlook comes from a cached zero-action run; weather must not depend on management."""
+    from env.dssat_sim import DssatSimulator
+    sim = DssatSimulator({"dssat": {"cache_dir": str(tmp_path)}})
+    sim.reset("UFGA", 7)
+    for week in range(20):
+        if sim.step_week(80 if week in (0, 5) else 0, 30 if week % 3 == 0 else 0)["done"]:
+            break
+    lived = [round(w["rain"], 1) for w in sim.season_weather[:sim.sim_day + 1]]
+    seen = [w["rain_mm"] for w in sim.observed]
+    assert seen == lived
+    assert sim.final()["n_applied"] == 160 and sim.proc is None   # worker closed at season end

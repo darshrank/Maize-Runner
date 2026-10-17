@@ -1,6 +1,10 @@
 env:
   url: http://localhost:9000
-  simulator: toy            # later: dssat
+  simulator: dssat          # dssat (gym-DSSAT, needs scripts/install_gym_dssat.sh) or toy; env FIELDTWIN_SIMULATOR overrides
+  dssat:                    # gym-DSSAT worker settings (env/dssat_sim.py)
+    python: /opt/gym_dssat_pdi/bin/python
+    run_dssat: /opt/dssat_pdi/run_dssat
+    cache_dir: .cache/dssat_weather   # per-seed season weather for the outlook tool
   weeks_per_season: 20
   max_n_kg_ha_per_week: 120
   max_irr_mm_per_week: 50
