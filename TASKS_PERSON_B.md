@@ -31,7 +31,7 @@ Last updated: 2026-10-17. This checklist distinguishes local implementation from
 - [x] Obtain Brev H100 80 GB access, launch the BF16 checkpoint, and record a successful real tool smoke test (B0): results/b0-host.json and results/b0-smoke.json.
 - [x] Pull the shared port-9000 toy server, 20-dev task manifest, 300 kg/ha season cap and farmer schedule from main.
 - [x] Integrate Person A's gym-DSSAT simulator, real weather years and fixed prices from origin/a-env (64b38f9).
-- [ ] Run single and multi on the real simulator and validate its observation/tool payloads (B1/B2).
+- [x] Run single and multi on gym-DSSAT and validate observation/tool payloads: 40 complete baseline dev seasons audited, with no fallbacks.
 - [ ] Evaluate both on all 20 dev seasons with Nemotron; inspect worst three logs, change one thing, rerun and record actual gain (B3).
 - [ ] Freeze chosen prompt hashes after real dev evidence (B4); give A the config names and inference entry point.
 - [ ] A alone runs held-out test once. B must never run or tune on test.
@@ -103,7 +103,7 @@ prompts. A owns the held-out test. Keep person-B local for the team's later merg
 - [x] Install gym-DSSAT on the existing Brev host (Ubuntu 22.04); keep vLLM running.
 - [x] Pass merged checks: 40 local tests, eight local DSSAT skips; all 15 environment contract tests pass on Brev including DSSAT. Shared toy HTTP smoke verifies all eight configs on three dev years (24 rows).
 - [x] Commit the merge into person-B; do not push or change main/a-env.
-- [ ] Complete real-model, DSSAT single/multi evaluation on all 20 dev seasons and inspect the worst three logs.
+- [x] Complete real-model, DSSAT single/multi baseline evaluation on all 20 dev seasons; audit 40 seasons and inspect the worst three logs for each policy.
 - [ ] Make one diagnosed role-prompt change, rerun the paired dev experiment, record measured results including negative changes.
 - [ ] Select/freeze prompts from that evidence, verify ablations and give A/C reproducible handoff artifacts.
 - [ ] A runs held-out test once; B does not execute test seasons.
@@ -138,3 +138,14 @@ Assessment: multi's provisional matched reward is about twice single's, but abou
 current dev policy quality does not yet justify a performance or cost-saving claim.
 The multi comparison is incomplete, uses one stochastic rollout per dev year and
 does not establish that the team architecture causes the observed difference.
+
+## Latest checkpoint: baseline complete, v3 running
+
+- [x] All 40 v1 seasons complete and audited: single mean reward 343.002; multi 600.884; farmer 1024.0455 USD/ha over the same 20 dev years. Both model policies have zero baseline fallback events.
+- [x] Download and verify results/dssat-dev-v1-logs.zip, including all baseline logs, manifests, CSV, audit/diagnostics and the 20-season farmer CSV.
+- [x] Review multi's worst three baseline logs: UFGA-1998, UFGA-2000, UFGA-1990. They each applied 300 kg N and missed irrigation in respectively five, two and two dry-soil weeks.
+- [ ] Finish/audit v3: its 20 single seasons are complete; multi is running. Single mean reward 593.236, up from 343.002, but leaching rises from 26.909 to 81.817 kg N/ha and water from 46.13 to 456.25 mm. One malformed-output fallback is visible. The candidate is not yet audited or selected.
+- [ ] Inspect why v3 applies excessive water; evaluate reward and environmental/input costs before promoting it. Keep subsequent prompt changes separate from the active experiment.
+
+The provisional v3 single result improves yield/reward but does not beat farmer or
+demonstrate efficiency. No final prompt freeze or crop-performance victory is claimed.
