@@ -14,14 +14,29 @@ import csv
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import httpx
+
 import agents.run
 from agents.run import load_config, load_tasks
+from agents_a.common.llm import load_env_file
 from agents_a.common.splits import subset_of
 from agents_a.designs import DESIGNS, register_all
 from eval.run_eval import read_rows, run_job, write_csv, write_summary
 
 ROOT = Path(__file__).resolve().parent.parent
 BASELINES = ROOT / "results_baseline" / "eval.csv"
+
+
+def preflight(env_url: str) -> None:
+    """Fail fast if the simulator or the model endpoint is down (otherwise every week silently falls back)."""
+    import os
+    load_env_file()
+    for name, url in [("env server", f"{env_url}/health"),
+                      ("vLLM (is the brev port-forward running?)", f"{os.environ.get('VLLM_BASE_URL', 'http://localhost:8000/v1')}/models")]:
+        try:
+            httpx.get(url, timeout=10).raise_for_status()
+        except httpx.HTTPError as e:
+            raise SystemExit(f"{name} not reachable at {url}: {e}")
 
 
 def main() -> None:
@@ -34,8 +49,10 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=None, help="only the first N seasons")
     ap.add_argument("--task-id", default=None, help="run just this season")
     ap.add_argument("--parallel", type=int, default=cfg["eval"]["parallel"])
+    ap.add_argument("--skip-done", action="store_true", help="skip seasons already in this design's eval.csv")
     args = ap.parse_args()
 
+    preflight(cfg["env"]["url"])
     register_all()
     config = f"a_{args.design}"
     folder = ROOT / "agents_a" / "designs" / args.design
@@ -47,6 +64,10 @@ def main() -> None:
     if args.split == "dev" and args.subset != "all":
         tasks = [t for t in tasks if subset_of(t) == f"dev-{args.subset}"]
     tasks = [t for t in tasks if t["task_id"] == args.task_id] if args.task_id else tasks[:args.limit]
+    if args.skip_done:
+        done_before = {r["task_id"] for r in read_rows(results / "eval.csv")}
+        tasks = [t for t in tasks if t["task_id"] not in done_before]
+    print(f"running {len(tasks)} seasons: {', '.join(t['task_id'] for t in tasks)}")
     new_rows = []
     with ThreadPoolExecutor(max_workers=args.parallel) as pool:
         futures = [pool.submit(run_job, config, t, cfg["env"]["url"]) for t in tasks]

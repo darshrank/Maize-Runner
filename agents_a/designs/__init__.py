@@ -10,6 +10,7 @@ DESIGNS = {
     "d0_single": "agents_a.designs.d0_single.policy:SingleAgent",
     "d1_multi": "agents_a.designs.d1_multi.policy:MultiAgent",
     "d1b_multi": "agents_a.designs.d1b_multi.policy:MultiAgentB",
+    "d1c_multi": "agents_a.designs.d1c_multi.policy:MultiAgentC",
 }
 
 
