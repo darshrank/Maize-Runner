@@ -40,6 +40,17 @@ Losses vs farmer practice: 1990 (1,222 vs 1,296) and 1998 (361 vs 377, the dries
 farmer practice. Weak spot: leaching in wet seasons (1991: 44.6, 1996: 43.0 kg N/ha).
 Note: d0_single used the first prompt; the fair single-agent comparison (same sourced agronomy) is d0b_single.
 
-## Results (dev-check, 5 seasons, not used for tuning)
+## Results (dev-check, 5 seasons, not used for tuning): generalizes
 
-(running)
+| season | d1c_multi | d0_single | farmer practice | hindsight |
+|---|---|---|---|---|
+| 2005 | 703 (leached 55.8, irr 35) | 500 | 886 | 914 |
+| 2006 | **1,468** | 366 | 1,198 | 1,198 |
+| 2007 | **1,643** | 748 | 1,264 | 1,446 |
+| 2008 | **1,330** | 643 | 1,098 | 1,278 |
+| 2009 | **805** | 642 | 754 | 990 |
+| **mean** | **1,190** | 580 | 1,040 | 1,165 |
+
+Gap closed 1.20 (tune: 1.45), 4/5 wins, N 220, irrigation 170 mm, 0 fallbacks. Slightly lower than on tune, as
+expected for unseen seasons, still above farmer practice and the fixed-plan ceiling. The loss (2005) is the known
+weak spot: leaching in wet seasons (55.8 kg N/ha).
