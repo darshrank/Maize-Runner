@@ -15,50 +15,86 @@
   </script>
 </head>
 <body>
-  <!-- Top bar: pickers and playback controls -->
+  <!-- 1. Slim header -->
   <header id="topbar">
-    <div class="brand"><span class="logo">■</span> FieldTwin</div>
-    <label>Task <select id="task-picker"></select></label>
-    <label>Left <select id="left-picker"></select><span class="fake-badge" id="left-fake" hidden>FAKE</span></label>
-    <label>Right <select id="right-picker"></select><span class="fake-badge" id="right-fake" hidden>FAKE</span></label>
-    <button id="play-btn" title="Play / pause">▶</button>
-    <label class="slider">Week <input id="week-slider" type="range" min="0" max="20" step="1" value="0">
-      <span id="week-label">0</span></label>
-    <label>Speed <select id="speed-picker">
-      <option value="0.5">0.5×</option>
-      <option value="1" selected>1×</option>
-      <option value="2">2×</option>
-      <option value="4">4×</option>
-    </select></label>
+    <div class="brand">FieldTwin</div>
+    <select id="task-picker" aria-label="Season"></select>
+    <span class="tag split" id="split-tag" hidden></span>
+    <span class="fake-badge" id="fake-tag" hidden title="A fake log is shown (UI testing only)">FAKE</span>
   </header>
 
   <main id="layout">
-    <!-- Two fields, same season -->
-    <section id="fields">
-      <div class="field-panel" id="field-left" data-side="left">
-        <div class="field-title"><span class="side">LEFT</span> <span class="config-name"></span></div>
-        <div class="field-canvas"></div>
-        <div class="counters"></div>
-      </div>
-      <div class="field-panel" id="field-right" data-side="right">
-        <div class="field-title"><span class="side">RIGHT</span> <span class="config-name"></span></div>
-        <div class="field-canvas"></div>
-        <div class="counters"></div>
+    <!-- 2. Impact: right run minus left run, cumulative to the current week -->
+    <section id="impact" class="glass">
+      <div id="impact-caption"></div>
+      <div class="impact-cards">
+        <div class="impact-card" id="impact-leach">
+          <div class="v">—</div><div class="k">Nitrate kept out of groundwater <span class="unit">kg/ha</span></div>
+        </div>
+        <div class="impact-card" id="impact-n">
+          <div class="v">—</div><div class="k">Nitrogen applied <span class="unit">kg/ha</span></div>
+        </div>
+        <div class="impact-card" id="impact-profit">
+          <div class="v">—</div><div class="k">Profit <span class="unit">USD/ha</span></div>
+        </div>
       </div>
     </section>
 
-    <!-- Agent log for the selected field and current week -->
-    <aside id="log-panel">
-      <div class="log-header">Agent log · <span id="log-title"></span></div>
-      <!-- One block per agent for the current week (line-level week) -->
-      <div id="agents-panel"></div>
-      <div class="log-subheader">Raw events</div>
-      <div id="log"></div>
-    </aside>
+    <!-- 3. Two fields, same season -->
+    <section id="fields">
+      <div class="field-panel glass" id="field-left" data-side="left">
+        <div class="field-title"><span class="field-label"></span></div>
+        <div class="field-canvas"></div>
+        <div class="counters">
+          <div class="counter"><span class="k">N applied</span><span class="v" data-k="n">—</span></div>
+          <div class="counter leach"><span class="k">N leached</span><span class="v" data-k="leach">—</span></div>
+          <div class="counter"><span class="k">Yield</span><span class="v" data-k="grain">—</span></div>
+          <div class="counter"><span class="k">Profit</span><span class="v" data-k="profit">—</span></div>
+        </div>
+      </div>
+      <div class="field-panel glass" id="field-right" data-side="right">
+        <div class="field-title">
+          <span class="field-label"></span>
+          <select id="right-picker" aria-label="Compare against" hidden></select>
+        </div>
+        <div class="field-canvas"></div>
+        <div class="counters">
+          <div class="counter"><span class="k">N applied</span><span class="v" data-k="n">—</span></div>
+          <div class="counter leach"><span class="k">N leached</span><span class="v" data-k="leach">—</span></div>
+          <div class="counter"><span class="k">Yield</span><span class="v" data-k="grain">—</span></div>
+          <div class="counter"><span class="k">Profit</span><span class="v" data-k="profit">—</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Agent feed for the current week, one column per field -->
+    <section id="feed">
+      <div class="feed-col" id="feed-left"></div>
+      <div class="feed-col" id="feed-right"></div>
+    </section>
+
+    <!-- 6. Raw events, collapsed by default -->
+    <section id="raw">
+      <button id="raw-toggle" aria-expanded="false">Raw events</button>
+      <div id="raw-body" hidden>
+        <div class="raw-col" id="raw-left"></div>
+        <div class="raw-col" id="raw-right"></div>
+      </div>
+    </section>
   </main>
 
-  <!-- Rain per week; storms highlighted. Click a bar to jump to that week. -->
-  <footer id="weather-strip"></footer>
+  <!-- 5. Timeline scrubber: week ticks with rain bars and objection / fallback dots -->
+  <footer id="scrubber" class="glass">
+    <button id="play-btn" aria-label="Play">Play</button>
+    <div class="speed" role="group" aria-label="Speed">
+      <button data-speed="1" class="on">1x</button>
+      <button data-speed="2">2x</button>
+      <button data-speed="4">4x</button>
+    </div>
+    <span id="week-label"></span>
+    <div id="ticks"></div>
+    <div id="scrub-legend"></div>
+  </footer>
 
   <script type="module" src="app.js"></script>
 </body>
