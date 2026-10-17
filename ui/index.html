@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FieldTwin</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Fonts are vendored (ui/vendor/README.md): replay makes no CDN calls. -->
+  <!-- Fonts and three.js are vendored (ui/vendor/README.md): replay makes no CDN calls. -->
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }
+  </script>
 </head>
 <body class="not-loaded">
   <!-- Shared glow filters: #glow for the field SVGs, #glow-icon for the dock icons. ?lite=1 drops both. -->
@@ -23,7 +26,27 @@
   <div id="wordmark"><i class="mark"></i><span>FieldTwin</span></div>
   <span id="src" class="badge" hidden title="Data source of every number on screen"></span>
 
-  <!-- 1 Season (R1 2D side view) -->
+  <!-- 1 Season, 3D (R2 default): canvas plus HTML overlays pinned to world anchors by season3d.js.
+       The only numbers here: one week label and, at season end, the profit finale. -->
+  <div id="stage3d" hidden>
+    <div class="s3-anchor" id="s3-head-left"><div class="s3-in up">
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
+      <div class="s3-name"></div>
+    </div></div>
+    <div class="s3-anchor" id="s3-head-right"><div class="s3-in up">
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
+      <div class="s3-name"></div>
+    </div></div>
+    <div class="s3-anchor" id="s3-mid"><div class="s3-in up">
+      <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge"></span></div>
+    </div></div>
+    <div class="s3-anchor" id="s3-pool-left"><div class="s3-in down"><div class="fin-leach" hidden></div></div></div>
+    <div class="s3-anchor" id="s3-pool-right"><div class="s3-in down"><div class="fin-leach" hidden></div></div></div>
+    <div id="s3-week" aria-live="polite"></div>
+    <div id="s3-caption" aria-live="polite"></div>
+  </div>
+
+  <!-- 1 Season controls; with ?view2d=1 also the R1 2D side view (fallback) -->
   <main id="season" class="view">
     <div id="week" aria-live="polite">
       <span id="week-num" class="mono">Week 0</span><span id="week-of" class="mono quiet"></span><span id="week-date" class="quiet"></span>

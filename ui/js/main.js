@@ -1,7 +1,10 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8). R2: pages Season, Agents, Results, Gym,
-// Serving, switched by the dock (dock.js) or keys 1-5; no top bar. Season: two 2D neon fields side by side
-// (fieldSvg.js), LEFT farmer baseline, RIGHT agent team, plus the rain strip and week scrubber. Agents: the
-// full weekly chat for one run (agents.js). Results, Gym, Serving: quiet placeholders until their units.
+// Serving, switched by the dock (dock.js) or keys 1-5; no top bar.
+// Season (default): the 3D view (season3d.js), two floating field dioramas, LEFT farmer baseline, RIGHT agent
+// team (or grid hindsight). Its only numbers: field names, one week label, and at season end the profit finale.
+// The Critic objection and Coordinator reason show as one short caption in objection or storm weeks only.
+// Season with ?view2d=1 (or after a WebGL / shader failure): the R1 2D side view (fieldSvg.js), kept as the
+// fallback. Agents: the full weekly chat for one run (agents.js). Results, Gym, Serving: placeholders.
 //
 // Week semantics (STATE.md): position k in 0..W-1 shows week k's decision and its outcome (obs at the end of
 // week k); k = W is harvest (the final line). Every number on screen comes from data.js. Theme: js/theme.js.
@@ -25,15 +28,19 @@ const PAGES = [
   { id: "serving", label: "Serving", icon: "chip", file: "results/vllm_metrics.json" },
 ];
 const VIEWS = PAGES.map((p) => p.id);
-const STORY = new URLSearchParams(location.search).get("story") === "1";
+const params = new URLSearchParams(location.search);
+const STORY = params.get("story") === "1";
+const VIEW2D = params.get("view2d") === "1";
+const REDUCE = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 const SIDES = ["left", "right"];
 
 const state = {
   index: null, task: null, pair: { left: null, right: null }, runs: { left: null, right: null },
   days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right",
 };
-const fields = {};
-let timeline, dock;
+const fields = {};       // 2D FieldViews (view2d only)
+let s3d = null;          // Season3D (3D only)
+let timeline, dock, captionTimer = 0;
 
 // ---------------------------------------------------------------- formatting
 
@@ -68,6 +75,30 @@ function setNumber(el, value, digits = 0, pending = "n/a") {
   step(t0);
 }
 
+function money(v) {
+  return `${v < 0 ? "−" : ""}$${fmt(Math.abs(v), 0)}`;
+}
+
+function signedMoney(v) {
+  return `${v < 0 ? "−" : "+"}$${fmt(Math.abs(v), 0)}/ha`;
+}
+
+// Finale count-up from 0 (longer than the 400 ms counters: it is the closing beat). Reduced motion: no count.
+function countUp(el, value, format, ms = 1400) {
+  cancelAnimationFrame(el._raf);
+  if (REDUCE) {
+    el.textContent = format(value);
+    return;
+  }
+  const t0 = performance.now();
+  const step = (now) => {
+    const p = Math.min((now - t0) / ms, 1);
+    el.textContent = format(value * (1 - (1 - p) ** 3));
+    if (p < 1) el._raf = requestAnimationFrame(step);
+  };
+  step(t0);
+}
+
 // ---------------------------------------------------------------- views
 
 function setView(view) {
@@ -76,6 +107,8 @@ function setView(view) {
   state.view = view;
   if (dock) dock.setActive(view);
   $("season").hidden = view !== "season";
+  $("stage3d").hidden = !s3d || view !== "season";
+  if (s3d) s3d.setActive(view === "season");
   $("agents").hidden = view !== "agents";
   $("placeholder").hidden = !page.file;
   if (page.file) {
@@ -105,6 +138,10 @@ function renderBadges() {
   $("src").textContent = label || "";
   $("src").hidden = !label;
   $("src").classList.toggle("fake", fake);
+  const fin = document.querySelector("#s3-mid .fin-src");
+  fin.textContent = label || "";
+  fin.hidden = !label;
+  fin.classList.toggle("fake", fake);
 }
 
 // ---------------------------------------------------------------- season
@@ -138,7 +175,19 @@ function snapshot(run, k) {
     cumLeached: w.cum ? w.cum.nLeached : null };
 }
 
+// Field names in plain words; the 3D view capitalizes them ("Grid hindsight").
+function fieldName(side) {
+  const config = state.pair[side];
+  if (!config) return "No run";
+  const label = data.fieldLabel(config, data.configsFor(state.index, state.task));
+  return s3d ? label.charAt(0).toUpperCase() + label.slice(1) : label;
+}
+
 function renderFieldHeads() {
+  if (s3d) {
+    for (const side of SIDES) document.querySelector(`#s3-head-${side} .s3-name`).textContent = fieldName(side);
+    return;
+  }
   const others = data.configsFor(state.index, state.task);
   for (const side of SIDES) {
     const config = state.pair[side], run = state.runs[side];
@@ -158,6 +207,74 @@ function renderWeekLabel() {
   const date = day && day.date ? new Date(`${day.date}T00:00:00`) : null;
   $("week-date").textContent = date && !Number.isNaN(+date)
     ? `from ${date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "";
+}
+
+// 3D: one week label; the finale at harvest; the caption when the week moved.
+function render3d(moved) {
+  const W = maxW(), k = state.week;
+  $("s3-week").textContent = k >= W ? "Harvest" : `Week ${k}`;
+  renderFinale();
+  if (moved) renderCaption();
+}
+
+// Season end only: each field's profit_usd_ha (final line) counts up, the gap between them sits in the middle
+// (right minus left), and N leached sits small under each field. One dev/test/FAKE label.
+function renderFinale() {
+  const finals = {};
+  for (const side of SIDES) {
+    const run = state.runs[side];
+    const w = run && run.weeks[Math.min(state.week, run.W)];
+    const final = w && w.harvest ? run.final : null;
+    finals[side] = final;
+    const prof = document.querySelector(`#s3-head-${side} .fin-profit`);
+    const p = final && has(final.profit_usd_ha) ? final.profit_usd_ha : null;
+    if (p !== null && prof.hidden) countUp(prof.querySelector(".v"), p, money);
+    prof.hidden = p === null;
+    const leach = document.querySelector(`#s3-pool-${side} .fin-leach`);
+    const nl = final && has(final.n_leached) ? final.n_leached : null;
+    leach.hidden = nl === null;
+    if (nl !== null) leach.innerHTML = `N leached <span class="mono">${fmt(nl, 1)}</span> kg/ha`;
+  }
+  const box = document.querySelector("#s3-mid .fin-delta");
+  const l = finals.left && finals.left.profit_usd_ha, r = finals.right && finals.right.profit_usd_ha;
+  const delta = has(l) && has(r) ? r - l : null;
+  if (delta !== null && box.hidden) countUp(box.querySelector(".v"), delta, signedMoney);
+  box.hidden = delta === null;
+}
+
+// Whole sentences up to max characters; one long first sentence is cut with an ellipsis.
+function shorten(text, max = theme.three.caption.maxChars) {
+  const parts = String(text).trim().split(/(?<=[.!?])\s+/);
+  let out = "";
+  for (const p of parts) {
+    if ((out ? out.length + 1 : 0) + p.length > max) break;
+    out = out ? `${out} ${p}` : p;
+  }
+  return out || `${parts[0].slice(0, max - 1)}…`;
+}
+
+// RIGHT run (agent team) only, in weeks with a Critic objection or a storm: one caption, then it fades.
+function renderCaption() {
+  const el = $("s3-caption");
+  clearTimeout(captionTimer);
+  const run = state.runs.right;
+  const w = run && run.hasAgents ? run.weeks[Math.min(state.week, run.W)] : null;
+  const obj = w && !w.harvest ? w.chat.find((m) => m.objection) : null;
+  const rain = w && !w.harvest && w.weekly && has(w.weekly.rain_mm) ? w.weekly.rain_mm : null;
+  const reason = w && !w.harvest && w.decision ? w.decision.reason : null;
+  const parts = [];
+  if (obj || (rain !== null && rain > theme.stormMm)) {
+    if (obj) parts.push(`<span class="who critic">Critic</span><span class="t critic">${esc(shorten(obj.text || "Objection"))}</span>`);
+    if (reason) parts.push(`<span class="who coordinator">Coordinator</span><span class="t">${esc(shorten(reason))}</span>`);
+  }
+  if (!parts.length) {
+    el.classList.remove("on");
+    return;
+  }
+  el.innerHTML = parts.join("");
+  el.classList.add("on");
+  const hold = Math.max(2.5, Math.min(5, (theme.motion.weekSeconds / state.speed) * 2.5));
+  captionTimer = setTimeout(() => el.classList.remove("on"), hold * 1000);
 }
 
 function renderTallies() {
@@ -223,7 +340,8 @@ function renderTimeline() {
   } else if (ref && ref.year) {
     rainNote = "no weather file";
   }
-  timeline.setModel({ W, days, weeklyRain, rainNote });
+  const fallbackWeeks = [...new Set(SIDES.flatMap((s) => (state.runs[s] ? state.runs[s].fallbackWeeks : [])))];
+  timeline.setModel({ W, days, weeklyRain, rainNote, fallbackWeeks });
 }
 
 // ---------------------------------------------------------------- loading
@@ -237,9 +355,12 @@ async function selectTask(task) {
   state.days = ref ? await data.loadWeather(ref.site, ref.year) : null;
   state.dayStart = data.seasonStart(ref, state.days);
   const scale = taskScale();
-  for (const s of SIDES) {
-    fields[s].setScale(scale);
-    fields[s].motes.clear();
+  if (s3d) s3d.setRuns(scale);
+  else {
+    for (const s of SIDES) {
+      fields[s].setScale(scale);
+      fields[s].motes.clear();
+    }
   }
   renderTaskPicker();
   renderBadges();
@@ -254,14 +375,21 @@ function setWeek(k, { force = false } = {}) {
   state.week = Math.max(0, Math.min(maxW(), k));
   const moved = state.week !== prev || force;
   const spread = Math.min(1.2, (theme.motion.weekSeconds / state.speed) * 0.7);
+  const views = {};
   for (const side of SIDES) {
     const run = state.runs[side];
     const events = moved && run ? data.weekEvents(run, Math.min(state.week, run.W), theme.stormMm) : [];
-    fields[side].show(run ? snapshot(run, state.week) : null, events, spread);
+    views[side] = { snap: run ? snapshot(run, state.week) : null, events };
+    if (!s3d) fields[side].show(views[side].snap, events, spread);
   }
   timeline.setWeek(state.week);
-  renderWeekLabel();
-  renderTallies();
+  if (s3d) {
+    s3d.show(views, { spread, moved });
+    render3d(moved);
+  } else {
+    renderWeekLabel();
+    renderTallies();
+  }
   renderAgents();
 }
 
@@ -321,7 +449,10 @@ function loop() {
         if (state.week >= maxW()) setPlaying(false); else setWeek(state.week + 1);
       }
     }
-    if (state.view === "season") for (const s of SIDES) fields[s].tick(elapsed);
+    if (state.view === "season") {
+      if (s3d) s3d.tick(elapsed);
+      else for (const s of SIDES) fields[s].tick(elapsed);
+    }
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
@@ -330,6 +461,39 @@ function loop() {
 function notice(text) {
   $("notice").textContent = text;
   $("notice").hidden = !text;
+}
+
+// A WebGL or shader failure hands over to the R1 2D view: same page with ?view2d=1.
+function fallback2D(err) {
+  console.error("FieldTwin: 3D Season unavailable, falling back to ?view2d=1.", err);
+  const url = new URL(location.href);
+  url.searchParams.set("view2d", "1");
+  location.replace(url.href);
+}
+
+// 3D by default (three.js loads only here); ?view2d=1 builds the R1 2D fields instead. Returns false when
+// the page is reloading into the 2D fallback.
+async function initSeason() {
+  if (!VIEW2D) {
+    try {
+      const { Season3D } = await import("./season3d.js");
+      $("stage3d").hidden = false;
+      s3d = new Season3D($("stage3d"), { lite: data.LITE, reduceMotion: REDUCE, onFail: fallback2D });
+      s3d.setOverlays([
+        ...SIDES.map((side) => ({ el: $(`s3-head-${side}`), side, kind: "name" })),
+        ...SIDES.map((side) => ({ el: $(`s3-pool-${side}`), side, kind: "pool" })),
+        { el: $("s3-mid"), side: null, kind: "mid" },
+      ]);
+      document.body.classList.add("s3d");
+    } catch (err) {
+      fallback2D(err);
+      return false;
+    }
+  } else {
+    for (const s of SIDES) fields[s] = new FieldView($(`plot-${s}`), { lite: data.LITE, reduceMotion: REDUCE });
+  }
+  timeline = new Timeline($("timeline"), { onSeek: (k) => setWeek(k), bare: !!s3d });
+  return true;
 }
 
 function loaded() {
@@ -341,13 +505,11 @@ async function main() {
   applyCssTheme();
   if (data.LITE) document.body.classList.add("lite");
   if (STORY) document.body.classList.add("story");   // story mode (later unit) hides the dock
-  const reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   dock = new Dock($("dock"), PAGES.map((p, i) => ({ id: p.id, label: p.label, icon: p.icon, key: String(i + 1) })),
-    { onSelect: setView, reduceMotion });
+    { onSelect: setView, reduceMotion: REDUCE });
   dock.setHidden(STORY);
+  if (!(await initSeason())) return;
   setView(state.view);
-  for (const s of SIDES) fields[s] = new FieldView($(`plot-${s}`), { lite: data.LITE, reduceMotion });
-  timeline = new Timeline($("timeline"), { onSeek: (k) => setWeek(k) });
   bind();
   state.index = await data.loadIndex();
   const task = state.index && data.defaultTask(state.index);
