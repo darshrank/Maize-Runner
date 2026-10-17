@@ -51,32 +51,40 @@ export const theme = {
     leavesMax: 7,
     stroke: { stalk: 2.4, leaf: 1.8, ground: 1.4 },
   },
-  // 3D Season view (voxel dioramas: season3d.js, diorama3d.js, maize3d.js), in world units. Display mappings
-  // only, not facts.
+  // 3D Season view (season3d.js, diorama3d.js, maize3d.js), in world units. Display mappings only, not facts.
   three: {
-    block: { w: 5.0, d: 3.2, soil: 2.0, gap: 0.95, x: 3.5 },   // soil block size; x = |center| of each block
-    // Voxels: cell = ground / soil cube pitch (?lite=1: x sqrt(2), half the cubes); fill = cube size over pitch
-    // (tight gaps); plant = maize cube size. Matte colors; neon only on data (water, N, leaching).
-    voxel: {
-      cell: 0.16, fill: 0.9, plant: 0.075,
-      ground: { top: "#3b2614", low: "#2a1a0e" },
-      soil: { top: "#33200f", bottom: "#0d0804" },
-      wet: "#0b3a46",
-      pool: "#1a0606",
-      maize: { stalk: "#4f7d14", leaf: "#6aa514", tip: "#8cc63a", tassel: "#c9b45a", thirst: "#8a7428" },
+    fieldX: 3.5,                  // |x| of each field center
+    // Glass cube grid under each field: cols x rows columns, `layers` deep; gap = fraction of the pitch left
+    // between cubes. One plant stands on the center of each top cube. The groundwater slab sits slabGap under it.
+    grid: { cols: 6, rows: 6, layers: 4, pitch: 0.62, gap: 0.08, slabGap: 0.55, slabH: 0.14 },
+    // Frosted glass (MeshPhysicalMaterial). soil / soilGlow: the faint brown in every cube (emissive). ?lite=1:
+    // no transmission, plain translucent at liteOpacity. edge: the thin bright edge lines.
+    glass: {
+      transmission: 0.9, roughness: 0.35, ior: 1.3, thickness: 0.5, tint: "#e6d2bc",
+      soil: "#3a2410", soilGlow: 0.5, liteOpacity: 0.2, env: 0.45,
+      edge: "#d9ecd0", edgeOpacity: 0.34, slabRed: 0.9,
+      ambient: 0.35, key: 1.1,
     },
-    plants: { rows: 4, perRow: 12, maxH: 2.4, sprout: 0.1 },   // ?lite=1 keeps every other plant
-    labelY: 3.3,                  // field names float here, above the tallest plant
-    camera: { fov: 38, pos: [0, 2.8, 15.7], target: [0, -0.3, 0], dollyX: 2.2, dollyPeriod: 44 },
+    water: { fill: 0.84, color: "#0b3a46", emit: 0.32 },   // inner cyan fill, as a share of the cube
+    // N and leaching cores (small emissive cubes). soil: cores at the task's max soil_n_kg_ha (perCube slots in
+    // each top cube); dose / uptake / leach: counts at the task's max of that value. ?lite=1 halves dose and leach.
+    cores: { perCube: 3, size: 0.075, dose: 36, uptake: 18, leach: 80, capN: 360, capLeach: 520 },
+    plants: { maxH: 2.4, sprout: 0.1 },
+    maize: { body: "#050a03", tassel: "#d6f25a", thirst: "#c9a227" },
+    labelY: 3.3,                  // field names sit above this height (above the tallest plant)
+    camera: { fov: 38, pos: [0, 1.9, 16.2], target: [0, -1.2, 0], dollyX: 2.2, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
-    bloom: { strength: 0.5, radius: 0.5, threshold: 0.15 },   // selective: water tint, drips, pool, lightning
+    // Bloom between R2 (1.0 / 0.0) and R3 (0.5 / 0.15). Selective: plants (rim), water fill, N and leach cores,
+    // groundwater fluid, lightning bolt. glow: per-kind gain in the bloom pass only (the scene itself is unchanged).
+    bloom: { strength: 0.6, radius: 0.52, threshold: 0.1 },
+    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.7, core: 1.0, pool: 1.0 },
     thirst: { start: 0.32, full: 0.15 },   // obs.soil_water_frac where leaves start to droop / droop fully
     stormLean: 0.55,              // bend at the plant top in a storm week (logged rain > stormMm)
     wind: 0.09, stormWind: 0.22,  // sway amplitude, calm and storm
     flashPeak: 0.55,              // lightning: kept below the leaching pulse so leaching stays the main event
     bolt: 1.4,                    // lightning bolt line brightness at the flash peak (bloomed)
-    caption: { maxChars: 110 },
-    motes: { soil: 60, dose: 50, uptake: 30, leach: 150, rain: 520, cap: 1400 },
+    rain: 520,                    // rain streaks at full storm (weekly.rain_mm / 100)
+    cards: { objectionChars: 100, stiffness: 150, damping: 24 },   // week cards (carousel.js)
   },
   // Mote counts at full scale (each scaled by its value over the max across both fields for this task).
   motes: {

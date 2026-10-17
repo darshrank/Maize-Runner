@@ -1,15 +1,20 @@
 // 3D Season view, three.js 0.160.0 (vendored, import map in index.html). Pure black background, black fog for
-// depth, two floating voxel dioramas (diorama3d.js), one config per side (main.js pickers).
+// depth, two floating glass-grid dioramas (diorama3d.js), one config per side (main.js pickers).
 //
-//   camera   slow dolly between the two blocks; drag to orbit (OrbitControls), double click to reset
-//   bloom    selective and soft: only objects on BLOOM_LAYER (soil water tint, leach drips, groundwater pool,
-//            lightning bolt). Plants get none. For the bloom pass, other cube materials draw black (uBlack) so they
-//            still hide what is behind them, other objects are hidden; then the two passes are mixed
+//   camera   slow dolly between the two fields; drag to orbit (OrbitControls), double click to reset
+//   light    one ambient and one key light plus a dim room environment, for the glass only (every other material
+//            is a hand-written shader)
+//   bloom    selective and soft (theme.three.bloom, gains in theme.three.glow): only objects on BLOOM_LAYER
+//            (plants, water fill, cores, groundwater fluid, lightning bolt). For the bloom pass, cube shaders with
+//            uBlack draw black, other objects (glass, edges, rain) are hidden, and uBloomPass = 1 applies the
+//            per-kind glow gains; then the two passes are mixed
 //   storm    a week with logged rain over theme.stormMm: rain streaks, strong lean (dioramas), one lightning
-//            flash (cubes lit through uFlash, one bloomed bolt) when the week is entered; it stays below the
-//            leaching pulse in brightness
-//   overlays HTML elements pinned to world anchors (field names, finale numbers), positioned every frame
-//   ?lite=1  no bloom, half the cubes, no fog
+//            flash (cubes lit through uFlash, one bloomed bolt) when the week is entered
+//   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): field pickers
+//            centered above their field, the finale in one row under the fields (each field's number centered on
+//            its projected x, the gap centered between them). Labels are pushed apart so none overlaps another,
+//            and the finale row stays between the scene's lowest point and the controls
+//   ?lite=1  no bloom, no transmission (plain translucent glass), no fog, no environment
 //   shaders  a compile failure is retried once with fresh programs; a second failure calls onFail (main.js
 //            then reloads with ?view2d=1)
 //
@@ -22,6 +27,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { theme } from "./theme.js";
 import { Diorama, BLOOM_LAYER } from "./diorama3d.js";
 
@@ -77,7 +83,17 @@ export class Season3D {
     this.shared = {
       uTime: { value: 0 }, uFlash: { value: 0 }, uPx: { value: 600 },
       uFogOn: { value: lite ? 0 : 1 }, uFogNear: { value: T.fog.near }, uFogFar: { value: T.fog.far },
+      uBloomPass: { value: 0 },
     };
+    this.ambient = new THREE.AmbientLight(0xffffff, T.glass.ambient);
+    this.key = new THREE.DirectionalLight(0xffffff, T.glass.key);
+    this.key.position.set(4, 9, 7);
+    this.scene.add(this.ambient, this.key);
+    if (!lite) {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+    }
 
     const C = T.camera;
     this.camera = new THREE.PerspectiveCamera(C.fov, 16 / 9, 0.1, 200);
@@ -104,8 +120,8 @@ export class Season3D {
     canvas.addEventListener("dblclick", () => this.resetCamera());
 
     this.fields = {
-      left: new Diorama({ x: -T.block.x, shared: this.shared, lite, reduceMotion }),
-      right: new Diorama({ x: T.block.x, shared: this.shared, lite, reduceMotion }),
+      left: new Diorama({ x: -T.fieldX, shared: this.shared, lite, reduceMotion }),
+      right: new Diorama({ x: T.fieldX, shared: this.shared, lite, reduceMotion }),
     };
     for (const s of SIDES) this.scene.add(this.fields[s].group);
     this.buildRain();
@@ -144,7 +160,7 @@ export class Season3D {
 
   // Rain streaks over both blocks (same weather): line segments that fall onto the field tops.
   buildRain() {
-    const n = T.motes.rain;
+    const n = T.rain;
     this.rain = Array.from({ length: n }, () => this.rainDrop(true));
     this.rainTarget = 0;
     this.rainPos = new THREE.BufferAttribute(new Float32Array(n * 6), 3).setUsage(THREE.DynamicDrawUsage);
@@ -183,8 +199,8 @@ export class Season3D {
   }
 
   rainDrop(anywhere = false) {
-    const span = T.block.x + T.block.w / 2 + 1.5;
-    return { x: (Math.random() * 2 - 1) * span, z: (Math.random() * 2 - 1) * (T.block.d / 2 + 0.6),
+    const f = this.fields.left, span = T.fieldX + f.W / 2 + 1.5;
+    return { x: (Math.random() * 2 - 1) * span, z: (Math.random() * 2 - 1) * (f.D / 2 + 0.6),
       y: anywhere ? Math.random() * RAIN_TOP : RAIN_TOP + Math.random() * 2, v: 8 + Math.random() * 3, len: 0.3 + Math.random() * 0.25 };
   }
 
@@ -224,7 +240,7 @@ export class Season3D {
       if (w && typeof w.rain_mm === "number") rain = Math.max(rain ?? 0, w.rain_mm);
     }
     const storm = rain !== null && rain > theme.stormMm;
-    this.rainTarget = storm && !this.reduce ? Math.round(T.motes.rain * Math.min(1, rain / 100)) : 0;
+    this.rainTarget = storm && !this.reduce ? Math.round(T.rain * Math.min(1, rain / 100)) : 0;
     if (storm && moved && !this.reduce) {
       this.flashT = 0;
       this.strikeBolt();
@@ -234,22 +250,67 @@ export class Season3D {
 
   // ------------------------------------------------------------ overlays
 
-  // items: [{el, side: "left"|"right"|null, kind: "name"|"pool"|"mid"}]; el is positioned at the anchor.
-  setOverlays(items) {
-    this.overlays = items.map((it) => ({ ...it, v: new THREE.Vector3() }));
+  // heads: {left, right} elements centered above each field (bottom edge at the anchor); fins: {left, right} the
+  // finale under each field (top edge on the row); mid: the gap between them; floor: the element whose top edge
+  // the finale row must stay above (the controls).
+  setOverlays({ heads, fins, mid, floor }) {
+    this.ov = { heads, fins, mid, floor, floorY: null, floorAge: 0 };
+    this.anchors = Object.fromEntries(SIDES.map((s) => [s, this.fields[s].anchors()]));
+    this.pv = new THREE.Vector3();
   }
 
-  placeOverlays() {
-    const w = this.root.clientWidth, h = this.root.clientHeight;
-    for (const o of this.overlays) {
-      if (o.kind === "mid") {
-        const a = this.fields.left.anchor("name"), b = this.fields.right.anchor("name");
-        o.v.copy(a).add(b).multiplyScalar(0.5);
-      } else o.v.copy(this.fields[o.side].anchor(o.kind));
-      o.v.project(this.camera);
-      const behind = o.v.z > 1;
-      o.el.style.visibility = behind ? "hidden" : "";
-      o.el.style.transform = `translate(${((o.v.x + 1) / 2 * w).toFixed(1)}px, ${((1 - o.v.y) / 2 * h).toFixed(1)}px)`;
+  project(p) {
+    const v = this.pv.copy(p).project(this.camera);
+    return { x: (v.x + 1) / 2 * this.root.clientWidth, y: (1 - v.y) / 2 * this.root.clientHeight, behind: v.z > 1 };
+  }
+
+  // Spread two boxes {x (center), w} apart so they keep `pad` px between them; returns the new centers.
+  static apart(a, b, pad) {
+    const need = (a.w + b.w) / 2 + pad - (b.x - a.x);
+    return need > 0 ? [a.x - need / 2, b.x + need / 2] : [a.x, b.x];
+  }
+
+  placeOverlays(dt) {
+    const o = this.ov;
+    if (!o) return;
+    const PAD = 24, TOP = 56, place = (el, x, y) => (el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`);
+    // Reads first (sizes), then writes, so the layout is computed once per frame.
+    o.floorAge -= dt;
+    if (o.floor && (o.floorY === null || o.floorAge <= 0)) {
+      o.floorY = o.floor.getBoundingClientRect().top - this.root.getBoundingClientRect().top;
+      o.floorAge = 0.5;
+    }
+    // Each overlay is a zero-size anchor; its one child (.s3-in) holds the content and carries the size.
+    const size = (el) => { const c = el.firstElementChild || el; return { w: c.offsetWidth, h: c.offsetHeight }; };
+    const hs = { left: size(o.heads.left), right: size(o.heads.right) };
+    const fs = { left: size(o.fins.left), right: size(o.fins.right) }, ms = size(o.mid);
+    const at = {};
+    for (const s of SIDES) {
+      const a = this.anchors[s];
+      at[s] = { head: this.project(a.head), center: this.project(a.center),
+        bottom: Math.max(...a.bottom.map((p) => this.project(p).y)) };
+    }
+    // Heads: centered above each field, never above the top bar, never on top of each other.
+    const [hl, hr] = Season3D.apart({ x: at.left.head.x, w: hs.left.w }, { x: at.right.head.x, w: hs.right.w }, PAD);
+    const hy = (s) => Math.max(TOP + hs[s].h, at[s].head.y);
+    place(o.heads.left, hl, hy("left"));
+    place(o.heads.right, hr, hy("right"));
+    // Finale row: under the lowest point of both fields, above the controls; the gap on the same row between the
+    // two numbers when it fits, else one line lower.
+    let [fl, fr] = Season3D.apart({ x: at.left.center.x, w: fs.left.w }, { x: at.right.center.x, w: fs.right.w }, PAD);
+    const rowH = Math.max(fs.left.h, fs.right.h);
+    const mx = (fl + fr) / 2;
+    const fits = ms.w === 0 || (mx - ms.w / 2 >= fl + fs.left.w / 2 + PAD && mx + ms.w / 2 <= fr - fs.right.w / 2 - PAD);
+    const total = fits ? Math.max(rowH, ms.h) : rowH + 8 + ms.h;
+    let y = Math.max(at.left.bottom, at.right.bottom) + 18;
+    if (o.floorY !== null) y = Math.min(y, o.floorY - 8 - total);
+    place(o.fins.left, fl, y);
+    place(o.fins.right, fr, y);
+    place(o.mid, mx, fits ? y : y + rowH + 8);
+    const hide = (s) => at[s].head.behind || at[s].center.behind;
+    for (const s of SIDES) {
+      o.heads[s].style.visibility = hide(s) ? "hidden" : "";
+      o.fins[s].style.visibility = hide(s) ? "hidden" : "";
     }
   }
 
@@ -331,8 +392,9 @@ export class Season3D {
     }
     this.tickRain(this.reduce ? 0 : dt);
     this.tickCamera(dt);
+    this.ambient.intensity = T.glass.ambient * (1 + 2 * f);
     this.render();
-    this.placeOverlays();
+    this.placeOverlays(dt);
     this.checkShaders();
   }
 
@@ -352,7 +414,9 @@ export class Season3D {
         hidden.push(o);
       }
     }
+    this.shared.uBloomPass.value = 1;
     this.bloomComposer.render();
+    this.shared.uBloomPass.value = 0;
     for (const o of hidden) o.visible = true;
     for (const u of black) u.uBlack.value = 0;
     this.finalComposer.render();

@@ -1,5 +1,5 @@
-// Narrator: at most one deadpan line per week for the Season view (main.js shows it in a narrow column on the
-// right edge; key N toggles it). The sarcasm targets weather, corn and nitrogen, never people.
+// Narrator: one deadpan line per week for the Season view (main.js puts it on that week's card in the week-card
+// carousel, carousel.js; key N toggles the cards). The sarcasm targets weather, corn and nitrogen, never people.
 //
 // Every value in a line comes from the two runs on screen (data.js weeks model) or the weather file; a trigger
 // fires only when its data is there. One trigger per week, first match in this order:
@@ -16,7 +16,8 @@
 //   quiet       no N applied in either run and weekly rain under QUIET_MM
 // The line is picked deterministically from task_id + week: (FNV-1a(task_id) + week) mod the template count, so a
 // replay is reproducible and back-to-back weeks with the same trigger never repeat a line. Templates whose
-// placeholders have no value are skipped.
+// placeholders have no value are skipped. Week cards need a line every week: weekLine() falls back to a quiet-week
+// line from LINES.quietAny (no claims about rain or nitrogen) when no trigger fires.
 
 const LEACH_KG = 3.0;
 const HEAVY_MM = 25;
@@ -97,6 +98,14 @@ export const LINES = {
     "That is the season. {better} wins by {diff}/ha. The nitrogen has no further comment.",
     "Harvest is in. A {diff}/ha gap. The rain claims it was all part of the plan.",
     "Done. {better} leads by {diff}/ha. The soil would like a nap.",
+  ],
+  quietAny: [
+    "Week {week}. Nothing worth a headline. The corn approves.",
+    "A quiet week. The corn kept its thoughts to itself.",
+    "Nothing to report. The soil is fine with that.",
+    "Week {week}. The field minded its own business.",
+    "Week {week}. No drama. The corn is working on it.",
+    "An ordinary week. The corn took it in stride.",
   ],
   harvestTie: [
     "Harvest. Both fields at {lp}/ha. The corn refuses to pick a favorite.",
@@ -212,4 +221,9 @@ export function narrate(ctx) {
 
   if (rain !== null && rain < QUIET_MM && live.every((s) => !(nOf(s) > 0))) return line("quiet", { week: k, rain: amount(rain) });
   return null;
+}
+
+// Always a line: the trigger's line, else a quiet-week line (harvest without both finals included).
+export function weekLine(ctx) {
+  return narrate(ctx) || { trigger: "quiet", text: pick("quietAny", { week: ctx.k < ctx.W ? ctx.k : null }, ctx.task, ctx.k), side: null };
 }

@@ -26,35 +26,36 @@
   <div id="wordmark"><i class="mark"></i><span>FieldTwin</span></div>
   <span id="src" class="badge" hidden title="Data source of every number on screen"></span>
 
-  <!-- 1 Season, 3D (R2 default): canvas plus HTML overlays pinned to world anchors by season3d.js.
-       The only numbers here: one week label and, at season end, the profit finale. -->
+  <!-- 1 Season, 3D (default): canvas plus HTML overlays that season3d.js places from the projected field anchors
+       every frame: pickers above each field, the finale in one row under the fields. The only numbers here: one
+       week label and, at season end, the profit finale. -->
   <div id="stage3d" hidden>
     <div class="s3-anchor" id="s3-head-left"><div class="s3-in up">
-      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
       <select class="s3-name cfg-pick" data-side="left" aria-label="Left field"></select>
       <div class="cfg-model quiet mono" data-side="left" hidden></div>
       <div class="cfg-none quiet" data-side="left" hidden>No run for this season</div>
     </div></div>
     <div class="s3-anchor" id="s3-head-right"><div class="s3-in up">
-      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
       <select class="s3-name cfg-pick" data-side="right" aria-label="Right field"></select>
       <div class="cfg-model quiet mono" data-side="right" hidden></div>
       <div class="cfg-none quiet" data-side="right" hidden>No run for this season</div>
     </div></div>
-    <div class="s3-anchor" id="s3-mid"><div class="s3-in up">
+    <div class="s3-anchor" id="s3-fin-left"><div class="s3-in down">
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
+      <div class="fin-leach" hidden></div>
+    </div></div>
+    <div class="s3-anchor" id="s3-fin-right"><div class="s3-in down">
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
+      <div class="fin-leach" hidden></div>
+    </div></div>
+    <div class="s3-anchor" id="s3-fin-mid"><div class="s3-in down">
       <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge"></span></div>
     </div></div>
-    <div class="s3-anchor" id="s3-pool-left"><div class="s3-in down"><div class="fin-leach" hidden></div></div></div>
-    <div class="s3-anchor" id="s3-pool-right"><div class="s3-in down"><div class="fin-leach" hidden></div></div></div>
     <div id="s3-week" aria-live="polite"></div>
-    <div id="s3-caption" aria-live="polite"></div>
   </div>
 
-  <!-- Narrator (3D Season): at most one line per week, right edge; key N toggles it -->
-  <aside id="narrator" hidden aria-live="polite">
-    <span class="nar-label">Narrator</span>
-    <div id="nar-lines"></div>
-  </aside>
+  <!-- Week cards (3D Season): one card per week, left side, synced with the week; key N toggles them -->
+  <aside id="weekcards" hidden></aside>
 
   <!-- 1 Season controls; with ?view2d=1 also the R1 2D side view (fallback) -->
   <main id="season" class="view">

@@ -198,17 +198,6 @@ select.cfg-pick.s3-name { font-size: 24px; }
 .fin-leach { font-size: 15px; color: var(--leach); animation: rise 600ms var(--ease) both; }
 #s3-week { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 2; pointer-events: none;
   font: 600 22px/1.2 var(--sans); }
-#s3-caption {
-  position: fixed; left: 50%; bottom: calc(var(--dock) + 100px); transform: translateX(-50%); z-index: 2;
-  width: max-content; max-width: min(1000px, calc(100vw - 2 * var(--gutter))); text-align: center;
-  font-size: 18px; line-height: 1.45; pointer-events: none; opacity: 0; transition: opacity 600ms var(--ease);
-}
-#s3-caption.on { opacity: 1; }
-#s3-caption .who { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-right: 8px; }
-#s3-caption .who.coordinator { color: var(--coordinator); margin-left: 18px; }
-#s3-caption .who.critic { color: var(--critic); margin-left: 0; }
-#s3-caption .who:first-child { margin-left: 0; }
-#s3-caption .t.critic { color: var(--critic); }
 /* In 3D the Season page holds only the controls and a bare scrubber; the canvas fills the window behind. */
 .s3d #season { z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; padding-bottom: 6px; }
 .s3d #week, .s3d #fields, .s3d .keys { display: none; }
@@ -216,18 +205,32 @@ select.cfg-pick.s3-name { font-size: 24px; }
 .s3d #controls { justify-content: center; }
 .s3d #timeline { height: 34px; }
 
-/* Narrator (narrator.js): a narrow column on the right edge, quiet and italic, unlike the agent caption and chat.
-   The newest line fades in; older lines dim with --age. */
-#narrator {
-  position: fixed; right: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 2; width: 260px;
-  display: grid; gap: 10px; pointer-events: none; padding-left: 12px; border-left: 1px solid var(--hairline);
+/* Week cards (carousel.js, cube effect): left side, one card per week, only the current one visible. Dark frosted
+   glass: black at 55%, 16px backdrop blur, 1px hairline, radius 12, no gradient, no shadow. */
+#weekcards {
+  position: fixed; left: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 3; width: 288px;
+  display: grid; gap: 10px; outline: none; touch-action: pan-y; user-select: none; cursor: grab;
 }
-.nar-label { font-size: 14px; color: var(--quiet); letter-spacing: 0.02em; }
-#nar-lines { display: grid; gap: 12px; }
-.nar-line { display: grid; gap: 2px; opacity: calc(1 - 0.17 * var(--age, 0)); transition: opacity 600ms var(--ease); }
-.nar-line.new { animation: fade 900ms var(--ease) both; }
-.nar-meta { font-size: 14px; color: var(--quiet); }
-.nar-text { font-size: 15px; line-height: 1.4; font-style: italic; color: #c6cfbd; }
+#weekcards.dragging { cursor: grabbing; }
+#weekcards:focus-visible .carousel-viewport { outline: 1px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
+.carousel-viewport { position: relative; height: 224px; }
+.carousel-card {
+  position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden;
+  background: rgba(0, 0, 0, 0.55); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline-strong); will-change: transform;
+}
+.carousel-card-body { height: 100%; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.carousel-shade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.carousel-counter { display: flex; justify-content: center; align-items: baseline; gap: 6px; font-size: 14px; color: var(--quiet); }
+.carousel-counter .cur-box { display: inline-block; overflow: hidden; height: 1.3em; }
+.carousel-counter .cur { display: inline-block; color: var(--text); }
+.wc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.wc-week { font-size: 17px; font-weight: 600; }
+.wc-date { font-size: 14px; color: var(--quiet); white-space: nowrap; }
+.wc-text { margin: 0; font-size: 16px; line-height: 1.4; color: #d3dbc9; }
+.wc-side { margin: -6px 0 0; font-size: 14px; color: var(--quiet); }
+.wc-obj { margin: auto 0 0; font-size: 14px; line-height: 1.4; color: var(--critic); }
+.wc-obj .who { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 
 /* ---------------------------------------------------------------- agents page (full weekly chat) */
 #agents { overflow-y: auto; }
@@ -309,7 +312,6 @@ select.cfg-pick.s3-name { font-size: 24px; }
   .field-svg .gw-line, .field-svg .gw-band, #timeline .cursor, #timeline .knob, #timeline .track-on { transition-duration: 0s !important; }
   .tally .end, .lines .why.enter .t { animation: none; }
   .dock-label, .dock-dot, .dock-icon { transition: none; }
-  #s3-caption, #stage3d canvas, .nar-line { transition: none; }
-  .nar-line.new { animation: none; }
+  #stage3d canvas { transition: none; }
   .fin-profit, .fin-delta, .fin-leach { animation: none; }
 }

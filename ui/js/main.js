@@ -1,11 +1,12 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8). R2: pages Season, Agents, Results, Gym,
 // Serving, switched by the dock (dock.js) or keys 1-5; no top bar.
-// Season (default): the 3D view (season3d.js), two floating voxel field dioramas. Each field header is a picker of
-// the configs that have a log for the selected season (defaults: LEFT farmer practice, RIGHT the FieldTwin agent
+// Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas. Each field header is a picker
+// of the configs that have a log for the selected season (defaults: LEFT farmer practice, RIGHT the FieldTwin agent
 // team or the best available LLM config), with the model name under it when the log records one. Its only
-// numbers: one week label and, at season end, the profit finale for the two selected fields. The Critic objection
-// and Coordinator reason show as one short caption in objection or storm weeks only. The narrator (narrator.js)
-// adds at most one line per week in a narrow column on the right edge (key N toggles it).
+// numbers: one week label and, at season end, the profit finale for the two selected fields (season3d.js places
+// both from the projected field anchors). Week cards on the left (carousel.js, cube effect): one card per week
+// plus harvest, synced with the week both ways; each holds the week's dates, the narrator line (narrator.js) and,
+// in Critic objection weeks, the objection in one orange line. Key N toggles the cards. No bottom caption.
 // Season with ?view2d=1 (or after a WebGL / shader failure): the R1 2D side view (fieldSvg.js), kept as the
 // fallback. Agents: the full weekly chat for one run (agents.js). Results: A's dev baselines
 // (results_baseline/summary.md "Split: dev" table, eval.csv dev rows for the season). Gym, Serving: placeholders.
@@ -20,7 +21,8 @@ import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
 import { weekLines, chatHtml, esc } from "./agents.js";
 import { Dock } from "./dock.js";
-import { narrate } from "./narrator.js";
+import { weekLine } from "./narrator.js";
+import { Carousel } from "./carousel.js";
 
 export { theme };
 
@@ -40,15 +42,14 @@ const VIEW2D = params.get("view2d") === "1";
 const REDUCE = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 const SIDES = ["left", "right"];
 const SPEEDS = [0.5, 1, 2, 4];
-const NARRATOR_WEEKS = 5;   // lines kept in the narrator column: this week and the four before it
 
 const state = {
   index: null, task: null, configs: [], pair: { left: null, right: null }, runs: { left: null, right: null },
-  days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right", narrator: true,
+  days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right", cards: true,
 };
 const fields = {};       // 2D FieldViews (view2d only)
 let s3d = null;          // Season3D (3D only)
-let timeline, dock, captionTimer = 0;
+let timeline, dock, cards = null;
 
 // ---------------------------------------------------------------- formatting
 
@@ -126,7 +127,7 @@ function setView(view) {
   }
   if (view === "agents") renderAgents();
   if (view === "results") renderResults();
-  renderNarrator(false);
+  showCards();
 }
 
 // ---------------------------------------------------------------- chrome
@@ -146,7 +147,7 @@ function renderBadges() {
   const label = (runs.find((r) => r.split) || {}).split || null;
   $("src").textContent = label || "";
   $("src").hidden = !label;
-  const fin = document.querySelector("#s3-mid .fin-src");
+  const fin = document.querySelector("#s3-fin-mid .fin-src");
   fin.textContent = label || "";
   fin.hidden = !label;
 }
@@ -228,12 +229,11 @@ function renderWeekLabel() {
     ? `from ${date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "";
 }
 
-// 3D: one week label; the finale at harvest; the caption when the week moved.
-function render3d(moved) {
+// 3D: one week label; the finale at harvest.
+function render3d() {
   const W = maxW(), k = state.week;
   $("s3-week").textContent = k >= W ? "Harvest" : `Week ${k}`;
   renderFinale();
-  if (moved) renderCaption();
 }
 
 // Season end only: each field's profit_usd_ha (final line) counts up, the gap between them sits in the middle
@@ -245,55 +245,28 @@ function renderFinale() {
     const w = run && run.weeks[Math.min(state.week, run.W)];
     const final = w && w.harvest ? run.final : null;
     finals[side] = final;
-    const prof = document.querySelector(`#s3-head-${side} .fin-profit`);
+    const prof = document.querySelector(`#s3-fin-${side} .fin-profit`);
     const p = final && has(final.profit_usd_ha) ? final.profit_usd_ha : null;
     if (p !== null && prof.hidden) countUp(prof.querySelector(".v"), p, money);
     prof.hidden = p === null;
-    const leach = document.querySelector(`#s3-pool-${side} .fin-leach`);
+    const leach = document.querySelector(`#s3-fin-${side} .fin-leach`);
     const nl = final && has(final.n_leached) ? final.n_leached : null;
     leach.hidden = nl === null;
     if (nl !== null) leach.innerHTML = `N leached <span class="mono">${fmt(nl, 1)}</span> kg/ha`;
   }
-  const box = document.querySelector("#s3-mid .fin-delta");
+  const box = document.querySelector("#s3-fin-mid .fin-delta");
   const l = finals.left && finals.left.profit_usd_ha, r = finals.right && finals.right.profit_usd_ha;
   const delta = has(l) && has(r) ? r - l : null;
   if (delta !== null && box.hidden) countUp(box.querySelector(".v"), delta, signedMoney);
   box.hidden = delta === null;
 }
 
-// Whole sentences up to max characters; one long first sentence is cut with an ellipsis.
-function shorten(text, max = theme.three.caption.maxChars) {
-  const parts = String(text).trim().split(/(?<=[.!?])\s+/);
-  let out = "";
-  for (const p of parts) {
-    if ((out ? out.length + 1 : 0) + p.length > max) break;
-    out = out ? `${out} ${p}` : p;
-  }
-  return out || `${parts[0].slice(0, max - 1)}…`;
-}
-
-// RIGHT run (agent team) only, in weeks with a Critic objection or a storm: one caption, then it fades.
-function renderCaption() {
-  const el = $("s3-caption");
-  clearTimeout(captionTimer);
-  const run = state.runs.right;
-  const w = run && run.hasAgents ? run.weeks[Math.min(state.week, run.W)] : null;
-  const obj = w && !w.harvest ? w.chat.find((m) => m.objection) : null;
-  const rain = w && !w.harvest && w.weekly && has(w.weekly.rain_mm) ? w.weekly.rain_mm : null;
-  const reason = w && !w.harvest && w.decision ? w.decision.reason : null;
-  const parts = [];
-  if (obj || (rain !== null && rain > theme.stormMm)) {
-    if (obj) parts.push(`<span class="who critic">Critic</span><span class="t critic">${esc(shorten(obj.text || "Objection"))}</span>`);
-    if (reason) parts.push(`<span class="who coordinator">Coordinator</span><span class="t">${esc(shorten(reason))}</span>`);
-  }
-  if (!parts.length) {
-    el.classList.remove("on");
-    return;
-  }
-  el.innerHTML = parts.join("");
-  el.classList.add("on");
-  const hold = Math.max(2.5, Math.min(5, (theme.motion.weekSeconds / state.speed) * 2.5));
-  captionTimer = setTimeout(() => el.classList.remove("on"), hold * 1000);
+// Cut to about max characters at a word boundary, with an ellipsis when cut.
+function cut(text, max) {
+  const t = String(text).replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const head = t.slice(0, max - 1), sp = head.lastIndexOf(" ");
+  return `${(sp > max * 0.6 ? head.slice(0, sp) : head).replace(/[\s,;:.-]+$/, "")}…`;
 }
 
 function renderTallies() {
@@ -389,24 +362,50 @@ function renderTimeline() {
   timeline.setModel({ W, days, weeklyRain, rainNote, fallbackWeeks });
 }
 
-// Narrator column (3D Season only): one line per week for the last NARRATOR_WEEKS weeks up to the current one,
-// computed from the two runs on screen and the weather file. The newest line fades in when the week moved.
-function renderNarrator(moved) {
-  const box = $("narrator");
-  const on = !!s3d && state.narrator && state.view === "season" && SIDES.some((s) => state.runs[s]);
-  box.hidden = !on;
-  if (!on) return;
-  const W = maxW(), names = Object.fromEntries(SIDES.map((s) => [s, fieldName(s)]));
-  const items = [];
-  for (let k = Math.max(0, state.week - NARRATOR_WEEKS + 1); k <= state.week; k++) {
-    const n = narrate({ task: state.task, k, W, runs: state.runs, names, days: state.days, dayStart: state.dayStart,
-      stormMm: theme.stormMm, thirstAt: theme.three.thirst.start });
-    if (n) items.push({ k, ...n });
+// Week cards (3D Season only): one card per week 0..W-1 plus a harvest card. Each card: "Week N" and its date
+// range from the weather file (when aligned), the narrator line for that week (a quiet-week line when nothing
+// fired), and in Critic objection weeks one orange line with the objection (agent team first), cut to about
+// theme.three.cards.objectionChars characters.
+function dateRange(k) {
+  if (!state.days || state.dayStart === null) return "";
+  const a = state.days[state.dayStart + 7 * k], b = state.days[state.dayStart + 7 * k + 6] || a;
+  const d = (x) => (x && x.date ? new Date(`${x.date}T00:00:00`) : null);
+  const da = d(a), db = d(b);
+  if (!da || Number.isNaN(+da) || !db || Number.isNaN(+db)) return "";
+  const md = (x) => x.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return da.getFullYear() === db.getFullYear() ? `${md(da)} – ${md(db)}, ${db.getFullYear()}`
+    : `${md(da)}, ${da.getFullYear()} – ${md(db)}, ${db.getFullYear()}`;
+}
+
+function cardHtml(k, W, names) {
+  const line = weekLine({ task: state.task, k, W, runs: state.runs, names, days: state.days, dayStart: state.dayStart,
+    stormMm: theme.stormMm, thirstAt: theme.three.thirst.start });
+  let obj = null;
+  if (k < W) {
+    for (const side of ["right", "left"]) {
+      const run = state.runs[side], w = run && k < run.W ? run.weeks[k] : null;
+      const m = w && w.chat.find((x) => x.objection);
+      if (m) { obj = m.text || "Objection"; break; }
+    }
   }
-  const html = items.map((it, i) => `<div class="nar-line${moved && it.k === state.week ? " new" : ""}" style="--age:${items.length - 1 - i}">`
-    + `<span class="nar-meta mono">${it.k >= W ? "Harvest" : `Week ${it.k}`}${it.side ? ` · ${esc(names[it.side])}` : ""}</span>`
-    + `<span class="nar-text">${esc(it.text)}</span></div>`).join("");
-  $("nar-lines").innerHTML = html;
+  const date = k < W ? dateRange(k) : "";
+  return `<header class="wc-head"><span class="wc-week">${k >= W ? "Harvest" : `Week ${k}`}</span>`
+    + `${date ? `<span class="wc-date mono">${esc(date)}</span>` : ""}</header>`
+    + `<p class="wc-text">${esc(line.text)}</p>`
+    + `${line.side ? `<p class="wc-side">${esc(names[line.side])}</p>` : ""}`
+    + `${obj ? `<p class="wc-obj" title="${esc(obj)}"><span class="who">Critic</span> ${esc(cut(obj, theme.three.cards.objectionChars))}</p>` : ""}`;
+}
+
+function renderCards() {
+  if (!cards) return;
+  const W = maxW(), names = Object.fromEntries(SIDES.map((s) => [s, fieldName(s)]));
+  const any = SIDES.some((s) => state.runs[s]);
+  cards.setItems(any ? Array.from({ length: W + 1 }, (_, k) => cardHtml(k, W, names)) : [], state.week);
+  showCards();
+}
+
+function showCards() {
+  $("weekcards").hidden = !(cards && state.cards && state.view === "season" && SIDES.some((s) => state.runs[s]));
 }
 
 // ---------------------------------------------------------------- loading
@@ -432,7 +431,9 @@ async function loadPair() {
   renderBadges();
   renderFieldHeads();
   renderTimeline();
-  setWeek(Math.min(state.week, maxW()), { force: true });
+  state.week = Math.min(state.week, maxW());
+  renderCards();
+  setWeek(state.week, { force: true });
 }
 
 // New season: keep each side's config when this season has a log for it, else the default.
@@ -468,8 +469,8 @@ function setWeek(k, { force = false } = {}) {
   timeline.setWeek(state.week);
   if (s3d) {
     s3d.show(views, { spread, moved });
-    render3d(moved);
-    renderNarrator(moved);
+    render3d();
+    if (cards) cards.setIndex(state.week);
   } else {
     renderWeekLabel();
     renderTallies();
@@ -529,7 +530,7 @@ function bind() {
     else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }
     else if (e.key === "r" || e.key === "R") { setPlaying(false); setWeek(0); }
     else if (e.key === "[" || e.key === "]") stepSpeed(e.key === "]" ? 1 : -1);
-    else if (e.key === "n" || e.key === "N") { state.narrator = !state.narrator; renderNarrator(false); }
+    else if (e.key === "n" || e.key === "N") { state.cards = !state.cards; showCards(); }
   });
 }
 
@@ -576,11 +577,14 @@ async function initSeason() {
       const { Season3D } = await import("./season3d.js");
       $("stage3d").hidden = false;
       s3d = new Season3D($("stage3d"), { lite: data.LITE, reduceMotion: REDUCE, onFail: fallback2D });
-      s3d.setOverlays([
-        ...SIDES.map((side) => ({ el: $(`s3-head-${side}`), side, kind: "name" })),
-        ...SIDES.map((side) => ({ el: $(`s3-pool-${side}`), side, kind: "pool" })),
-        { el: $("s3-mid"), side: null, kind: "mid" },
-      ]);
+      s3d.setOverlays({
+        heads: { left: $("s3-head-left"), right: $("s3-head-right") },
+        fins: { left: $("s3-fin-left"), right: $("s3-fin-right") },
+        mid: $("s3-fin-mid"),
+        floor: $("bottom"),
+      });
+      cards = new Carousel($("weekcards"), { stiffness: theme.three.cards.stiffness, damping: theme.three.cards.damping,
+        reduceMotion: REDUCE, label: "Week cards", onChange: (k) => setWeek(k) });
       document.body.classList.add("s3d");
     } catch (err) {
       fallback2D(err);
