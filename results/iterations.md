@@ -43,6 +43,20 @@ Before: `results/local-validation-v1`; after: `results/local-validation-v2`.
 
 No real crop-performance claim is supported by synthetic fixtures.
 
+## Live-model integration correction (2026-10-17)
+
+Scope: actual Nemotron BF16 inference on the Brev H100, shared toy crop simulator,
+UFGA-s1 dev task. Protocol 1 sometimes returned prose tool summaries instead of the
+required decision/critique; single had one fallback and multi had two over 20 weeks.
+Protocol 2 reinforces output instructions after reads, retires exhausted read tools
+and reserves the last model turn for a final response. The single/multi rerun had
+zero fallbacks each; multi exercised 13 critic objections and 13 planner revisions.
+
+This changes the runtime protocol, leaves role prompt files unchanged and is a
+stochastic integration check. It is not B3's controlled one-prompt experiment or a
+crop-performance gain. The eight-season audit and all fallback causes are recorded
+in `results/b1-b2-live.json`, with original logs archived alongside it.
+
 ## SYNTHETIC plumbing only iteration
 
 Change: Skeleton-aligned prompts; v2 differs only in the unvalidated critic rain rule

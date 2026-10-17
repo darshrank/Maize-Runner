@@ -1,0 +1,525 @@
+{
+  "checked_at": "2026-10-17T18:44:42.122322+00:00",
+  "scope": "Live Nemotron inference; shared synthetic toy crop environment. No real crop-performance or controlled throughput/cost claim.",
+  "runs": [
+    {
+      "run": "results\\local-live-b1-v1",
+      "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+      "agent_protocol_version": 1,
+      "synthetic_environment": true,
+      "synthetic_model": false,
+      "configured_concurrency": 1,
+      "peak_overlapping_seasons": 1,
+      "checks_passed": [
+        "dev-only complete tasks",
+        "weekly JSONL/decision/step/final contract",
+        "weekly/season action guards",
+        "no server-side clamping",
+        "CSV matches final logs",
+        "fallback counts visible",
+        "role tool permissions",
+        "one critic revision maximum",
+        "replay index"
+      ],
+      "seasons": [
+        {
+          "config": "single",
+          "task_id": "UFGA-s1",
+          "weeks": 20,
+          "llm_calls": 69,
+          "wall_s": 27.2861,
+          "fallbacks": 1,
+          "fallback_causes": [
+            "coordinator exceeded six model turns"
+          ],
+          "validation_errors": 3,
+          "guarded_actions": 1,
+          "critic_objections": 0,
+          "completed_revisions": 0,
+          "tool_results_by_agent": {
+            "coordinator": 65
+          },
+          "log": "results\\local-live-b1-v1\\runs\\single\\UFGA-s1.jsonl",
+          "log_sha256": "b1b291d16453233b7eeee7845b60c5c5a3dcc1a4f62da8c25fcffb889429f4c6",
+          "final": {
+            "grain_kg_ha": 8484.7,
+            "n_applied": 300.0,
+            "n_uptake": 213.53,
+            "n_leached": 99.03,
+            "n_gas": 17.45,
+            "irr_mm": 95.0,
+            "profit_usd_ha": 1124.9,
+            "reward": 926.84
+          }
+        }
+      ]
+    },
+    {
+      "run": "results\\local-live-b2-one-v1",
+      "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+      "agent_protocol_version": 1,
+      "synthetic_environment": true,
+      "synthetic_model": false,
+      "configured_concurrency": 1,
+      "peak_overlapping_seasons": 1,
+      "checks_passed": [
+        "dev-only complete tasks",
+        "weekly JSONL/decision/step/final contract",
+        "weekly/season action guards",
+        "no server-side clamping",
+        "CSV matches final logs",
+        "fallback counts visible",
+        "role tool permissions",
+        "one critic revision maximum",
+        "replay index"
+      ],
+      "seasons": [
+        {
+          "config": "multi",
+          "task_id": "UFGA-s1",
+          "weeks": 20,
+          "llm_calls": 224,
+          "wall_s": 116.0909,
+          "fallbacks": 2,
+          "fallback_causes": [
+            "planner exceeded six model turns",
+            "coordinator exceeded six model turns"
+          ],
+          "validation_errors": 10,
+          "guarded_actions": 2,
+          "critic_objections": 10,
+          "completed_revisions": 10,
+          "tool_results_by_agent": {
+            "planner": 91,
+            "coordinator": 48,
+            "weather": 4,
+            "critic": 4
+          },
+          "log": "results\\local-live-b2-one-v1\\runs\\multi\\UFGA-s1.jsonl",
+          "log_sha256": "0540cbd2996677ebd60b66c27b4c025ad515d12bf11b821d5b3c5ad5b595adbe",
+          "final": {
+            "grain_kg_ha": 8932.5,
+            "n_applied": 300.0,
+            "n_uptake": 234.47,
+            "n_leached": 76.48,
+            "n_gas": 8.62,
+            "irr_mm": 63.0,
+            "profit_usd_ha": 1217.03,
+            "reward": 1064.07
+          }
+        }
+      ]
+    },
+    {
+      "run": "results\\local-live-protocol-v2",
+      "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+      "agent_protocol_version": 2,
+      "synthetic_environment": true,
+      "synthetic_model": false,
+      "configured_concurrency": 1,
+      "peak_overlapping_seasons": 1,
+      "checks_passed": [
+        "dev-only complete tasks",
+        "weekly JSONL/decision/step/final contract",
+        "weekly/season action guards",
+        "no server-side clamping",
+        "CSV matches final logs",
+        "fallback counts visible",
+        "role tool permissions",
+        "one critic revision maximum",
+        "replay index"
+      ],
+      "seasons": [
+        {
+          "config": "single",
+          "task_id": "UFGA-s1",
+          "weeks": 20,
+          "llm_calls": 40,
+          "wall_s": 12.0916,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 1,
+          "guarded_actions": 1,
+          "critic_objections": 0,
+          "completed_revisions": 0,
+          "tool_results_by_agent": {
+            "coordinator": 27
+          },
+          "log": "results\\local-live-protocol-v2\\runs\\single\\UFGA-s1.jsonl",
+          "log_sha256": "d05fd8583400571adcb1b99771f056bc0914d3df2ad34452887e44dd8de25ab7",
+          "final": {
+            "grain_kg_ha": 8494.6,
+            "n_applied": 300.0,
+            "n_uptake": 201.8,
+            "n_leached": 112.15,
+            "n_gas": 16.05,
+            "irr_mm": 100.6,
+            "profit_usd_ha": 1123.78,
+            "reward": 899.48
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s1",
+          "weeks": 20,
+          "llm_calls": 201,
+          "wall_s": 107.7677,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 0,
+          "guarded_actions": 0,
+          "critic_objections": 13,
+          "completed_revisions": 13,
+          "tool_results_by_agent": {
+            "weather": 19,
+            "planner": 39,
+            "critic": 11,
+            "crop": 11,
+            "coordinator": 15
+          },
+          "log": "results\\local-live-protocol-v2\\runs\\multi\\UFGA-s1.jsonl",
+          "log_sha256": "c85ceb2b66e385e36bd0cf8f02f253b802bba29fae2080bf7390f2caf3022923",
+          "final": {
+            "grain_kg_ha": 5015.4,
+            "n_applied": 300.0,
+            "n_uptake": 146.93,
+            "n_leached": 55.61,
+            "n_gas": 7.0,
+            "irr_mm": 85.0,
+            "profit_usd_ha": 540.12,
+            "reward": 428.9
+          }
+        }
+      ]
+    },
+    {
+      "run": "results\\local-live-b2-eight-v2",
+      "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+      "agent_protocol_version": 2,
+      "synthetic_environment": true,
+      "synthetic_model": false,
+      "configured_concurrency": 8,
+      "peak_overlapping_seasons": 8,
+      "checks_passed": [
+        "dev-only complete tasks",
+        "weekly JSONL/decision/step/final contract",
+        "weekly/season action guards",
+        "no server-side clamping",
+        "CSV matches final logs",
+        "fallback counts visible",
+        "role tool permissions",
+        "one critic revision maximum",
+        "replay index"
+      ],
+      "seasons": [
+        {
+          "config": "multi",
+          "task_id": "UFGA-s1",
+          "weeks": 20,
+          "llm_calls": 198,
+          "wall_s": 325.0634,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 1,
+          "guarded_actions": 2,
+          "critic_objections": 12,
+          "completed_revisions": 12,
+          "tool_results_by_agent": {
+            "weather": 18,
+            "crop": 9,
+            "planner": 35,
+            "coordinator": 20,
+            "critic": 7
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s1.jsonl",
+          "log_sha256": "958c18cda15f9cd9bedd3df8b6d20b91b9940c4174ea266f32cc2fbfd647a5c5",
+          "final": {
+            "grain_kg_ha": 9036.9,
+            "n_applied": 300.0,
+            "n_uptake": 224.93,
+            "n_leached": 91.28,
+            "n_gas": 13.79,
+            "irr_mm": 100.0,
+            "profit_usd_ha": 1216.27,
+            "reward": 1033.71
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s2",
+          "weeks": 20,
+          "llm_calls": 205,
+          "wall_s": 331.1919,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 1,
+          "guarded_actions": 0,
+          "critic_objections": 15,
+          "completed_revisions": 15,
+          "tool_results_by_agent": {
+            "weather": 20,
+            "crop": 14,
+            "planner": 35,
+            "critic": 12,
+            "coordinator": 11
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s2.jsonl",
+          "log_sha256": "afc3f5f9ba7bfe9a54b9b315870e4bb852b23786caea51ebdac8645069190b93",
+          "final": {
+            "grain_kg_ha": 8912.0,
+            "n_applied": 300.0,
+            "n_uptake": 274.21,
+            "n_leached": 41.66,
+            "n_gas": 14.13,
+            "irr_mm": 85.0,
+            "profit_usd_ha": 1202.54,
+            "reward": 1119.22
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s3",
+          "weeks": 20,
+          "llm_calls": 196,
+          "wall_s": 329.222,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 0,
+          "guarded_actions": 0,
+          "critic_objections": 13,
+          "completed_revisions": 13,
+          "tool_results_by_agent": {
+            "weather": 20,
+            "crop": 13,
+            "planner": 34,
+            "critic": 11,
+            "coordinator": 10
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s3.jsonl",
+          "log_sha256": "716a354b5758e7be9d7e88955a25678e2079ebe40e58012d8ce569101b210a63",
+          "final": {
+            "grain_kg_ha": 8912.0,
+            "n_applied": 300.0,
+            "n_uptake": 263.65,
+            "n_leached": 42.51,
+            "n_gas": 23.84,
+            "irr_mm": 97.0,
+            "profit_usd_ha": 1196.54,
+            "reward": 1111.52
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s4",
+          "weeks": 20,
+          "llm_calls": 209,
+          "wall_s": 332.7364,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 1,
+          "guarded_actions": 0,
+          "critic_objections": 15,
+          "completed_revisions": 15,
+          "tool_results_by_agent": {
+            "weather": 19,
+            "planner": 42,
+            "coordinator": 21,
+            "critic": 6,
+            "crop": 8
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s4.jsonl",
+          "log_sha256": "d99536999ccbf30395224926bf78409cadbefe9768dfdf09f364cceb6a17edd2",
+          "final": {
+            "grain_kg_ha": 8778.3,
+            "n_applied": 300.0,
+            "n_uptake": 264.48,
+            "n_leached": 51.01,
+            "n_gas": 11.71,
+            "irr_mm": 120.0,
+            "profit_usd_ha": 1162.31,
+            "reward": 1060.29
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s5",
+          "weeks": 20,
+          "llm_calls": 197,
+          "wall_s": 330.0389,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 0,
+          "guarded_actions": 1,
+          "critic_objections": 12,
+          "completed_revisions": 12,
+          "tool_results_by_agent": {
+            "crop": 14,
+            "weather": 19,
+            "planner": 34,
+            "critic": 14,
+            "coordinator": 10
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s5.jsonl",
+          "log_sha256": "521c31ec75f53e5aa27ca532b61997a2ea0aa77f41cec22e7d170faf32912051",
+          "final": {
+            "grain_kg_ha": 9056.0,
+            "n_applied": 300.0,
+            "n_uptake": 245.24,
+            "n_leached": 74.52,
+            "n_gas": 10.24,
+            "irr_mm": 129.0,
+            "profit_usd_ha": 1205.02,
+            "reward": 1055.98
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s6",
+          "weeks": 20,
+          "llm_calls": 193,
+          "wall_s": 323.7261,
+          "fallbacks": 1,
+          "fallback_causes": [
+            "Server disconnected without sending a response."
+          ],
+          "validation_errors": 0,
+          "guarded_actions": 1,
+          "critic_objections": 12,
+          "completed_revisions": 12,
+          "tool_results_by_agent": {
+            "planner": 35,
+            "critic": 12,
+            "coordinator": 20,
+            "weather": 18,
+            "crop": 7
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s6.jsonl",
+          "log_sha256": "bad3f538df2cf4dfd6b4c2371e0b3e4bc10f63a29a5c6d6dc7715dc743496b53",
+          "final": {
+            "grain_kg_ha": 8896.0,
+            "n_applied": 300.0,
+            "n_uptake": 227.64,
+            "n_leached": 88.5,
+            "n_gas": 13.86,
+            "irr_mm": 127.0,
+            "profit_usd_ha": 1178.82,
+            "reward": 1001.82
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s7",
+          "weeks": 20,
+          "llm_calls": 199,
+          "wall_s": 329.9405,
+          "fallbacks": 0,
+          "fallback_causes": [],
+          "validation_errors": 0,
+          "guarded_actions": 1,
+          "critic_objections": 15,
+          "completed_revisions": 15,
+          "tool_results_by_agent": {
+            "weather": 20,
+            "planner": 35,
+            "crop": 15,
+            "critic": 12,
+            "coordinator": 7
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s7.jsonl",
+          "log_sha256": "9ada7e7cd519d547d14ac9f5651fdc68300fb6277d2668189314f2b9260cef8c",
+          "final": {
+            "grain_kg_ha": 9068.8,
+            "n_applied": 300.0,
+            "n_uptake": 242.81,
+            "n_leached": 75.05,
+            "n_gas": 12.14,
+            "irr_mm": 155.0,
+            "profit_usd_ha": 1194.2,
+            "reward": 1044.1
+          }
+        },
+        {
+          "config": "multi",
+          "task_id": "UFGA-s8",
+          "weeks": 20,
+          "llm_calls": 184,
+          "wall_s": 322.3389,
+          "fallbacks": 1,
+          "fallback_causes": [
+            "Server disconnected without sending a response."
+          ],
+          "validation_errors": 0,
+          "guarded_actions": 0,
+          "critic_objections": 14,
+          "completed_revisions": 14,
+          "tool_results_by_agent": {
+            "weather": 20,
+            "planner": 33,
+            "critic": 12,
+            "crop": 10,
+            "coordinator": 1
+          },
+          "log": "results\\local-live-b2-eight-v2\\runs\\multi\\UFGA-s8.jsonl",
+          "log_sha256": "fa3e767be5e71aa9d6697729b798f7d59ea08592b625c449cecc3f0c9f39a67d",
+          "final": {
+            "grain_kg_ha": 8388.1,
+            "n_applied": 300.0,
+            "n_uptake": 241.94,
+            "n_leached": 39.42,
+            "n_gas": 8.66,
+            "irr_mm": 62.0,
+            "profit_usd_ha": 1124.98,
+            "reward": 1046.14
+          }
+        }
+      ]
+    }
+  ],
+  "shared_policy_runner": {
+    "model_backend": "vllm",
+    "synthetic_environment": true,
+    "task": {
+      "task_id": "UFGA-s1",
+      "site": "UFGA",
+      "weather_seed": 1,
+      "split": "dev"
+    },
+    "final": {
+      "grain_kg_ha": 6624.4,
+      "n_applied": 275.0,
+      "n_uptake": 175.4,
+      "n_leached": 82.49,
+      "n_gas": 12.11,
+      "irr_mm": 37.0,
+      "profit_usd_ha": 860.15,
+      "reward": 695.17
+    },
+    "stats": {
+      "llm_calls": 61,
+      "fallbacks": 0,
+      "wall_s": 25.9
+    },
+    "log": "runs/single/UFGA-s1.jsonl",
+    "log_sha256": "4e9f5be9a387da119ad82030a288b7557afe0a3b26520c8703508fbc6d8ee151",
+    "archive_log": "shared-single/UFGA-s1.jsonl"
+  },
+  "tests": {
+    "passed": 36,
+    "warnings": [
+      "Existing Starlette TestClient/httpx deprecation"
+    ]
+  },
+  "archive": {
+    "path": "results\\b1-b2-live-logs.zip",
+    "sha256": "a102d79c93b2ba711f4e7767daa0411a55fc8f35eb6c83b74323e81e999e028c",
+    "extract_into": "results/"
+  },
+  "remaining": [
+    "Person A validated simulator and prices/reward",
+    "Real-simulator B1/B2 contract check",
+    "B3 full 20-dev paired evaluation and diagnosed one-prompt iteration",
+    "B4 final evidence-based freeze and handoff to A; A owns held-out test",
+    "Investigate intermittent inference connection disconnects before controlled benchmarking",
+    "Team merge later; no push performed"
+  ]
+}

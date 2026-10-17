@@ -129,3 +129,34 @@ Its normal outputs are available to the UI. Summaries explicitly label toy/stub
 results as synthetic. Original isolated fixtures remain available through
 `uv run python scripts/check_stub_http.py` and `fixtures/dev.stub.jsonl`.
 `fixtures/replay.stub.jsonl` is a complete synthetic shared-runner log for C.
+
+## Live B1/B2 integration check (2026-10-17)
+
+Real Nemotron completed 20-week single-agent and five-agent seasons against the
+shared toy server. The shared synchronous single Policy also completed a season.
+The audit and eight-season concurrency results are in
+`results/b1-b2-live.json`; complete source logs, manifests and CSVs are preserved in
+`results/b1-b2-live-logs.zip`. Extract that archive into `results/` to audit again:
+
+```bash
+uv run python -m fieldtwin_agents.validation results/local-live-protocol-v2 results/local-live-b2-eight-v2 --output results/rechecked-live.json
+```
+
+`fixtures/replay.nemotron-toy.single.jsonl` and
+`fixtures/replay.nemotron-toy.multi.jsonl` are complete real-model replay samples
+for C. They use the toy environment and provisional prices. The maintained task
+checklist records exact fallback counts and the remaining work with A.
+The concurrent batch completed all 160 weeks with 1,581 model calls and two visible
+farmer fallbacks after HTTP connection disconnects. The GPU/container remained
+healthy; the transport cause is unconfirmed. Three invalid responses were corrected
+within the bounded loop. Both isolated corrected seasons had zero fallbacks. All
+36 automated tests pass. These are completion/reliability checks, not a controlled
+throughput or cost benchmark.
+
+The first live runs exposed tool summaries returned instead of decisions/critiques.
+Agent protocol 2 repeats the required format after tool results, retires completed
+read tools, preserves invalid content for correction and reserves the sixth turn for
+the final answer. Role system prompts and their existing freeze hashes are unchanged.
+Run manifests record the protocol version and distinguish synthetic environments
+from synthetic models. Paired prompt comparisons reject differing protocol versions.
+This is an integration reliability correction, not a measured crop-quality gain.

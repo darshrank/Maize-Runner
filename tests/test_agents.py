@@ -39,6 +39,74 @@ class GuardModel(StubModel):
 
 
 class AgentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_tool_summary_is_replaced_by_requested_critique(self):
+        class SummaryModel(StubModel):
+            async def complete(self, messages, tools):
+                context = json.loads(messages[1]["content"])
+                if context["output"] == "critique" and any(m["role"] == "tool" for m in messages):
+                    if messages[-1]["role"] == "tool":
+                        return {"content": "Here is what I found: budget=300; soil=30."}
+                    return {"content": '{"accept":true,"objection":""}'}
+                return await super().complete(messages, tools)
+        with tempfile.TemporaryDirectory() as tmp:
+            row = await run_season(Task("summary", "STUB", 1), "multi", StubEnvironment(1), SummaryModel(), tmp)
+            events = [json.loads(x) for x in (Path(tmp)/"multi/summary.jsonl").read_text().splitlines()]
+            self.assertEqual(row["fallbacks"], 0)
+            self.assertFalse(any("validation_error" in e["data"] for e in events))
+
+    async def test_last_model_turn_finishes_instead_of_reading_forever(self):
+        class RepeatingModel(StubModel):
+            async def complete(self, messages, tools):
+                if tools:
+                    return {"tool_calls": [{"id":"read", "function":{"name":"get_soil", "arguments":"{}"}}]}
+                return {"content": '{"n_kg_ha":0,"irr_mm":0,"reason":"Use existing soil evidence."}'}
+        with tempfile.TemporaryDirectory() as tmp:
+            row = await run_season(Task("repeat", "STUB", 1), "single", StubEnvironment(1), RepeatingModel(), tmp)
+            self.assertEqual(row["llm_calls"], 6)
+            self.assertEqual(row["fallbacks"], 0)
+
+    async def test_invalid_response_retained_for_model_correction(self):
+        class CorrectingModel(StubModel):
+            async def complete(self, messages, tools):
+                if not any(m["role"] == "assistant" and m["content"] == "Not JSON" for m in messages):
+                    return {"content": "Not JSON"}
+                return {"content": '{"n_kg_ha":0,"irr_mm":0,"reason":"Corrected response."}'}
+        with tempfile.TemporaryDirectory() as tmp:
+            row = await run_season(Task("correct", "STUB", 1), "single", StubEnvironment(1), CorrectingModel(), tmp)
+            self.assertEqual(row["llm_calls"], 2)
+            self.assertEqual(row["fallbacks"], 0)
+            events = [json.loads(x) for x in (Path(tmp)/"single/correct.jsonl").read_text().splitlines()]
+            error = next(e for e in events if "validation_error" in e["data"])
+            self.assertEqual(error["data"]["content"], "Not JSON")
+
+    async def test_audit_rejects_synthetic_model_and_corrupted_evidence(self):
+        import csv
+        from fieldtwin_agents.validation import audit_run
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)/"run"
+            await run_batch([Task("audit", "STUB", 1)], ["multi"], StubEnvironment(20), StubModel(), output)
+            with self.assertRaisesRegex(ValueError, "live Nemotron"):
+                audit_run(output)
+            report = audit_run(output, require_live=False)
+            self.assertEqual(report["seasons"][0]["weeks"], 20)
+            self.assertEqual(report["peak_overlapping_seasons"], 1)
+            path = output/"runs/multi/audit.jsonl"
+            original_log = path.read_text()
+            path.write_text('\n'.join(original_log.splitlines()[:-1])+'\n')
+            with self.assertRaisesRegex(ValueError, "terminal event"):
+                audit_run(output, require_live=False)
+            path.write_text(original_log)
+            csv_path = output/"eval.csv"
+            with csv_path.open(newline="") as f:
+                rows = list(csv.DictReader(f))
+            rows[0]["fallbacks"] = 1
+            with csv_path.open("w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+                writer.writeheader()
+                writer.writerows(rows)
+            with self.assertRaisesRegex(ValueError, "fallback"):
+                audit_run(output, require_live=False)
+
     async def test_all_configs_eight_parallel_and_log_contract(self):
         from fieldtwin_agents.contracts import CONFIGS
         with tempfile.TemporaryDirectory() as tmp:
@@ -167,6 +235,12 @@ class AgentTests(unittest.IsolatedAsyncioTestCase):
             result = record_iteration(a, b, "one critic hypothesis", Path(tmp)/"iterations.md")
             self.assertIn("SYNTHETIC", result)
             self.assertIn("0.000000", result)
+            manifest_path = b/"manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["agent_protocol_version"] += 1
+            manifest_path.write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "protocol"):
+                record_iteration(a, b, "confounded change", Path(tmp)/"iterations.md")
             (b/"eval.csv").write_text(",".join(CSV_FIELDS) + "\n")
             with self.assertRaises(ValueError):
                 analyze(b)

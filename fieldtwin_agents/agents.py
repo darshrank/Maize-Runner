@@ -8,6 +8,7 @@ from pathlib import Path
 from .contracts import Action, ROLE_TOOLS
 
 PROMPT_ROOT = Path(__file__).parent / "prompts"
+AGENT_PROTOCOL_VERSION = 2
 
 
 class PolicyFailure(Exception):
@@ -46,11 +47,27 @@ class AgentTeam:
         # submit_decision is an output channel, not a read tool or environment step.
         model_tools = (*tools, "submit_decision") if output == "action" else tools
         # System prefix is byte-identical for a given role/version across all seasons.
+        if output == "action":
+            output_guide = 'Return only {"n_kg_ha":number,"irr_mm":number,"reason":"one line"}, or call submit_decision. No prose or Markdown outside JSON.'
+        elif output == "critique":
+            output_guide = 'Judge the supplied proposal. Return only {"accept":true,"objection":""} or {"accept":false,"objection":"one concrete objection"}. No tool summary, prose or Markdown outside JSON.'
+        else:
+            output_guide = "Return the requested short specialist report using the available evidence."
         messages = [{"role": "system", "content": self.prompts[role]},
-                    {"role": "user", "content": json.dumps({**context, "output": output}, allow_nan=False)}]
-        for _ in range(6):
+                    {"role": "user", "content": json.dumps({**context, "output": output,
+                     "allowed_read_tools": tools, "output_instructions": output_guide}, allow_nan=False)}]
+        read = set()
+        for turn in range(6):
+            # Readings cannot change within a week; once all assigned reads are
+            # present, finish the role instead of allowing another reading cycle.
+            request_tools = model_tools
+            if read.issuperset(tools):
+                request_tools = ("submit_decision",) if output == "action" else ()
+            if turn == 5:
+                request_tools = ()
+                messages.append({"role": "user", "content": "The tool budget is exhausted. Finish now using existing evidence. " + output_guide.replace(", or call submit_decision", "")})
             self.llm_calls += 1
-            msg = await self.model.complete(messages, model_tools)
+            msg = await self.model.complete(messages, request_tools)
             if not isinstance(msg, dict):
                 raise PolicyFailure("model message is not an object")
             calls = msg.get("tool_calls")
@@ -64,7 +81,7 @@ class AgentTeam:
                         fn = call["function"]
                         name, call_id = fn["name"], call["id"]
                         log.emit(week, role, "tool_call", {"name": name, "args": fn["arguments"]})
-                        if name not in model_tools:
+                        if name not in request_tools:
                             raise ValueError(f"Tool {name!r} is not permitted for {role}")
                         if not isinstance(call_id, str) or not call_id or call_id in ids:
                             raise ValueError("Tool call IDs must be unique nonempty strings")
@@ -85,14 +102,16 @@ class AgentTeam:
                     log.emit(week, role, "message", {"validation_error": str(exc)})
                     state.bad()
                     # Invalid batches never execute, and never enter an invalid chat transcript.
-                    messages.append({"role": "user", "content": "Malformed tool call. Use only allowed tools with {} arguments and unique IDs."})
+                    messages.append({"role": "user", "content": f"Malformed tool call. Available read tools: {tools}; use {{}} arguments and unique IDs. " + output_guide})
                     continue
                 state.malformed = 0
                 messages.append({"role": "assistant", "content": msg.get("content"), "tool_calls": calls})
                 for name, call_id in parsed:
                     result = await self.env.tool(name, episode_id)
+                    read.add(name)
                     log.emit(week, role, "tool_result", {"name": name, "result": result})
                     messages.append({"role": "tool", "tool_call_id": call_id, "content": json.dumps(result, allow_nan=False)})
+                messages.append({"role": "user", "content": "Use the tool results to complete this role; do not merely summarize the tools. " + output_guide})
                 continue
             try:
                 content = msg.get("content")
@@ -111,9 +130,11 @@ class AgentTeam:
                 else:
                     answer = content
             except (ValueError, TypeError) as exc:
-                log.emit(week, role, "message", {"validation_error": str(exc)})
+                log.emit(week, role, "message", {"validation_error": str(exc), "content": msg.get("content")})
                 state.bad()
-                messages.append({"role": "user", "content": "Invalid response. Follow the requested output JSON schema exactly."})
+                if isinstance(msg.get("content"), str):
+                    messages.append({"role": "assistant", "content": msg["content"]})
+                messages.append({"role": "user", "content": "Invalid response. " + output_guide})
                 continue
             state.malformed = 0
             log.emit(week, role, "message", {"content": content})

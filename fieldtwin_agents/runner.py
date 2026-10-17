@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from .agents import AgentTeam, PolicyFailure, PROMPT_ROOT
+from .agents import AGENT_PROTOCOL_VERSION, AgentTeam, PolicyFailure, PROMPT_ROOT
 from .contracts import Action, CONFIGS, CSV_FIELDS, FINAL_FIELDS, EventLog, number, safe_name
 
 
@@ -62,6 +62,8 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=None,
             raise ValueError("Reset must start at week 0")
         log.emit(0, "env", "message", {"reset": reset, "task": task.reset_body()})
         log.emit(0, "coordinator", "message", {"episode_id": episode_id, "obs": obs,
+                 "agent_protocol_version": AGENT_PROTOCOL_VERSION,
+                 "synthetic_environment": bool(env.synthetic), "synthetic_model": bool(model.synthetic),
                  "synthetic": bool(env.synthetic or model.synthetic), "prompt_version": prompt_version,
                  "prompt_hashes": prompt_hashes(prompt_version), "n_cap": n_cap})
         for _ in range(max_weeks):
@@ -112,6 +114,8 @@ async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwar
         kwargs["n_cap"] = environment_limits()["max_n_kg_ha_per_season"]
     version = kwargs.get("prompt_version", "v1")
     metadata = {"synthetic": bool(env.synthetic or model.synthetic), "configs": configs,
+                "agent_protocol_version": AGENT_PROTOCOL_VERSION,
+                "synthetic_environment": bool(env.synthetic), "synthetic_model": bool(model.synthetic),
                 "task_ids": [t.task_id for t in tasks], "split": "dev", "concurrency": concurrency,
                 "task_specs": [t.reset_body() for t in tasks],
                 "model": getattr(model, "model", type(model).__name__), "environment": endpoint_identity(env),

@@ -44,6 +44,8 @@ def analyze(folder):
 def record_iteration(before, after, change, output):
     old, old_rows = read_run(before)
     new, new_rows = read_run(after)
+    if old.get("agent_protocol_version", 1) != new.get("agent_protocol_version", 1):
+        raise ValueError("Paired comparison requires matching agent protocol versions")
     for key in ("synthetic", "configs", "task_ids", "n_cap", "fallback_schedule", "management"):
         if old[key] != new[key]:
             raise ValueError(f"Paired comparison requires matching {key}")

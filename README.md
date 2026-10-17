@@ -85,3 +85,8 @@ tools while retaining the action submission channel. Tool submission never steps
 See [PERSON_B.md](PERSON_B.md) for serving and dev experiments, and
 [TASKS_PERSON_B.md](TASKS_PERSON_B.md) for completed work and remaining real milestones.
 Live B0 evidence: [host configuration](results/b0-host.json) and [parsed tool-call smoke test](results/b0-smoke.json).
+Live B1/B2 integration evidence: [audit](results/b1-b2-live.json) and
+[complete logs](results/b1-b2-live-logs.zip). These use real Nemotron with the shared
+toy simulator; real crop evaluation still depends on A. Complete replay samples
+are in `fixtures/replay.nemotron-toy.single.jsonl` and
+`fixtures/replay.nemotron-toy.multi.jsonl`.

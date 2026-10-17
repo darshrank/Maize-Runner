@@ -74,3 +74,23 @@ The cloud instance/container remains running for subsequent dev work. The select
 provider has no stop/start; the quoted compute rate is $3/hour. Preserve code and
 results before eventually deleting the instance. No GPU cost saving or crop-quality
 claim has been measured yet.
+
+## B1/B2 live-model validation on the shared toy server
+
+- [x] Verify the existing vLLM endpoint and start the local shared toy server on port 9000.
+- [x] Complete and audit a single-agent 20-week dev season with real Nemotron: 40 model calls, zero fallbacks after the protocol correction.
+- [x] Verify the shared synchronous Policy/runner integration with real Nemotron: 61 model calls, zero fallbacks over 20 weeks.
+- [x] Complete and audit a five-agent 20-week dev season: 201 calls, zero fallbacks, 13 critic objections and 13 completed planner revisions.
+- [x] Complete eight concurrent dev seasons (UFGA-s1 through UFGA-s8): all 160 weeks audited; peak overlap eight, 1,581 model calls, two visible HTTP connection fallbacks and three recovered validation errors.
+- [x] Fix observed prose tool summaries/exhausted tool loops with agent protocol 2; preserve invalid content for correction. Verify the action guard and pass all 36 tests, including protocol-comparison rejection.
+- [x] Save results/b1-b2-live.json and results/b1-b2-live-logs.zip (13 complete season records including initial diagnostic runs and shared Policy verification), plus two complete real-model replay fixtures for C.
+- [x] Verify every audited action stays within weekly/season caps without server clamping; confirm role tool permissions, one planner revision maximum, final CSV/log agreement and replay index entries.
+- [ ] Investigate intermittent inference connection disconnects before controlled performance benchmarking: two of 160 batch decisions used the farmer fallback. The GPU/container stayed healthy and all seasons completed; the underlying transport cause is unconfirmed.
+
+These checks use real Nemotron inference but a synthetic crop environment. They do
+not establish real crop performance or complete B3's real-simulator improvement requirement.
+
+Next dependency: A supplies the validated crop simulator and final prices/reward.
+Then verify its real tool payloads with single/multi, run all 20 dev tasks, inspect
+the worst three, make one diagnosed prompt change, rerun, and freeze the chosen
+prompts. A owns the held-out test. Keep person-B local for the team's later merge.

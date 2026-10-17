@@ -7,7 +7,7 @@ import os
 import httpx
 
 from agents.policies.base import Decision, Policy
-from fieldtwin_agents.agents import AgentTeam, PolicyFailure
+from fieldtwin_agents.agents import AGENT_PROTOCOL_VERSION, AgentTeam, PolicyFailure
 from fieldtwin_agents.clients import MODEL, VLLMClient
 from fieldtwin_agents.contracts import number
 from fieldtwin_agents.runner import prompt_hashes
@@ -88,6 +88,7 @@ class NemotronPolicy(Policy):
         remaining = max(0.0, self.n_cap - applied)
         if week == 0:
             log.event(week, "coordinator", "message", {
+                "agent_protocol_version": AGENT_PROTOCOL_VERSION,
                 "model_backend": self.backend, "model": self.model_name if self.backend == "vllm" else "StubModel",
                 "synthetic_model": self.backend == "stub", "simulator": self.config["env"]["simulator"],
                 "prompt_version": self.prompt_version, "prompt_hashes": self.hashes,
