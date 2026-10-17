@@ -9,6 +9,7 @@ from .contracts import Action, ROLE_TOOLS
 
 PROMPT_ROOT = Path(__file__).parent / "prompts"
 AGENT_PROTOCOL_VERSION = 2
+PROMPT_VERSIONS = ("v1", "v2", "v3")
 
 
 class PolicyFailure(Exception):
@@ -29,7 +30,7 @@ class AgentTeam:
     def __init__(self, model, env, config="multi", prompt_version="v1"):
         self.model, self.env, self.config = model, env, config
         folder = PROMPT_ROOT / prompt_version
-        if prompt_version not in ("v1", "v2"):
+        if prompt_version not in PROMPT_VERSIONS:
             raise ValueError("Unknown prompt version")
         self.prompts = {r: (folder / f"{r}.txt").read_text(encoding="utf-8") for r in ROLE_TOOLS}
         self.llm_calls = 0

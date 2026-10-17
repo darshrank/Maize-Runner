@@ -1,0 +1,61 @@
+{
+  "status": "Baseline running; candidate prepared for automatic paired evaluation after baseline audit",
+  "source": {
+    "a_env": "64b38f9",
+    "integration_merge": "cd7bea5"
+  },
+  "baseline": {
+    "directory": "results/dssat-dev-v1",
+    "prompt_version": "v1",
+    "configs": [
+      "single",
+      "multi"
+    ],
+    "dev_years": [
+      1990,
+      2009
+    ],
+    "seasons": 40,
+    "concurrency": 8
+  },
+  "diagnosis": {
+    "completed_single_seasons": 20,
+    "worst_single_tasks": [
+      "UFGA-2001",
+      "UFGA-2000",
+      "UFGA-2003"
+    ],
+    "observed": "Dry soil weeks get zero irrigation; coordinator reasons sometimes falsely treat nitrogen exhaustion or historical spending as a ban on water.",
+    "example": {
+      "task": "UFGA-2001",
+      "week": 12,
+      "soil_water_frac": 0.083,
+      "remaining_n": 0,
+      "n_kg_ha": 0,
+      "irr_mm": 0
+    }
+  },
+  "candidate": {
+    "directory": "results/dssat-dev-v3",
+    "prompt_version": "v3",
+    "only_changed_role_prompt": "coordinator.txt",
+    "hypothesis": "Explicitly separate N and water budgets and use the existing farmer watering rule (25 mm below soil_water_frac 0.35), even when nitrogen is exhausted.",
+    "changes_to_prices_weather_caps_reward": false
+  },
+  "evaluation": "Same 20 dev years, configs, model, runtime protocol, limits, prices and environment. One stochastic rollout per policy/year/version; this does not isolate sampling noise or establish field performance.",
+  "host": {
+    "instance": "fieldtwin-b0",
+    "application": "/ephemeral/fieldtwin/app-a-env",
+    "environment": "http://127.0.0.1:9001",
+    "model": "http://127.0.0.1:8000/v1",
+    "progress": "results/b3-progress.json",
+    "candidate_log": "/ephemeral/fieldtwin/b3-candidate.log"
+  },
+  "pending": [
+    "Audit baseline and candidate completion",
+    "Review paired reward/leaching/fallback results and all worst-three multi logs",
+    "Select final prompt snapshot and verify real-model ablations",
+    "A alone executes held-out test"
+  ],
+  "held_out_test_executed": false
+}

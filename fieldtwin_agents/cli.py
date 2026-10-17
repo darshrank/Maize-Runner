@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .clients import MODEL, EnvironmentClient, VLLMClient
+from .agents import PROMPT_VERSIONS
 from .contracts import CONFIGS, load_dev_tasks
 from .evaluation import analyze, record_iteration
 from .runner import endpoint_identity, load_schedule, prompt_hashes, run_batch
@@ -86,7 +87,7 @@ def main(argv=None):
     r.add_argument("--concurrency", type=int, default=8)
     r.add_argument("--n-cap", type=float, default=None, help="Defaults to config.yaml season cap")
     r.add_argument("--farmer-schedule", help="JSON map of week to n_kg_ha and irr_mm; default is provisional")
-    r.add_argument("--prompt-version", choices=("v1", "v2"), default="v1")
+    r.add_argument("--prompt-version", choices=PROMPT_VERSIONS, default="v1")
     r.add_argument("--freeze-manifest")
     s = sub.add_parser("smoke", help="Actual vLLM automatic tool-call smoke test")
     s.add_argument("--output", help="Save successful live verification evidence to a new JSON file")
@@ -104,7 +105,7 @@ def main(argv=None):
     c.add_argument("--change", required=True)
     c.add_argument("--output", default="results/iterations.md")
     f = sub.add_parser("freeze")
-    f.add_argument("--prompt-version", choices=("v1", "v2"), default="v1")
+    f.add_argument("--prompt-version", choices=PROMPT_VERSIONS, default="v1")
     f.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     if args.command == "run":

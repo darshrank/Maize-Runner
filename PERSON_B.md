@@ -79,7 +79,7 @@ Set `VLLM_API_KEY` only if the server requires it; never put tokens in source or
 
 ```bash
 uv run python -m fieldtwin_agents smoke --output results/b0-smoke.json
-uv run python -m agents.run --policy multi --task-id UFGA-s3 --split dev
+uv run python -m agents.run --policy multi --task-id UFGA-1992 --split dev
 ```
 
 After A's real-weather merge, use task IDs such as `UFGA-1992` and reset payloads
@@ -168,3 +168,21 @@ the final answer. Role system prompts and their existing freeze hashes are uncha
 Run manifests record the protocol version and distinguish synthetic environments
 from synthetic models. Paired prompt comparisons reject differing protocol versions.
 This is an integration reliability correction, not a measured crop-quality gain.
+
+## DSSAT dev experiment in progress
+
+The integration merge is `cd7bea5` (parents: B's live verification and A's
+`64b38f9`). Brev hosts the merged source at `/ephemeral/fieldtwin/app-a-env`.
+The baseline is `results/dssat-dev-v1`, single and multi on all 20 dev years.
+The candidate is `v3`, changing only the coordinator to distinguish the nitrogen
+cap from irrigation and use the shared farmer watering rule during dry weeks.
+The completed single baseline's worst three logs motivated this hypothesis.
+The earlier `v2` critic rain hypothesis remains unchanged and is not this experiment.
+
+`scripts/run_b3_candidate.sh` waits for the baseline audit/diagnostics, runs the
+candidate into a new directory, audits it and records paired deltas. Its background
+progress file is `results/b3-progress.json`, with stdout/stderr in
+`/ephemeral/fieldtwin/b3-candidate.log`. Check that status and existing outputs before
+running anything again. See `results/dssat-dev-experiment-plan.json` for exact paths.
+Prompt selection, ablation validation and the final freeze remain pending review
+of the full results. All work uses dev years only; A owns held-out test evaluation.

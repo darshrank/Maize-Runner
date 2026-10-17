@@ -17,6 +17,7 @@ results/*
 !results/b0-smoke.json
 !results/b1-b2-live.json
 !results/b1-b2-live-logs.zip
+!results/dssat-dev-experiment-plan.json
 /tmp/
 /build/
 /dist/

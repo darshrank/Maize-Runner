@@ -107,3 +107,20 @@ prompts. A owns the held-out test. Keep person-B local for the team's later merg
 - [ ] Make one diagnosed role-prompt change, rerun the paired dev experiment, record measured results including negative changes.
 - [ ] Select/freeze prompts from that evidence, verify ablations and give A/C reproducible handoff artifacts.
 - [ ] A runs held-out test once; B does not execute test seasons.
+
+Current run checkpoint (2026-10-17): all 20 single/v1 DSSAT dev seasons have
+terminal logs; multi/v1 is running. Baseline output is on `fieldtwin-b0` under
+`/ephemeral/fieldtwin/app-a-env/results/dssat-dev-v1`. The baseline command audits
+and analyzes all 40 seasons when finished. A durable background job then runs the
+40-season v3 candidate, audits it, and records paired deltas. Its progress is
+`results/b3-progress.json` on that host, with log
+`/ephemeral/fieldtwin/b3-candidate.log`. Do not relaunch into existing directories.
+
+- [x] Inspect the completed single baseline's worst three logs: UFGA-2001, UFGA-2000, UFGA-2003. Identify missed dry-week irrigation and false water-budget restrictions.
+- [x] Prepare v3 with only coordinator.txt changed; keep v1 and the earlier unvalidated v2 critic variant unchanged. Verify a candidate freeze and 40 synthetic CLI seasons.
+- [ ] Review baseline multi's worst three complete logs and the queued v3 paired results. The candidate is not yet selected or frozen for final use.
+
+The exact hypothesis and resume locations are recorded in
+`results/dssat-dev-experiment-plan.json`. Model/simulator execution is colocated
+on Brev; no HTTP disconnect fallback has been observed in the baseline so far.
+This does not establish the cause of the earlier tunnel-path disconnects.

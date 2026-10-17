@@ -10,12 +10,12 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from .agents import AGENT_PROTOCOL_VERSION, AgentTeam, PolicyFailure, PROMPT_ROOT
+from .agents import AGENT_PROTOCOL_VERSION, AgentTeam, PolicyFailure, PROMPT_ROOT, PROMPT_VERSIONS
 from .contracts import Action, CONFIGS, CSV_FIELDS, FINAL_FIELDS, EventLog, number, safe_name
 
 
 def prompt_hashes(version):
-    if version not in ("v1", "v2"):
+    if version not in PROMPT_VERSIONS:
         raise ValueError("Unknown prompt version")
     return {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted((PROMPT_ROOT / version).glob("*.txt"))}
