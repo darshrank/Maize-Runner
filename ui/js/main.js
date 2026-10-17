@@ -233,9 +233,12 @@ async function showConfig(config) {
   setWeek(state.week);
 }
 
-function setWeek(k) {
+// Ripples fire when the shown week changes, from the data.js weeks model (storm, N dose, leaching).
+function setWeek(k, { ripple = true } = {}) {
+  const prev = state.week;
   state.week = Math.max(0, Math.min(maxW(), k));
   field.setTarget(weekState(shownRun(), state.week));
+  if (ripple && state.week !== prev) field.trigger(data.weekEvents(shownRun(), state.week, theme.stormMm));
   timeline.setWeek(state.week);
   renderHud();
   renderCounters();
@@ -306,7 +309,8 @@ function notice(text) {
 async function main() {
   applyCssTheme();
   stage = new Stage($("stage"), { lite: data.LITE });
-  field = new Field({ lite: data.LITE });
+  const reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  field = new Field({ lite: data.LITE, reduceMotion, pixelRatio: stage.pixelRatio });
   stage.addField(field, 0);
   timeline = new Timeline($("timeline"), { onSeek: setWeek, onPickRow: showConfig });
   bind();

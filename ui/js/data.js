@@ -208,6 +208,22 @@ export function buildRun(config, task, events) {
   };
 }
 
+// Data events for one week, in beat order, for the field ripples (field3d.js trigger()):
+//   storm: weekly.rain_mm above stormMm; n: the chosen decision's n_kg_ha > 0; leach: weekly.n_leached > 0.05
+// Amounts are the logged values. Harvest and missing weeks have no events.
+export function weekEvents(run, k, stormMm) {
+  const w = run && run.weeks[k];
+  if (!w || w.harvest) return [];
+  const events = [];
+  const rain = w.weekly ? num(w.weekly.rain_mm) : null;
+  const n = w.decision ? num(w.decision.n_kg_ha) : null;
+  const leached = w.weekly ? num(w.weekly.n_leached) : null;
+  if (rain !== null && rain > stormMm) events.push({ kind: "storm", amount: rain });
+  if (n !== null && n > 0) events.push({ kind: "n", amount: n });
+  if (leached !== null && leached > 0.05) events.push({ kind: "leach", amount: leached });
+  return events;
+}
+
 // ---------------------------------------------------------------- weather
 
 export async function loadWeather(site, year) {

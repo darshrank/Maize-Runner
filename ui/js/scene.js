@@ -2,7 +2,10 @@
 // Fields are added with addField(field, x); unit 2 places a second one beside the first.
 //
 // Camera: slow auto-orbit, drag to orbit (auto-orbit resumes after a pause), double click to reset.
-// ?lite=1: no bloom (the fields also drop transmission).
+// Bloom: threshold 1.0, so only HDR values bloom (groundwater glow, unit 2 particles), never the 1px edges.
+// ?lite=1: no bloom.
+// Shader safety: if the edge shader (edgeMaterial.js) fails to compile or link, every field switches to its
+// fallback glass material and the GL logs go to the console.
 
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
@@ -25,6 +28,12 @@ export class Stage {
     r.setClearColor(theme.color.bg, 1);
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.0;
+    r.debug.onShaderError = (gl, program, vs, fs) => {
+      const log = [gl.getProgramInfoLog(program), gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs)].filter(Boolean).join("\n");
+      const edge = (gl.getShaderSource(vs) || "").includes("aFlash");
+      console.error(`FieldTwin: shader failed${edge ? " (edge material, falling back to glass)" : ""}\n${log}`);
+      if (edge) for (const f of this.fields) f.useFallback();
+    };
     container.appendChild(r.domElement);
 
     this.scene = new THREE.Scene();
@@ -64,8 +73,13 @@ export class Stage {
     this.resize();
   }
 
+  get pixelRatio() {
+    return this.renderer.getPixelRatio();
+  }
+
   addField(field, x = 0) {
     field.group.position.x = x;
+    field.setPixelRatio(this.pixelRatio);
     this.scene.add(field.group);
     this.fields.push(field);
   }
@@ -79,6 +93,12 @@ export class Stage {
 
   resize() {
     const w = this.container.clientWidth || window.innerWidth, h = this.container.clientHeight || window.innerHeight;
+    const ratio = Math.min(window.devicePixelRatio, 2);   // the window may move to another display
+    if (ratio !== this.renderer.getPixelRatio()) {
+      this.renderer.setPixelRatio(ratio);
+      if (this.composer) this.composer.setPixelRatio(ratio);
+    }
+    for (const f of this.fields || []) f.setPixelRatio(ratio);   // edges stay 1 CSS px
     this.renderer.setSize(w, h);
     if (this.composer) this.composer.setSize(w, h);
     this.camera.aspect = w / h;

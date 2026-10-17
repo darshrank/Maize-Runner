@@ -114,6 +114,7 @@ select option { background: var(--bg); }
 .sw.canopy { background: var(--canopy-healthy); }
 .sw.water { background: var(--water); }
 .sw.leach { background: var(--leach); }
+.legend .ripples { display: block; margin-top: 6px; }
 
 .storm {
   position: absolute; top: 22px; left: 50%; transform: translateX(-50%);
