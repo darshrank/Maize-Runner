@@ -1,0 +1,93 @@
+/* FieldTwin replay UI. NVIDIA look: black, green #76b900, clean sans. */
+:root {
+  --bg: #000;
+  --panel: #0d0d0d;
+  --line: #222;
+  --text: #e8e8e8;
+  --muted: #8a8a8a;
+  --green: #76b900;
+  --red: #ff4d4d;
+  --rain: #4fa8ff;
+  --storm: #c9e6ff;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- top bar ---- */
+#topbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 10px 16px; border-bottom: 2px solid var(--green); background: var(--panel);
+}
+.brand { font-weight: 700; font-size: 16px; letter-spacing: 0.5px; margin-right: 8px; }
+.logo { color: var(--green); }
+#topbar label { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+select, button {
+  background: #111; color: var(--text); border: 1px solid #333; border-radius: 3px;
+  padding: 4px 8px; font: inherit;
+}
+button#play-btn { width: 40px; color: var(--green); border-color: var(--green); cursor: pointer; }
+.slider input { accent-color: var(--green); width: 220px; }
+#week-label { color: var(--text); min-width: 52px; }
+
+/* ---- main layout ---- */
+#layout { flex: 1; display: flex; min-height: 0; }
+#fields { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 8px; padding: 8px; min-width: 0; min-height: 0; }
+.field-panel {
+  display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel);
+  cursor: pointer; min-width: 0; min-height: 0;
+}
+.field-panel.selected { border-color: var(--green); }
+.field-title { padding: 6px 10px; font-weight: 600; }
+.field-title .side { color: var(--green); margin-right: 4px; }
+.field-canvas { flex: 1; min-height: 240px; position: relative; }
+.field-canvas canvas { display: block; position: absolute; inset: 0; }   /* absolute: no resize feedback loop */
+.field-canvas .empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted);
+}
+
+/* ---- counters under each field ---- */
+.counters { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); }
+.counter { padding: 6px 10px; }
+.counter .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.counter .v { font-size: 16px; font-variant-numeric: tabular-nums; }
+.counter.final .v { color: var(--green); }
+.counter.leach .v { color: var(--red); }
+
+/* ---- log panel ---- */
+#log-panel { width: 360px; border-left: 1px solid var(--line); display: flex; flex-direction: column; background: var(--panel); }
+.log-header { padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--muted); }
+#log { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.bubble { border-radius: 8px; padding: 8px 10px; background: #161616; border-left: 3px solid var(--agent, #666); }
+.bubble .who { font-size: 11px; color: var(--agent, #888); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.bubble.decision { background: #12190a; }
+.bubble.decision .reason { font-weight: 700; }
+.bubble.fallback { border-left-color: #ffb300; }
+.bubble details summary { cursor: pointer; color: var(--muted); }
+.bubble pre { white-space: pre-wrap; word-break: break-word; font-size: 11px; color: #bbb; margin: 6px 0 0; }
+
+/* ---- weather strip ---- */
+#weather-strip {
+  height: 84px; display: flex; align-items: flex-end; gap: 4px; padding: 8px 16px 18px;
+  border-top: 1px solid var(--line); background: var(--panel); position: relative;
+}
+.rain-bar { flex: 1; position: relative; height: 100%; display: flex; align-items: flex-end; cursor: pointer; }
+.rain-bar .fill { width: 100%; background: var(--rain); opacity: 0.6; min-height: 1px; }
+.rain-bar.storm .fill { background: var(--storm); opacity: 1; box-shadow: 0 0 8px var(--storm); }
+.rain-bar.current { outline: 1px solid var(--green); outline-offset: 2px; }
+.rain-bar .lbl { position: absolute; bottom: -15px; width: 100%; text-align: center; font-size: 10px; color: var(--muted); }
+.rain-bar .mm { position: absolute; top: -2px; width: 100%; text-align: center; font-size: 10px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  #layout { flex-direction: column; }
+  #fields { grid-template-columns: 1fr; }
+  #log-panel { width: auto; height: 300px; border-left: none; border-top: 1px solid var(--line); }
+}

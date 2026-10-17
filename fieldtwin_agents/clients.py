@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import json
+from functools import lru_cache
+from pathlib import Path
 import httpx
 
 from .contracts import TOOLS
@@ -8,11 +11,16 @@ from .contracts import TOOLS
 MODEL = "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
 
 
+@lru_cache(maxsize=1)
+def tool_schemas():
+    """One authoritative schema file shared with the walking skeleton."""
+    path = Path(__file__).resolve().parent.parent / "agents" / "tools.json"
+    schemas = json.loads(path.read_text(encoding="utf-8"))
+    return {schema["function"]["name"]: schema for schema in schemas}
+
+
 def tool_schema(name):
-    return {"type": "function", "function": {
-        "name": name, "description": f"Read this episode's {name.removeprefix('get_')}; no future truth.",
-        "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
-    }}
+    return tool_schemas()[name]
 
 
 class EnvironmentClient:

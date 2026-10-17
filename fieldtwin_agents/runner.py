@@ -30,8 +30,7 @@ def endpoint_identity(client):
 
 def load_schedule(path=None):
     if path is None:
-        # Temporary split schedule, explicitly pending A's authoritative farmer schedule.
-        return {0: (40.0, 0.0), 5: (40.0, 0.0), 9: (40.0, 0.0)}
+        return None  # Use the shared adaptive farmer policy.
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     result = {}
     for week, action in data.items():
@@ -42,15 +41,17 @@ def load_schedule(path=None):
     return result
 
 
-async def run_season(task, config, env, model, run_dir, *, n_cap=240.0,
+async def run_season(task, config, env, model, run_dir, *, n_cap=None,
                      schedule=None, prompt_version="v1", max_weeks=60):
     if config not in CONFIGS:
         raise ValueError("Unknown config")
     if task.split != "dev":
         raise ValueError("Person B never runs test tasks")
+    from .management import environment_limits, farmer_fallback
+    limits = environment_limits()
+    n_cap = limits["max_n_kg_ha_per_season"] if n_cap is None else n_cap
     if number(n_cap) < 0 or max_weeks <= 0:
         raise ValueError("Invalid nitrogen cap or season bound")
-    schedule = load_schedule() if schedule is None else schedule
     agent = AgentTeam(model, env, config, prompt_version)
     log = EventLog(Path(run_dir) / config / f"{safe_name(task.task_id)}.jsonl")
     start, applied, fallbacks = time.perf_counter(), 0.0, 0
@@ -59,6 +60,7 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=240.0,
         episode_id, obs, week = reset["episode_id"], reset["obs"], reset["week"]
         if week != 0:
             raise ValueError("Reset must start at week 0")
+        log.emit(0, "env", "message", {"reset": reset, "task": task.reset_body()})
         log.emit(0, "coordinator", "message", {"episode_id": episode_id, "obs": obs,
                  "synthetic": bool(env.synthetic or model.synthetic), "prompt_version": prompt_version,
                  "prompt_hashes": prompt_hashes(prompt_version), "n_cap": n_cap})
@@ -67,24 +69,25 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=240.0,
                 action = await agent.decide(obs, episode_id, week, n_cap - applied, log)
             except (PolicyFailure, httpx.HTTPError) as exc:
                 fallbacks += 1
-                n, irr = schedule.get(week, (0.0, 0.0))
-                action = Action(n, irr, "Farmer schedule fallback: policy response unavailable or invalid.")
+                action = farmer_fallback(week, obs, schedule)
                 log.emit(week, "coordinator", "fallback", {"cause": str(exc), "fallbacks": fallbacks,
                          "schedule_action": action.as_dict()})
-            guarded = action.guarded(n_cap - applied)
-            log.emit(week, "coordinator", "decision", {**guarded.as_dict(),
-                     "guarded": action != guarded, "proposed": action.as_dict()})
+            guarded = action.guarded(n_cap - applied, limits["max_n_kg_ha_per_week"], limits["max_irr_mm_per_week"])
+            if action != guarded:
+                log.emit(week, "coordinator", "message", {"guarded": True, "proposed": action.as_dict()})
+            log.emit(week, "coordinator", "decision", guarded.as_dict())
             # Environment errors propagate. Retrying a timed-out step could double apply N.
             step = await env.step(episode_id, guarded)
             if type(step.get("done")) is not bool or step.get("week") != week + 1:
                 raise ValueError("Step must advance exactly one week and return boolean done")
             applied += guarded.n_kg_ha
-            log.emit(week, "coordinator", "tool_result", {"name": "step", "result": step})
+            log.emit(week, "env", "step_result", step)
             obs, week = step["obs"], step["week"]
             if step["done"]:
                 final = step["final"]
                 for name in FINAL_FIELDS:
                     number(final[name])
+                log.emit(week, "env", "final", final)
                 return {"config": config, "task_id": task.task_id, "split": task.split,
                         **{k: final[k] for k in FINAL_FIELDS}, "llm_calls": agent.llm_calls,
                         "wall_s": round(time.perf_counter() - start, 4), "fallbacks": fallbacks}
@@ -104,13 +107,17 @@ async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwar
     output = Path(output)
     # Reserve an entire run directory, preventing partial overwrites or mixed evaluations.
     output.mkdir(parents=True, exist_ok=False)
+    from .management import environment_limits, management_provenance
+    if kwargs.get("n_cap") is None:
+        kwargs["n_cap"] = environment_limits()["max_n_kg_ha_per_season"]
     version = kwargs.get("prompt_version", "v1")
     metadata = {"synthetic": bool(env.synthetic or model.synthetic), "configs": configs,
                 "task_ids": [t.task_id for t in tasks], "split": "dev", "concurrency": concurrency,
                 "task_specs": [t.reset_body() for t in tasks],
                 "model": getattr(model, "model", type(model).__name__), "environment": endpoint_identity(env),
                 "prompt_version": version, "prompt_hashes": prompt_hashes(version),
-                "n_cap": kwargs.get("n_cap", 240.0), "fallback_schedule": kwargs.get("schedule", load_schedule())}
+                "n_cap": kwargs["n_cap"], "fallback_schedule": kwargs.get("schedule"),
+                "management": management_provenance()}
     (output / "manifest.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     semaphore = asyncio.Semaphore(concurrency)
     async def one(task, config):
@@ -123,6 +130,9 @@ async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwar
         writer.writeheader()
         writer.writerows(rows)
     errors = [str(r) for r in results if isinstance(r, BaseException)]
+    index = {c: [r["task_id"] for r in rows if r["config"] == c] for c in configs}
+    (output / "runs").mkdir(exist_ok=True)
+    (output / "runs" / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     if errors:
         (output / "errors.json").write_text(json.dumps(errors, indent=2), encoding="utf-8")
         raise RuntimeError(f"{len(errors)} seasons failed; partial results and errors saved under {output}")

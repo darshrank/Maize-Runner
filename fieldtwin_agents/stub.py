@@ -88,10 +88,11 @@ class StubModel:
     async def complete(self, messages, tools):
         await asyncio.sleep(0)
         context = json.loads(messages[1]["content"])
-        if tools and not any(m["role"] == "tool" for m in messages):
+        read_tools = [t for t in tools if t != "submit_decision"]
+        if read_tools and not any(m["role"] == "tool" for m in messages):
             return {"role": "assistant", "content": None, "tool_calls": [
                 {"id": f"stub-{i}", "type": "function", "function": {"name": t, "arguments": "{}"}}
-                for i, t in enumerate(tools)]}
+                for i, t in enumerate(read_tools)]}
         output = context["output"]
         if output == "critique":
             content = json.dumps({"accept": True, "objection": ""})

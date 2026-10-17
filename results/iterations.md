@@ -2,6 +2,10 @@
 
 No real simulator or Nemotron dev results exist yet. B3 remains pending.
 
+The first synthetic entry predates main's walking skeleton (commit `7ce7e4b`).
+The skeleton integration rechecks the process with shared config limits, farmer
+fallback, tool schemas and replay events. Neither entry is a real model improvement.
+
 ## Prepared hypothesis
 
 `v1` is the initial prompt set. `v2` changes only `critic.txt`: when the Weather report
@@ -25,6 +29,27 @@ Change: Add one unvalidated rain-deferral critic hypothesis; synthetic model ign
 Changed prompt: critic.txt
 
 Before: `results/local-validation-v1`; after: `results/local-validation-v2`.
+
+- single: 20 paired dev seasons; mean reward delta 0.000000.
+
+- multi: 20 paired dev seasons; mean reward delta 0.000000.
+
+- multi_no_critic: 20 paired dev seasons; mean reward delta 0.000000.
+
+- multi_no_weather: 20 paired dev seasons; mean reward delta 0.000000.
+
+- multi_no_tools: 20 paired dev seasons; mean reward delta 0.000000.
+
+
+No real crop-performance claim is supported by synthetic fixtures.
+
+## SYNTHETIC plumbing only iteration
+
+Change: Skeleton-aligned prompts; v2 differs only in the unvalidated critic rain rule
+
+Changed prompt: critic.txt
+
+Before: `results/local-skeleton-v1`; after: `results/local-skeleton-v2`.
 
 - single: 20 paired dev seasons; mean reward delta 0.000000.
 

@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-17",
+  "branch": "person-B",
+  "integrated_main_commit": "79b4306",
+  "synthetic": true,
+  "checks": {
+    "dependency_lock": "uv sync --frozen and uv lock --check passed; main lock unchanged",
+    "pytest": {"command": "python -m uv run --frozen pytest -q", "passed": 30},
+    "skeleton_http_smoke": {
+      "command": "python -m uv run --frozen python scripts/check_skeleton_agents.py",
+      "passed": true,
+      "standalone_policies": ["farmer", "single", "multi"],
+      "eval_configs": ["no_n", "farmer", "hindsight", "single", "multi", "multi_no_critic", "multi_no_weather", "multi_no_tools"],
+      "dev_tasks_per_config": 3,
+      "eval_rows": 24,
+      "parallel": 8,
+      "replay_index_verified": true,
+      "farmer_beats_no_n": true,
+      "summary_synthetic_provenance_verified": true
+    },
+    "isolated_dev_workflow": {
+      "prompt_versions": ["v1", "v2"],
+      "tasks_per_config": 20,
+      "configs": 5,
+      "completed": 200,
+      "paired_synthetic_reward_delta_all_configs": 0.0
+    }
+  },
+  "integration": [
+    "Registered Policy implementations under agents/policies/single.py and multi.py",
+    "Uses agents/tools.json and supports submit_decision without stepping the environment",
+    "Shared 300 kg/ha season cap, 120 weekly N, 50 weekly irrigation and adaptive farmer fallback",
+    "Shared runner, RunLogger, replay index and evaluator statistics",
+    "UTF-8 summary output on Windows",
+    "Explicit local stub backend; vLLM remains the default",
+    "B interactive/dev commands reject held-out tasks; A retains the shared test evaluator"
+  ],
+  "pending": [
+    "Brev BF16 serving and a live tool-call smoke test",
+    "Person A's validated crop simulator",
+    "Actual Nemotron dev evaluation and a diagnosed measured gain",
+    "Final prompt selection and A's held-out evaluation"
+  ]
+}

@@ -43,31 +43,42 @@ class AgentTeam:
 
     async def ask(self, role, context, episode_id, week, log, state, output="message"):
         tools = self.tools_for(role)
+        # submit_decision is an output channel, not a read tool or environment step.
+        model_tools = (*tools, "submit_decision") if output == "action" else tools
         # System prefix is byte-identical for a given role/version across all seasons.
         messages = [{"role": "system", "content": self.prompts[role]},
                     {"role": "user", "content": json.dumps({**context, "output": output}, allow_nan=False)}]
         for _ in range(6):
             self.llm_calls += 1
-            msg = await self.model.complete(messages, tools)
+            msg = await self.model.complete(messages, model_tools)
             if not isinstance(msg, dict):
                 raise PolicyFailure("model message is not an object")
             calls = msg.get("tool_calls")
             if calls:
                 try:
-                    if not isinstance(calls, list) or len(calls) > 5:
-                        raise ValueError("Expected at most five tool calls")
+                    if not isinstance(calls, list) or len(calls) > 6:
+                        raise ValueError("Expected at most six tool calls")
                     parsed = []
                     ids = set()
                     for call in calls:
                         fn = call["function"]
                         name, call_id = fn["name"], call["id"]
-                        log.emit(week, role, "tool_call", {"name": name, "arguments": fn["arguments"]})
-                        if name not in tools:
+                        log.emit(week, role, "tool_call", {"name": name, "args": fn["arguments"]})
+                        if name not in model_tools:
                             raise ValueError(f"Tool {name!r} is not permitted for {role}")
                         if not isinstance(call_id, str) or not call_id or call_id in ids:
                             raise ValueError("Tool call IDs must be unique nonempty strings")
                         ids.add(call_id)
-                        if json.loads(fn["arguments"]) != {}:
+                        args = json.loads(fn["arguments"])
+                        if name == "submit_decision":
+                            if len(calls) != 1:
+                                raise ValueError("submit_decision must be the only call in its batch")
+                            action = Action.parse(args)
+                            state.malformed = 0
+                            log.emit(week, role, "tool_result", {"name": name, "result": action.as_dict()})
+                            log.emit(week, role, "message", {"content": json.dumps(action.as_dict())})
+                            return action
+                        if args != {}:
                             raise ValueError("Read tools take no model arguments; episode is bound by the runner")
                         parsed.append((name, call_id))
                 except (ValueError, KeyError, TypeError) as exc:

@@ -29,11 +29,25 @@ Last updated: 2026-10-17. This checklist distinguishes local implementation from
 ## Pending external dependencies / real milestones
 
 - [ ] Obtain Brev H100/A100 80 GB access and launch the BF16 checkpoint; record successful tool smoke test (B0).
-- [ ] Obtain Person A's port-9000 server, authoritative 20-dev task manifest, seasonal N cap and farmer fallback schedule.
+- [x] Pull the shared port-9000 toy server, 20-dev task manifest, 300 kg/ha season cap and farmer schedule from main.
+- [ ] Replace the toy simulator with Person A's validated crop simulator before claiming crop-performance results.
 - [ ] Run single and multi on the real simulator and validate its observation/tool payloads (B1/B2).
 - [ ] Evaluate both on all 20 dev seasons with Nemotron; inspect worst three logs, change one thing, rerun and record actual gain (B3).
 - [ ] Freeze chosen prompt hashes after real dev evidence (B4); give A the config names and inference entry point.
 - [ ] A alone runs held-out test once. B must never run or tune on test.
-- [ ] Merge this branch with A/C later; do not push or merge as part of this local task.
+- [x] Fetch and integrate origin/main's walking skeleton (`79b4306`) into person-B at the user's request.
+- [ ] Merge person-B back into main with the team later; do not push as part of this local task.
+
+## Walking skeleton integration
+
+- [x] Resolve README, package metadata and ignore rules, retaining main's uv workflow and lock file.
+- [x] Register single, multi and all three ablations under agents/policies; use agents/tools.json.
+- [x] Honor config.yaml caps, shared farmer fallback, VLLM_BASE_URL and VLLM_MODEL.
+- [x] Support submit_decision tool calls and preserve tool permissions and the ablations.
+- [x] Emit skeleton-compatible replay events and accurate llm_calls/fallback stats.
+- [x] Verify every policy against the shared toy HTTP server, evaluator and runs/index.json without a live GPU: all eight configs on three dev tasks, 24 output rows.
+- [x] Pass all 30 combined tests and 200 isolated synthetic seasons across five configs/two prompt versions.
+- [x] Fix Windows UTF-8 summary output found by the HTTP smoke check; refresh C's synthetic replay fixture.
+- [x] Update README/PERSON_B.md, save results/person-b-integration.json and commit the merge and integration.
 
 No crop-performance, live-GPU, or bounty milestone is complete based on a synthetic run.

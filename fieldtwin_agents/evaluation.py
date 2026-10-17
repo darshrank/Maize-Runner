@@ -44,7 +44,7 @@ def analyze(folder):
 def record_iteration(before, after, change, output):
     old, old_rows = read_run(before)
     new, new_rows = read_run(after)
-    for key in ("synthetic", "configs", "task_ids", "n_cap", "fallback_schedule"):
+    for key in ("synthetic", "configs", "task_ids", "n_cap", "fallback_schedule", "management"):
         if old[key] != new[key]:
             raise ValueError(f"Paired comparison requires matching {key}")
     if old["task_specs"] != new["task_specs"] or old["model"] != new["model"] or old["environment"] != new["environment"]:

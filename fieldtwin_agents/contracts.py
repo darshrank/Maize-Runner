@@ -79,9 +79,9 @@ class Action:
             raise ValueError("Action reason must be nonempty text")
         return cls(number(data["n_kg_ha"]), number(data["irr_mm"]), " ".join(reason.split())[:300])
 
-    def guarded(self, remaining_n: float):
-        return Action(max(0, min(120, remaining_n, self.n_kg_ha)),
-                      max(0, min(50, self.irr_mm)), self.reason)
+    def guarded(self, remaining_n: float, max_n=120.0, max_irr=50.0):
+        return Action(max(0, min(max_n, remaining_n, self.n_kg_ha)),
+                      max(0, min(max_irr, self.irr_mm)), self.reason)
 
     def as_dict(self):
         return {"n_kg_ha": self.n_kg_ha, "irr_mm": self.irr_mm, "reason": self.reason}
@@ -94,7 +94,8 @@ class EventLog:
         self.file = path.open("x", encoding="utf-8")
 
     def emit(self, week: int, agent: str, kind: str, data: dict):
-        if agent not in ROLE_TOOLS or kind not in ("tool_call", "tool_result", "message", "decision", "fallback"):
+        if agent not in (*ROLE_TOOLS, "policy", "env") or kind not in (
+                "tool_call", "tool_result", "message", "decision", "fallback", "step_result", "final"):
             raise ValueError("Invalid event")
         event = {"t": datetime.now(timezone.utc).isoformat(), "week": week,
                  "agent": agent, "kind": kind, "data": data}
