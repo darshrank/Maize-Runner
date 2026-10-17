@@ -1,0 +1,42 @@
+# FieldTwin NeMo Gym environment. See gym_env/README.md.
+fieldtwin:
+  resources_servers:
+    fieldtwin:
+      allowed_agents: [gymnasium_agent]
+      entrypoint: app.py
+      domain: agent          # allowed: math, coding, agent, knowledge, games, ... (no agriculture)
+      verified: false
+      description: One maize season (gym-DSSAT, real NASA POWER weather), one N and irrigation decision per week. Reward = profit minus 2.44 USD per kg nitrate leached (USD/ha).
+      value: Multi-step tool-calling crop management with a simulator-computed reward
+      env_url: http://localhost:9000   # FieldTwin env server (env/server.py)
+fieldtwin_gymnasium_agent:
+  responses_api_agents:
+    gymnasium_agent:
+      entrypoint: app.py
+      resources_server:
+        type: resources_servers
+        name: fieldtwin
+      model_server:
+        type: responses_api_models
+        name: policy_model
+      max_steps: 300   # ~20 decisions plus read-tool calls per season
+      datasets:
+      - name: example
+        type: example
+        jsonl_fpath: environments/fieldtwin/data/example.jsonl
+      - name: dev   # tune on this
+        type: train
+        jsonl_fpath: environments/fieldtwin/data/dev.jsonl
+        license: TBD
+      - name: test  # held out: run once at the end, never for tuning
+        type: validation
+        jsonl_fpath: environments/fieldtwin/data/test.jsonl
+        license: TBD
+
+fieldtwin_environment_server:
+  environment_servers:
+    legacy_agent:
+      entrypoint: app.py
+      agent_server:
+        type: responses_api_agents
+        name: fieldtwin_gymnasium_agent

@@ -1,8 +1,10 @@
 """Hindsight ceiling: grid-search the best fixed schedule per season, via the API.
 
 Grid: N doses {0, 40, 80} at weeks {0, 5, 9} (27 combos) x irrigation
-{never, 25 mm when soil_water_frac < 0.35} = 54 seasons per task. The best
-run (by reward) is saved as a normal run log under runs/hindsight/.
+{never, 25 mm when soil_water_frac < 0.35} = 54 seasons per task, plus the two
+farmer schedules (farmer, farmer_ufga), so the ceiling is never below farmer
+practice: 56 seasons per task. The best run (by reward) is saved as a normal
+run log under runs/hindsight/.
 It knows the future, so it is an unreachable ceiling, not a real policy.
 """
 
@@ -10,9 +12,11 @@ import itertools
 import time
 
 from agents.client import EnvClient
+from agents.policies import make_policy
 from agents.policies.base import Decision, Policy
 from agents.run import RunLogger, play_season
 
+FARMER_SCHEDULES = ["farmer", "farmer_ufga"]
 N_DOSES = [0.0, 40.0, 80.0]
 N_WEEKS = [0, 5, 9]
 DRY_FRAC, IRR_MM = 0.35, 25.0
@@ -40,13 +44,14 @@ def run_hindsight(task: dict, env_url: str) -> tuple[dict, dict]:
     t0 = time.time()
     env = EnvClient(env_url)
     best = None  # (reward, final, log)
+    candidates = [SchedulePolicy(d, irr) for d in itertools.product(N_DOSES, repeat=len(N_WEEKS))
+                  for irr in (False, True)] + [make_policy(name) for name in FARMER_SCHEDULES]
     try:
-        for doses in itertools.product(N_DOSES, repeat=len(N_WEEKS)):
-            for irrigate in (False, True):
-                log = RunLogger("hindsight", task["task_id"])
-                final = play_season(SchedulePolicy(doses, irrigate), task, env, log)
-                if best is None or final["reward"] > best[0]:
-                    best = (final["reward"], final, log)
+        for policy in candidates:
+            log = RunLogger("hindsight", task["task_id"])
+            final = play_season(policy, task, env, log)
+            if best is None or final["reward"] > best[0]:
+                best = (final["reward"], final, log)
     finally:
         env.close()
     _, final, log = best

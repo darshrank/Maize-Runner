@@ -11,7 +11,7 @@ class EnvClient:
         return self._json(self.http.get("/health"))
 
     def reset(self, task: dict) -> dict:
-        body = {k: task[k] for k in ("task_id", "site", "weather_seed")}
+        body = {k: task[k] for k in ("task_id", "site", "year", "weather_seed") if k in task}
         return self._json(self.http.post("/reset", json=body))
 
     def step(self, episode_id: str, n_kg_ha: float, irr_mm: float, reason: str = "") -> dict:

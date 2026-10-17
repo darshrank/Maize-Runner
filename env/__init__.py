@@ -1,9 +1,8 @@
 """FieldTwin environment: simulator interface, toy simulator, HTTP server.
 
 Simulator factory: config.yaml `env.simulator` picks an entry from SIMULATORS.
-To add gym-DSSAT, write env/dssat_sim.py and add
-    "dssat": "env.dssat_sim:DssatSimulator",
-below. The server does not need to change.
+To add a simulator, implement env.sim_base.Simulator and register it below.
+The server does not need to change.
 """
 
 import importlib
@@ -12,6 +11,7 @@ from env.sim_base import Simulator
 
 SIMULATORS = {
     "toy": "env.toy_sim:ToySimulator",
+    "dssat": "env.dssat_sim:DssatSimulator",   # needs scripts/install_gym_dssat.sh
 }
 
 
