@@ -4,6 +4,29 @@ Last checked: **October 17, 2026, 3:20 PM America/New_York**.
 This is the current checkpoint; earlier chat status messages and intermediate
 snapshots described runs that have since finished.
 
+### Later architecture research review (same day)
+
+Read [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) for source-backed failure
+modes, each component's rationale/retention test, and staged next experiments.
+This was research/documentation only; new season experiments remain paused.
+The five-role system is an experimental arm, not yet a justified optimum. Proposed
+next foundation: typed code-computed facts, immutable proposal/review identities,
+verification of the exact final action, durable season results, and a lean planner
+comparison using the same evidence/checks/budget. Critic and coordinator must earn
+their extra cost. Thinking mode is currently disabled; any comparison is a separate
+inference-setting experiment, not training.
+
+Correction to earlier maturity-only HLD: `env/server.py` ends control on DSSAT done
+OR 20 weeks; `DssatSimulator.final()` then advances toward maturity with zero
+inputs, bounded by 400 days. Read-only audit of all 80 archived seasons is saved
+in results/architecture-horizon-audit.json: all 16 week-20 endings are at R6 before
+day 140, supporting natural completion; final/weekly leaching and gas differ by at
+most 0.03 kg/ha. No evidence here of changed reward rankings from the horizon.
+N uptake final-versus-weekly differences reach 10.39 kg/ha (v1), 6.23 (v3): ask A
+to reconcile final wtnup delta versus summed daily trnu definitions/timing. Uptake
+is not a direct reward term. Preserve old results and investigate before any env
+change. No automatic step retries; IDs alone do not solve external-process crashes.
+
 ### Later critic follow-up (same day)
 
 The user paused new season experiments to discuss proper agent information and

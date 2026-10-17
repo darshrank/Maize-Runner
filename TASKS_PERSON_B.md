@@ -2,7 +2,7 @@
 
 Last updated: October 17, 2026, approximately 3:20 PM America/New_York.
 Branch: `person-B`. Read [handoff.md](handoff.md) first in a new session.
-Latest follow-up: critic wording and focused role diagnostics below; full new
+Latest follow-ups: critic diagnostics and researched architecture review; full new
 season experiments remain paused at the user's request.
 This current checklist supersedes the earlier in-progress snapshots in chat/docs.
 The user authorized pushing person-B with the handoff; main/a-env stay unchanged.
@@ -24,6 +24,8 @@ The user authorized pushing person-B with the handoff; main/a-env stay unchanged
 - [x] Back up both complete real-run archives, the farmer dev CSV, manifests, audits, diagnostics and current status in the repository.
 - [x] Create handoff.md with evidence, diagnosis, current services, commands and next tasks.
 - [x] Document current weekly flow, high-level architecture, communication/cache boundaries and proposed improvements in ARCHITECTURE.md.
+- [x] Research architecture failure modes using primary sources; record component rationale, mitigation and retention checks in ARCHITECTURE_REVIEW.md. Correct the HLD's 20-week control-horizon description. No new runtime change or experiment.
+- [x] Read-only audit all 80 archived seasons: 16 reach decision week 20, all at R6 before day 140; no evidence of forced horizon truncation in these logs. Final/weekly leaching and gas agree within 0.03 kg/ha. Record full audit in results/architecture-horizon-audit.json.
 
 ## Completed real dev results
 
@@ -45,6 +47,9 @@ and has excessive water/leaching. It is not selected as final.
 
 ## Pending, in priority order
 
+- [ ] Reconcile final-versus-weekly N uptake definitions/timing with A (differences up to 10.39 kg/ha in v1, 6.23 in v3). Add explicit end-reason/tail metadata in a separately versioned environment change; uptake is not a direct reward term. Preserve historical results.
+- [ ] Specify typed weekly facts, provenance/uncertainty, immutable proposal/review IDs, final-action checks and bounded recovery. Compare a lean planner with the five-role arm using the same evidence/checks.
+- [ ] Add durable per-season result receipts and catalogue/user-run wrapper; verify crash recovery without replaying uncertain steps. Review shared parallel malformed-response counters. Record tokens, latency and allocated compute cost.
 - [ ] Fix critic false objections using structured verifiable facts and assess how to verify the final coordinator decision. Critic wording alone remains insufficient; do not promote v4/v5 based on rejection frequency.
 - [ ] Inspect complete v3 worst-three role/tool traces. A concrete logged error reverses the irrigation comparison: moisture 0.93 is interpreted as triggering the below-0.35 rule.
 - [ ] Design and test one targeted next change for watering-condition reliability. Clearly distinguish prompt-only changes from code/protocol changes.

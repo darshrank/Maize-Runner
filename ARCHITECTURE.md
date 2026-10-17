@@ -2,7 +2,9 @@
 
 Implementation inspected at `d7c5cad` on `person-B`. The diagrams distinguish the
 current implementation from the proposed next architecture. No new experiment or
-runtime behavior is introduced by this document.
+runtime behavior is introduced by this document. See
+[ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) for the researched failure modes,
+component retention criteria and proposed lean comparison arm.
 
 ## 1. Current weekly decision flow
 
@@ -27,9 +29,9 @@ flowchart TD
     FB --> GUARD
     GUARD --> STEP["Runner calls DSSAT /step once"]
     STEP --> LOG["Record decision, step result and metrics"]
-    LOG --> DONE{"Crop mature / done?"}
+    LOG --> DONE{"DSSAT done or 20-week control limit?"}
     DONE -->|No| OBS
-    DONE -->|Yes| FINAL["Record final result and CSV row"]
+    DONE -->|Yes| FINAL["Finalize with zero further inputs if needed; record result"]
 ```
 
 - The failure branch can be taken from a role's model/tool loop. It covers bounded
@@ -40,7 +42,12 @@ flowchart TD
   an output channel, not a model-controlled call to `/step`.
 - Environment reset/step errors abort the run; `/step` is never automatically
   retried because a timeout could occur after an action was already applied.
-- A season ends when DSSAT reports `done`, rather than after a fixed 20 decisions.
+- Decisions end when DSSAT reports `done` or the server reaches its configured
+  20-week control limit. At the limit, the DSSAT adapter's `final()` advances
+  toward maturity with zero further inputs (bounded by 400 extra days). These
+  days are not agent decisions. The archive audit found all 16 week-20 endings at
+  R6 before day 140, supporting natural completion in those runs. Explicit
+  end-reason/tail logging remains pending; the earlier description was incomplete.
 - **Current limitation:** the critic reviews the planner before the coordinator.
   The final coordinator action gets code checks for limits, but no independent
   semantic review. The coordinator can introduce an error after the critic.

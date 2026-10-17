@@ -1,0 +1,1211 @@
+{
+  "scope": "Read-only audit of archived dev logs; no new model or simulator calls. End reason is not explicitly recorded, so an episode reaching week 20 is not by itself proof of truncation.",
+  "source_commit": "eb93e3f",
+  "archives": [
+    {
+      "path": "results/dssat-dev-v1-logs.zip",
+      "sha256": "552b7d48a00f8466742fdda0b79951f4546a5b60c34f9fa33f0640a0972d8f3b",
+      "seasons": 40,
+      "decision_count_distribution": {
+        "18": 14,
+        "19": 18,
+        "20": 8
+      },
+      "at_week20": [
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -5.29,
+            "n_gas": -0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.85,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -2.68,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -2.14,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.17,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -3.82,
+            "n_gas": -0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.94,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.02,
+            "n_uptake": -0.69,
+            "n_gas": 0.01
+          }
+        }
+      ],
+      "max_abs_accounting_residual": {
+        "n_leached": 0.02,
+        "n_uptake": 10.39,
+        "n_gas": 0.03
+      },
+      "season_details": [
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1990.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": 0.02,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1991.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.38,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -5.29,
+            "n_gas": -0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.85,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1994.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": 0.02,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1995.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -8.37,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -2.68,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1997.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -2.27,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1998.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 127,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.01,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-1999.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.96,
+            "n_gas": -0.03
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2000.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 122,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": 0.01,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2001.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -5.5,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2002.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 121,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -6.01,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2003.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -2.66,
+            "n_gas": -0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2004.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -7.69,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -2.14,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2006.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 125,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.72,
+            "n_gas": 0.03
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2007.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.64,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2008.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.0,
+            "n_uptake": -3.85,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/multi/UFGA-2009.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -2.28,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1990.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": 0.02,
+            "n_gas": -0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1991.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -1.28,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.17,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -3.82,
+            "n_gas": -0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1994.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.19,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1995.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -10.39,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.94,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1997.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.0,
+            "n_uptake": -4.36,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1998.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 127,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": 0.0,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-1999.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -1.93,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2000.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 122,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": 0.0,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2001.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": 0.01,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2002.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 121,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": 0.0,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2003.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -0.8,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2004.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -5.86,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.02,
+            "n_uptake": -0.69,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2006.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 125,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": 0.0,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2007.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -5.25,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2008.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -4.74,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v1/runs/single/UFGA-2009.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -4.26,
+            "n_gas": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "path": "results/dssat-dev-v3-logs.zip",
+      "sha256": "0eb5f09d3db97a0d69bd7d942cad753687f54a95799d3878716546a82cede7de",
+      "seasons": 40,
+      "decision_count_distribution": {
+        "18": 14,
+        "19": 18,
+        "20": 8
+      },
+      "at_week20": [
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.94,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -2.82,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.02,
+            "n_uptake": -0.28,
+            "n_gas": -0.03
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -0.4,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.82,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -2.98,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.29,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -0.64,
+            "n_gas": 0.0
+          }
+        }
+      ],
+      "max_abs_accounting_residual": {
+        "n_leached": 0.03,
+        "n_uptake": 6.23,
+        "n_gas": 0.03
+      },
+      "season_details": [
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1990.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -2.14,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1991.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.42,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.94,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -2.82,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1994.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -1.92,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1995.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.0,
+            "n_uptake": -0.77,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.02,
+            "n_uptake": -0.28,
+            "n_gas": -0.03
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1997.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.03,
+            "n_uptake": -1.37,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1998.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 127,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.0,
+            "n_uptake": -2.77,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-1999.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -0.26,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2000.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 122,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -5.77,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2001.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.81,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2002.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 121,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -4.88,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2003.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -1.57,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2004.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -2.23,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -0.4,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2006.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 125,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -4.9,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2007.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -6.23,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2008.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.82,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/multi/UFGA-2009.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -1.12,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1990.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -0.72,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1991.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -0.44,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1992.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 136,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.82,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1993.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -2.98,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1994.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -1.85,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1995.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 123,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -0.62,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1996.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 135,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.29,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1997.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 128,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -1.21,
+            "n_gas": -0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1998.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 127,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -2.65,
+            "n_gas": 0.02
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-1999.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.17,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2000.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 122,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -4.88,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2001.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -0.93,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2002.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 121,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -2.57,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2003.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -1.45,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2004.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 124,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -0.61,
+            "n_gas": -0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2005.jsonl",
+          "decisions": 20,
+          "terminal_week": 20,
+          "last_logged_stage": "R6",
+          "last_logged_day": 138,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.02,
+            "n_uptake": -0.64,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2006.jsonl",
+          "decisions": 18,
+          "terminal_week": 18,
+          "last_logged_stage": "R6",
+          "last_logged_day": 125,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.0,
+            "n_uptake": -2.87,
+            "n_gas": 0.0
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2007.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -1.11,
+            "n_gas": -0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2008.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 130,
+          "final_minus_sum_weekly": {
+            "n_leached": -0.01,
+            "n_uptake": -0.36,
+            "n_gas": 0.01
+          }
+        },
+        {
+          "log": "dssat-dev-v3/runs/single/UFGA-2009.jsonl",
+          "decisions": 19,
+          "terminal_week": 19,
+          "last_logged_stage": "R6",
+          "last_logged_day": 129,
+          "final_minus_sum_weekly": {
+            "n_leached": 0.01,
+            "n_uptake": -1.12,
+            "n_gas": -0.02
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "seasons": 80,
+    "terminal_stage_counts": {
+      "R6": 80
+    },
+    "week20_seasons": 16,
+    "week20_all_R6_and_day_below_140": true,
+    "uptake_residual_over_0_11_kg_ha": 70,
+    "conclusions": [
+      "All week-20 logs end partway through the week at R6 (135-138 days), supporting natural completion rather than forced control truncation in these runs. No evidence here that the horizon changed the reported rankings.",
+      "Final minus summed weekly leaching/gas residual magnitudes are at most 0.03 kg/ha, consistent with rounding.",
+      "N uptake final-minus-weekly residual reaches 10.39 kg/ha (v1) and 6.23 kg/ha (v3). Definition/timing reconciliation with A is pending; uptake does not directly enter the fixed reward formula.",
+      "Logs lack explicit simulator termination reason and post-control day count. Do not infer an exactly identified end reason solely from the done boolean."
+    ]
+  }
+}
