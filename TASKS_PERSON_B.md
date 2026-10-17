@@ -66,7 +66,7 @@ See results/runtime-p3-v1-dev.md.
 
 - [x] Deploy afffb23 to a fresh isolated Brev checkout; verify services, model identity, context limit and served env code.
 - [x] Live smoke (one failure recorded, 9/10 diagnostic) and UFGA-1990 pilot audited, inspected and archived.
-- [ ] Full v1 single + multi on all 20 dev years: running since 20:50:16Z. Audit, farmer_ufga comparison, backup pending.
+- [x] Full v1 single + multi on all 20 dev years: 40/40 completed and audited; single 379.25, multi 646.35 vs farmer_ufga 1116.72 (negative result). Archive and comparison committed.
 - [ ] Separate agent-fix experiment after the baseline, on the same dev years.
 
 ## Pending, in priority order

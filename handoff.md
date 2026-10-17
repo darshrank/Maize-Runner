@@ -33,7 +33,7 @@ experiments remain paused while the local foundation is prepared. Thinking stays
 off; shared prompt default stays v1; v3/v4/v5 are not final selections. N uptake
 reconciliation with A remains pending but does not block local foundation work.
 
-### Latest: Brev deployment, live pilot and full dev run (in progress)
+### Latest: Brev deployment, live pilot and full dev run (complete)
 
 Full record: [results/runtime-p3-v1-dev.md](results/runtime-p3-v1-dev.md).
 Runtime experiment only (protocol 3, v1 prompts, thinking off); no training,
@@ -50,9 +50,12 @@ no held-out years, no simulator/price/reward/cap change.
 - [x] Pilot UFGA-1990 audited: single 453.56, multi 749.68 vs farmer_ufga 1296.33.
   Records consistent, no fallbacks, headroom >= 6,890 tokens, one critic `length`
   truncation recovered by re-prompt. Budget-arithmetic and dry-soil errors persist.
-- [ ] Full run `results/runtime-p3-v1-dev-20261017T205016Z` (PID 52681, started
-  20:50:16Z, 40 seasons, concurrency 8): monitor, audit all seasons, compare with
-  matched farmer_ufga dev rows (RUN_ON_BREV.md section 7), back up archive locally.
+- [x] Full run `results/runtime-p3-v1-dev-20261017T205016Z`: 40/40 completed in
+  24 min, audit passed, zero fallbacks/binding problems. **Negative result:** reward
+  single 379.25, multi 646.35 vs farmer_ufga 1116.72 (2/20 years each beat it);
+  N 251 / 293.5 kg vs 116; water 55 / 103 mm vs 264. Coordinator max prompt
+  13,036 tokens (tightest). 22 recovered validation errors, one `length` finish.
+  Archive and comparison JSON committed under results/. GPU cost unmeasured.
 - [ ] Then a separate, labelled agent-fix experiment on the same dev years
   (budget statements, critic arithmetic, dry-soil irrigation, critic verbosity).
 
