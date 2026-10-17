@@ -7,10 +7,26 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .contracts import Action, ROLE_TOOLS
-from .evidence import Proposal, Review, WeekEvidence
+from .evidence import Proposal, Review, WeekEvidence, check_proposal
 
 PROMPT_ROOT = Path(__file__).parent / "prompts"
-AGENT_PROTOCOL_VERSION = 3
+AGENT_PROTOCOL_VERSION = 4
+
+
+def trailing_json(content):
+    """Return (object, prose prefix) when content ends with exactly one JSON object."""
+    content = content.strip()
+    decoder = json.JSONDecoder()
+    start = content.rfind("{")
+    while start >= 0:
+        try:
+            value, end = decoder.raw_decode(content, start)
+            if not content[end:].strip():
+                return value, content[:start].strip()
+        except ValueError:
+            pass
+        start = content.rfind("{", 0, start)
+    return None
 PROMPT_VERSIONS = ("v1", "v2", "v3", "v4", "v5")
 
 
@@ -145,10 +161,19 @@ class AgentTeam:
                 content = msg.get("content")
                 if not isinstance(content, str) or not content.strip():
                     raise ValueError("Empty model message")
+                if output in ("action", "critique"):
+                    try:
+                        parsed_json = json.loads(content)
+                    except ValueError:
+                        extracted = trailing_json(content)
+                        if extracted is None or not extracted[1]:
+                            raise
+                        parsed_json, prefix = extracted
+                        log.emit(week, role, "message", {"lenient_json_extracted": True, "discarded_prefix": prefix})
                 if output == "action":
-                    answer = Action.parse(json.loads(content))
+                    answer = Action.parse(parsed_json)
                 elif output == "critique":
-                    answer = json.loads(content)
+                    answer = parsed_json
                     if not isinstance(answer, dict) or type(answer.get("accept")) is not bool:
                         raise ValueError("Critic must return boolean accept")
                     if not isinstance(answer.get("objection"), str):
@@ -174,6 +199,12 @@ class AgentTeam:
         self.final_proposal = None
         self.reviewed_proposal_id = None
         context = {"episode_id": episode_id, "week": week, "obs": obs, "remaining_n_kg_ha": remaining_n}
+        if accounting is not None:
+            context["max_n_this_week_kg_ha"] = min(accounting["max_n_kg_ha_per_week"], remaining_n)
+
+        def checked(action):
+            if accounting is not None:
+                context["proposal_check"] = check_proposal(action, accounting, obs)
 
         async def ask(role, output="message"):
             # Malformed-response streaks belong to a role invocation, never parallel peers.
@@ -200,6 +231,7 @@ class AgentTeam:
         record_proposal = record(proposal, "planner")
         context["proposal"] = proposal.as_dict()
         context["proposal_record"] = record_proposal.as_dict()
+        checked(proposal)
         if self.config != "multi_no_critic":
             critique = await ask("critic", "critique")
             review = Review(record_proposal.as_dict()["proposal_id"], critique["accept"], critique["objection"])
@@ -212,6 +244,7 @@ class AgentTeam:
                 record_proposal = record(proposal, "planner:revision", record_proposal.as_dict()["proposal_id"])
                 context["proposal"] = proposal.as_dict()
                 context["proposal_record"] = record_proposal.as_dict()
+                checked(proposal)
                 context["revision_used"] = True
         context["current_proposal_has_review"] = self.reviewed_proposal_id == record_proposal.as_dict()["proposal_id"]
         action = await ask("coordinator", "action")

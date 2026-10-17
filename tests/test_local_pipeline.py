@@ -8,7 +8,7 @@ import pytest
 
 from fieldtwin_agents.clients import VLLMClient
 from fieldtwin_agents.contracts import Action, Task
-from fieldtwin_agents.evidence import Proposal, Review, WeekEvidence, verify_final
+from fieldtwin_agents.evidence import Proposal, Review, WeekEvidence, check_proposal, verify_final
 from fieldtwin_agents.evaluation import record_iteration
 from fieldtwin_agents.experiments import catalogue
 from fieldtwin_agents.runner import run_batch, run_season
@@ -264,3 +264,54 @@ def test_vllm_telemetry_is_returned_per_response_and_thinking_stays_off():
         finally:
             await client.close()
     asyncio.run(run())
+
+
+ACCOUNTING = {"season_cap_kg_ha": 300.0, "applied_n_kg_ha": 170.0,
+              "max_n_kg_ha_per_week": 120.0, "max_irr_mm_per_week": 50.0}
+
+
+@pytest.mark.parametrize("n,irr,ok", [(30, 30, True), (130, 0, False), (131, 0, False), (0, 51, False)])
+def test_proposal_check_states_exact_budget_arithmetic(n, irr, ok):
+    check = check_proposal(Action(n, irr, "x"), ACCOUNTING, {"soil_water_frac": 0.248})
+    assert check["remaining_before_kg_ha"] == 130 and check["remaining_after_kg_ha"] == 130 - n
+    assert check["applied_after_kg_ha"] == 170 + n and check["max_n_this_week_kg_ha"] == 120
+    assert check["all_limits_ok"] is ok
+    assert check["farmer_reference_dry"] is True and check["farmer_reference_irr_mm"] == 25
+
+
+def test_reviewing_roles_receive_check_of_the_exact_current_proposal(tmp_path):
+    seen = []
+
+    class Recording(StubModel):
+        async def complete(self, messages, tools):
+            context = json.loads(messages[1]["content"])
+            seen.append((messages[0]["content"][:20], context))
+            return await super().complete(messages, tools)
+
+    asyncio.run(run_season(Task("dev", "STUB", 1), "multi", StubEnvironment(1), Recording(), tmp_path))
+    reviewing = [c for p, c in seen if "proposal" in c]
+    assert reviewing and all(c["proposal_check"]["n_kg_ha"] == c["proposal"]["n_kg_ha"] for c in reviewing)
+    assert all("max_n_this_week_kg_ha" in c for _, c in seen)
+
+
+@pytest.mark.parametrize("content,expected", [
+    ('The critic objects. I will apply N.\n{"n_kg_ha": 30, "irr_mm": 0, "reason": "r"}', 30),
+    ('{"n_kg_ha": 10, "irr_mm": 0, "reason": "r"}', 10)])
+def test_prose_before_final_json_is_extracted_visibly(tmp_path, content, expected):
+    class Prose(StubModel):
+        async def complete(self, messages, tools):
+            if json.loads(messages[1]["content"])["output"] == "action":
+                return {"content": content}
+            return await super().complete(messages, tools)
+
+    asyncio.run(run_season(Task("dev", "STUB", 1), "single", StubEnvironment(1), Prose(), tmp_path))
+    trace = events(tmp_path / "single/dev.jsonl")
+    assert next(e for e in trace if e["kind"] == "decision")["data"]["n_kg_ha"] == expected
+    assert not any("validation_error" in e["data"] for e in trace)
+    assert any(e["data"].get("lenient_json_extracted") for e in trace) is (expected == 30)
+
+
+@pytest.mark.parametrize("content", ['no json at all', '{"n_kg_ha": 1} trailing prose', '{"n_kg_ha": 1, "irr'])
+def test_unrecoverable_content_still_fails_validation(content):
+    from fieldtwin_agents.agents import trailing_json
+    assert trailing_json(content) is None or trailing_json(content)[1] == ""

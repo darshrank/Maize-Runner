@@ -170,6 +170,30 @@ class Review:
         return {"review_id": identity("review", data), **data}
 
 
+def check_proposal(action, accounting, obs):
+    """Exact limit arithmetic for one proposed action, shown to reviewing roles.
+
+    Limits and the original farmer's dry comparison only; agronomic merit is not judged.
+    """
+    from agents.policies.farmer import DRY_FRAC, IRR_MM
+    cap, applied = number(accounting["season_cap_kg_ha"]), number(accounting["applied_n_kg_ha"])
+    max_n, max_irr = number(accounting["max_n_kg_ha_per_week"]), number(accounting["max_irr_mm_per_week"])
+    n, irr = number(action.n_kg_ha), number(action.irr_mm)
+    remaining = cap - applied
+    moisture = obs.get("soil_water_frac")
+    dry = None if moisture is None else number(moisture) < DRY_FRAC
+    return {"n_kg_ha": n, "irr_mm": irr, "season_cap_kg_ha": cap,
+            "applied_before_kg_ha": applied, "applied_after_kg_ha": applied + n,
+            "remaining_before_kg_ha": remaining, "remaining_after_kg_ha": remaining - n,
+            "max_n_this_week_kg_ha": min(max_n, remaining),
+            "within_weekly_n_limit": n <= max_n, "within_season_n_cap": n <= remaining,
+            "within_weekly_irrigation_limit": irr <= max_irr,
+            "all_limits_ok": n <= max_n and n <= remaining and irr <= max_irr and min(n, irr) >= 0,
+            "soil_water_frac": moisture, "farmer_reference_dry": dry,
+            "farmer_reference_irr_mm": None if dry is None else (IRR_MM if dry else 0.0),
+            "basis": "Exact code arithmetic from runner accounting; limits only, not agronomic merit"}
+
+
 def verify_final(proposal, final, remaining_n, max_n, max_irr, *, reviewed_id=None):
     """Verify exact post-guard action. This does not certify natural-language reasons."""
     remaining_n, max_n, max_irr = map(number, (remaining_n, max_n, max_irr))
