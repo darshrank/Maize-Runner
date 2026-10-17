@@ -1,5 +1,5 @@
 {
-  "status": "Baseline running; candidate prepared for automatic paired evaluation after baseline audit",
+  "status": "Completed: baseline 40/40 and candidate 40/40 audited; final prompt selection pending",
   "source": {
     "a_env": "64b38f9",
     "integration_merge": "cd7bea5"
@@ -52,10 +52,16 @@
     "candidate_log": "/ephemeral/fieldtwin/b3-candidate.log"
   },
   "pending": [
-    "Audit baseline and candidate completion",
-    "Review paired reward/leaching/fallback results and all worst-three multi logs",
-    "Select final prompt snapshot and verify real-model ablations",
+    "Review completed v3 worst-three multi logs and watering-condition errors",
+    "Design a targeted next experiment and assess input efficiency against farmer",
+    "Select final prompt snapshot and validate real-model ablations",
     "A alone executes held-out test"
   ],
-  "held_out_test_executed": false
+  "held_out_test_executed": false,
+  "completed_evidence": [
+    "results/dssat-dev-v1-logs.zip",
+    "results/dssat-dev-v3-logs.zip",
+    "results/b3-iterations.md",
+    "results/status-person-b.json"
+  ]
 }

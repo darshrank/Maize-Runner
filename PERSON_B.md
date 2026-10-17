@@ -1,5 +1,9 @@
 # Person B: agents, serving and dev experiments
 
+For the completed v1/v3 DSSAT experiment and current resume instructions, start
+with [handoff.md](handoff.md). Its checkpoint supersedes older in-progress notes
+below. Both 40-season experiments are complete; final prompt selection is pending.
+
 The shared [README](README.md) is the primary run guide. The maintained
 [done/pending checklist](TASKS_PERSON_B.md) records what is complete locally and what
 still requires dev evaluation. A's gym-DSSAT environment, real-year tasks and fixed

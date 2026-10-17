@@ -1,9 +1,10 @@
 {
-  "checked_at": "2026-10-17T19:09:54.220346+00:00",
-  "scope": "DSSAT dev simulation only; v3 incomplete; held-out untouched",
+  "checked_at": "2026-10-17T19:19:58.378907+00:00",
+  "checked_at_new_york": "2026-10-17T15:19:58.379645-04:00",
+  "scope": "DSSAT simulated dev seasons; no training or held-out evaluation performed",
   "progress": {
-    "phase": "running_candidate",
-    "updated_at": "2026-10-17T19:03:55.234793+00:00",
+    "phase": "candidate_complete_selection_pending",
+    "updated_at": "2026-10-17T19:19:40.599802+00:00",
     "baseline": "results/dssat-dev-v1",
     "candidate": "results/dssat-dev-v3"
   },
@@ -11,6 +12,7 @@
     "dssat-dev-v1": {
       "configs": {
         "single": {
+          "started": 20,
           "completed": 20,
           "weekly_steps": 377,
           "fallback_causes": [],
@@ -23,6 +25,7 @@
           }
         },
         "multi": {
+          "started": 20,
           "completed": 20,
           "weekly_steps": 377,
           "fallback_causes": [],
@@ -35,11 +38,13 @@
           }
         }
       },
-      "audit_present": true
+      "audit_present": true,
+      "csv_present": true
     },
     "dssat-dev-v3": {
       "configs": {
         "single": {
+          "started": 20,
           "completed": 20,
           "weekly_steps": 377,
           "fallback_causes": [
@@ -54,12 +59,21 @@
           }
         },
         "multi": {
-          "completed": 0,
-          "weekly_steps": 120,
-          "fallback_causes": []
+          "started": 20,
+          "completed": 20,
+          "weekly_steps": 377,
+          "fallback_causes": [],
+          "means": {
+            "reward": 878.0415,
+            "grain_kg_ha": 9272.045,
+            "n_applied": 300.0,
+            "n_leached": 74.9885,
+            "irr_mm": 407.95
+          }
         }
       },
-      "audit_present": false
+      "audit_present": true,
+      "csv_present": true
     }
   },
   "farmer": {

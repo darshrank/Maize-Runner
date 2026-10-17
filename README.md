@@ -1,5 +1,8 @@
 # FieldTwin
 
+Person B session pickup: [handoff.md](handoff.md), with current done/pending work,
+completed DSSAT results and the exact Brev resume commands.
+
 FieldTwin is a multi-agent crop advisor for one maize field in Gainesville, Florida, over one season.
 Every week it decides how much nitrogen (kg N/ha) and irrigation (mm) to apply, and it is scored on profit
 minus a nitrate-leaching penalty. The crop is simulated by **gym-DSSAT** (the DSSAT CERES-Maize model) on

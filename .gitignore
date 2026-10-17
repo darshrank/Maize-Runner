@@ -20,6 +20,8 @@ results/*
 !results/dssat-dev-experiment-plan.json
 !results/status-person-b.json
 !results/dssat-dev-v1-logs.zip
+!results/dssat-dev-v3-logs.zip
+!results/b3-iterations.md
 /tmp/
 /build/
 /dist/
