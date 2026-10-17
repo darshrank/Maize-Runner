@@ -28,6 +28,7 @@ Both play real NASA POWER weather for the task's year; see `data/README.md`.
 - `agents/`: `client.py` (env client), `tools.json` (OpenAI tool schemas), `policies/` (registry + `no_n`, `farmer`, `nemotron_stub`), `run.py` (season runner + logger).
 - `eval/`: `hindsight.py` (grid-search ceiling), `run_eval.py` (eval.csv + summary.md).
 - `ui/`: static Three.js replay of two runs side by side.
+- `gym_env/`: FieldTwin as a NeMo Gym environment (tasks, tools, verifier = final reward); see `gym_env/README.md`.
 - `tasks/`: real seasons as (site, year): `dev.jsonl` (UFGA 1990-2009) and `test.jsonl` (UFGA 2010-2024, held out),
   lines like `{"task_id": "UFGA-2015", "site": "UFGA", "year": 2015, "split": "test"}`.
 - `data/`: NASA POWER weather (`weather/` JSON, `dssat_wth/` DSSAT files); `scripts/fetch_power.py` regenerates it.
@@ -63,6 +64,6 @@ with kinds `tool_call`, `tool_result`, `message`, `decision` (`{n_kg_ha, irr_mm,
 
 ## Who replaces what
 
-- **A**: ~~`env/dssat_sim.py` implementing `Simulator`, `env.simulator: dssat`~~ (done; mapping notes in the `env/dssat_sim.py` docstring); real prices in `config.yaml`; NeMo Gym wrapper.
+- **A**: ~~`env/dssat_sim.py` implementing `Simulator`, `env.simulator: dssat`~~ (done; mapping notes in the `env/dssat_sim.py` docstring); ~~NeMo Gym wrapper~~ (done, `gym_env/`); real prices in `config.yaml`.
 - **B**: `agents/policies/single.py` and `multi.py` using vLLM (`VLLM_BASE_URL`, `VLLM_MODEL`, see `.env.example`) + `agents/tools.json`; register them in `agents/policies/__init__.py` and add configs to `eval.configs`. Bump `log.llm_calls` per model call and log `fallback` events.
 - **C**: everything in `ui/`; vLLM metrics script.
