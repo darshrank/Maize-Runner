@@ -21,7 +21,7 @@ WEEKLY_KEYS = {"rain_mm", "n_leached", "n_uptake", "n_gas"}
 FINAL_KEYS = {"grain_kg_ha", "n_applied", "n_uptake", "n_leached", "n_gas", "irr_mm",
               "profit_usd_ha", "reward"}
 WEATHER_DAY_KEYS = {"day", "tmax", "tmin", "rain_mm"}
-TASK = {"task_id": "UFGA-s3", "site": "UFGA", "weather_seed": 3}
+TASK = {"task_id": "UFGA-2015", "site": "UFGA", "year": 2015}
 
 
 @pytest.fixture(params=SIMULATORS)
@@ -116,16 +116,26 @@ def test_404_messages(client):
     assert r.status_code == 404 and "error" in r.json()
 
 
-@pytest.mark.skipif(not DSSAT_INSTALLED, reason="gym-DSSAT not installed")
-def test_dssat_outlook_matches_managed_season(tmp_path):
-    """The outlook comes from a cached zero-action run; weather must not depend on management."""
-    from env.dssat_sim import DssatSimulator
-    sim = DssatSimulator({"dssat": {"cache_dir": str(tmp_path)}})
-    sim.reset("UFGA", 7)
-    for week in range(20):
-        if sim.step_week(80 if week in (0, 5) else 0, 30 if week % 3 == 0 else 0)["done"]:
-            break
-    lived = [round(w["rain"], 1) for w in sim.season_weather[:sim.sim_day + 1]]
-    seen = [w["rain_mm"] for w in sim.observed]
-    assert seen == lived
-    assert sim.final()["n_applied"] == 160 and sim.proc is None   # worker closed at season end
+def test_legacy_weather_seed_and_unknown_year(client):
+    r = client.post("/reset", json={"task_id": "old", "site": "UFGA", "weather_seed": 3})
+    assert r.status_code == 200   # deprecated seed still accepted (maps to a real year)
+    r = client.post("/reset", json={"task_id": "x", "site": "UFGA", "year": 1950})
+    assert r.status_code == 400 and "available years" in r.json()["error"]
+
+
+@pytest.mark.parametrize("sim_name", SIMULATORS)
+def test_outlook_is_the_real_weather_that_follows(sim_name):
+    """With noise off, this week's outlook must equal the weather the season then delivers,
+    and that weather must be the NASA POWER data for those dates."""
+    import numpy as np
+    from env import make_simulator
+    from env.weather import PLANTING_DOY, load_year
+    sim = make_simulator(sim_name, {**load_config()["env"], "outlook_noise": {"rain_frac": 0.0, "temp_c": 0.0}})
+    sim.reset("UFGA", 2015)
+    for week in range(3):
+        outlook = sim.weather_outlook(7, np.random.default_rng(0))
+        sim.step_week(80 if week == 0 else 0, 30)   # management must not change the weather
+        assert sim.weather_history(7) == outlook
+    real = load_year("UFGA", 2015)[PLANTING_DOY - 1 + 15:PLANTING_DOY - 1 + 22]   # days 15-21 after planting
+    assert [w["rain_mm"] for w in outlook] == [d["rain_mm"] for d in real]
+    sim.close()

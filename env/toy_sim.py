@@ -1,13 +1,17 @@
 """Toy maize model implementing Simulator.
 
-Deterministic given weather_seed. Not realistic, only plausible enough that
-policies differ: too little N means low yield, and N applied right before a
-storm leaches. Teammate A replaces this with gym-DSSAT.
+Plays a real year of NASA POWER weather (data/weather/<SITE>_<YEAR>.json),
+planting on the same day of year as gym-DSSAT's UFGA experiment (weather day 0),
+then 140 days from the day after planting, the same window gym-DSSAT plays.
+Not realistic, only plausible enough that policies differ: too little N means
+low yield, and N applied right before heavy rain leaches. The real simulator is
+gym-DSSAT (env/dssat_sim.py).
 """
 
 import numpy as np
 
 from env.sim_base import Simulator
+from env.weather import PLANTING_DOY, load_year
 
 DAYS = 140                  # 20 weeks
 BUCKET_MM = 150.0           # soil water capacity
@@ -30,27 +34,23 @@ def stage_from_gdd(gdd: float) -> str:
     return "R6"
 
 
-def make_weather(seed: int) -> list[dict]:
-    """Precompute the whole season's daily weather."""
-    rng = np.random.default_rng(seed)
-    tmax = 30.0 + rng.normal(0, 2, DAYS)
-    tmin = 19.0 + rng.normal(0, 2, DAYS)
-    rain = np.where(rng.random(DAYS) < 0.3, rng.exponential(12.0, DAYS), 0.0)
-    n_storms = int(rng.integers(2, 4))                        # 2 or 3 storms
-    storm_days = rng.choice(np.arange(7, DAYS - 7), size=n_storms, replace=False)
-    rain[storm_days] = rng.uniform(50, 90, n_storms)
-    return [
-        {"day": d, "tmax": round(float(tmax[d]), 1), "tmin": round(float(tmin[d]), 1),
-         "rain_mm": round(float(rain[d]), 1)}
-        for d in range(DAYS)
-    ]
+def load_weather(site: str, year: int) -> tuple[list[dict], int]:
+    """The whole calendar year as weather days, numbered relative to planting (day 0).
+    Returns (days, index of planting)."""
+    year_days = load_year(site, year)
+    p = PLANTING_DOY - 1
+    if len(year_days) < p + 1 + DAYS:
+        raise ValueError(f"weather for {site} {year} is shorter than the season")
+    days = [{"day": i - p, "tmax": d["tmax_c"], "tmin": d["tmin_c"], "rain_mm": d["rain_mm"]}
+            for i, d in enumerate(year_days)]
+    return days, p
 
 
 class ToySimulator(Simulator):
-    def reset(self, site: str, weather_seed: int) -> dict:
+    def reset(self, site: str, year: int) -> dict:
         self.site = site
-        self.weather = make_weather(weather_seed)
-        self.day = 0                    # next day to simulate
+        self.weather, self.p = load_weather(site, year)   # self.p = index of planting day
+        self.day = 0                    # days simulated so far; the next one is weather day day + 1
         self.gdd = 0.0
         self.water = START_WATER_MM
         self.soil_n = START_SOIL_N
@@ -95,7 +95,7 @@ class ToySimulator(Simulator):
         return {"obs": self._obs(), "weekly": weekly, "done": done}
 
     def _run_day(self, irr_mm: float, weekly: dict) -> None:
-        w = self.weather[self.day]
+        w = self.weather[self.p + 1 + self.day]
         self.gdd += max(0.0, (w["tmax"] + w["tmin"]) / 2 - 10)
         stage = self._stage()
 
@@ -145,10 +145,12 @@ class ToySimulator(Simulator):
         }
 
     def weather_history(self, days: int) -> list[dict]:
-        return [dict(w) for w in self.weather[max(0, self.day - days):self.day]]
+        now = self.p + 1 + self.day     # index of the next day to simulate
+        return [dict(w) for w in self.weather[max(0, now - days):now]]
 
     def weather_outlook(self, days: int, rng) -> list[dict]:
-        return self.noisy_outlook(self.weather[self.day:self.day + days], rng)
+        now = self.p + 1 + self.day
+        return self.noisy_outlook(self.weather[now:now + days], rng)
 
     def crop_state(self) -> dict:
         return {

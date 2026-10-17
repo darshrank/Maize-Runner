@@ -8,7 +8,8 @@ Shapes (frozen, see SKELETON_SPEC.md section 5):
             "n_applied_total", "irr_total_mm", "biomass_kg_ha"}
   weekly = {"rain_mm", "n_leached", "n_uptake", "n_gas"}       (this week's sums)
   final  = {"grain_kg_ha", "n_applied", "n_uptake", "n_leached", "n_gas", "irr_mm"}
-Weather day = {"day", "tmax", "tmin", "rain_mm"}.
+Weather day = {"day", "tmax", "tmin", "rain_mm"}; day is relative to week 0 (negative before it).
+Seasons use real NASA POWER weather (env/weather.py, data/weather/).
 """
 
 from abc import ABC, abstractmethod
@@ -20,8 +21,8 @@ class Simulator(ABC):
         self.env_config = env_config or {}
 
     @abstractmethod
-    def reset(self, site: str, weather_seed: int) -> dict:
-        """Start a new season. Returns obs."""
+    def reset(self, site: str, year: int) -> dict:
+        """Start a new season at `site` with the real weather of `year`. Returns obs."""
 
     @abstractmethod
     def step_week(self, n_kg_ha: float, irr_mm: float) -> dict:

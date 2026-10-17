@@ -4,12 +4,10 @@ numpy 1.x), NOT the project's Python: env/dssat_sim.py launches it with
 object per line.
 
 Commands (request -> response):
-  {"cmd": "start", "seed": int, "record_weather": bool}
-      -> {"state": {...}, "weather": [...] | null}
-     Starts the maize season for `seed`. With record_weather, first plays the
-     whole season with zero actions to record its daily weather (gym-DSSAT
-     generates weather as it goes, so this is the only way to see future days),
-     then restarts the same seed. Weather does not depend on management.
+  {"cmd": "start", "xfile_template": path, "wth": path} -> {"state": {...}}
+     Starts the maize season from a (date-shifted) X-file template, with the
+     weather generator OFF (WTHER=M) so DSSAT reads the given .WTH file, which
+     is copied into the run directory (searched before DSSAT's Weather folder).
   {"cmd": "step", "anfer": float, "amir": float}
       -> {"state": {...} | null, "done": bool}       (one day)
   {"cmd": "close"} -> {"ok": true}, then exit.
@@ -30,7 +28,6 @@ sys.stdout = sys.stderr
 warnings.filterwarnings("ignore")
 
 RUN_DSSAT = os.environ.get("FIELDTWIN_RUN_DSSAT", "/opt/dssat_pdi/run_dssat")
-WEATHER_KEYS = ("yrdoy", "tmax", "tmin", "rain", "srad")
 
 
 def _to_json(o):
@@ -49,27 +46,16 @@ class Worker:
     def __init__(self):
         self.env = None
 
-    def _make(self, seed):
+    def start(self, xfile_template, wth):
         import gym  # imported lazily so a broken install reports a clean error
         self.close_env()
-        # The constructor starts a season whose weather is drawn from `seed`,
-        # identical to env.reset(seed=seed). We drive the unwrapped env: gym's
+        # The constructor starts the season. We drive the unwrapped env: gym's
         # order-enforcing wrapper would demand a reset(), which first plays out
         # the constructor's whole season (~1.5 s) for nothing.
         self.env = gym.make("gym_dssat_pdi:GymDssatPdi-v0", run_dssat_location=RUN_DSSAT,
-                            mode="all", seed=seed, random_weather=True, log_saving_path=None).unwrapped
-        return self.env
-
-    def start(self, seed, record_weather):
-        u = self._make(seed)
-        weather = None
-        if record_weather:
-            weather = []
-            while not u.done:
-                weather.append({k: u._state[k] for k in WEATHER_KEYS})
-                u.step({"anfer": 0.0, "amir": 0.0})
-            u.reset(seed=seed)
-        return {"state": u._state, "weather": weather}
+                            mode="all", random_weather=False, fileX_template_path=xfile_template,
+                            auxiliary_file_paths=[wth], log_saving_path=None).unwrapped
+        return {"state": self.env._state}
 
     def step(self, anfer, amir):
         u = self.env
@@ -96,7 +82,7 @@ def main():
             req = json.loads(line)
             cmd = req.get("cmd")
             if cmd == "start":
-                send(worker.start(int(req["seed"]), bool(req.get("record_weather"))))
+                send(worker.start(req["xfile_template"], req["wth"]))
             elif cmd == "step":
                 send(worker.step(req.get("anfer", 0.0), req.get("amir", 0.0)))
             elif cmd == "close":

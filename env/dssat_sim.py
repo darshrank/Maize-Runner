@@ -6,11 +6,14 @@ that interpreter. One worker = one DSSAT season at a time.
 
 Setup (once per machine): bash scripts/install_gym_dssat.sh
 
-Season: the UFGA8201 maize experiment (Gainesville, FL) with DSSAT's weather
-generator seeded by weather_seed. DSSAT starts ~27 days before planting; reset()
-skips those days, so week 0 starts the day after planting and the crop matures
-around day 135 (week 19). Steps are daily in DSSAT; step_week applies the action
-on day 1 and runs 7 days.
+Season: gym-DSSAT's UFGA8201 maize experiment (Gainesville, FL) moved to a real
+year: reset(site, year) writes a copy of the experiment (X file) with every
+1982 date shifted to `year` (same day of year), turns the weather generator off
+(WTHER=M) and hands DSSAT our NASA POWER file data/dssat_wth/UFGA<YY>01.WTH,
+copied into the run directory (searched before DSSAT's own Weather folder).
+DSSAT starts ~27 days before planting; reset() skips those days, so week 0
+starts the day after planting. Steps are daily in DSSAT; step_week applies the
+action on day 1 and runs 7 days.
 
 Mapping notes (DSSAT has no direct output for some contract fields):
   - soil_water_frac: plant-available water in the root zone (max(rtdep, 30 cm)),
@@ -21,13 +24,14 @@ Mapping notes (DSSAT has no direct output for some contract fields):
   - n_gas: denitrification (cnox/tnoxd) + ammonia volatilization (totaml).
   - Season totals in final() count from week 0 (pre-planting losses excluded),
     so they equal the sum of the weekly values.
-  - outlook: gym-DSSAT generates weather as it goes, so the season's weather is
-    recorded once per seed by a zero-action pre-run and cached on disk.
+  - outlook: the next days of data/weather/<SITE>_<YEAR>.json (the same values as
+    the .WTH file DSSAT reads), plus the shared noise.
 """
 
 import atexit
 import json
 import os
+import re
 import select
 import subprocess
 import time
@@ -35,16 +39,19 @@ import weakref
 from pathlib import Path
 
 from env.sim_base import Simulator
+from env.weather import load_year, wth_path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKER = Path(__file__).resolve().parent / "dssat_worker.py"
 DEFAULTS = {
     "python": "/opt/gym_dssat_pdi/bin/python",
     "run_dssat": "/opt/dssat_pdi/run_dssat",
-    "cache_dir": ".cache/dssat_weather",
+    "xfile_dir": ".cache/dssat_x",      # per-year copies of the experiment file
     "timeout_s": 120,
 }
 SITES = {"UFGA"}                 # the maize experiment shipped with gym-DSSAT
+BASE_YEAR = 1982                 # the experiment's original year (UFGA8201)
+XFILE = "gym_dssat_pdi/envs/configs/maize/UFGA8201.jinja2"
 SOIL_N_INIT = 15.0               # kg/ha mineral N at simulation start (UFGA8201 initial conditions)
 MINERALIZATION = 0.3             # kg/ha/day, calibrated so a zero-N season ends near 0
 MAX_DAYS = 400                   # safety cap when finishing a season
@@ -130,30 +137,37 @@ class DssatSimulator(Simulator):
     def __del__(self):
         self.close()
 
-    # ---- weather cache --------------------------------------------------
-    def _cache_path(self, site: str, seed: int) -> Path:
-        cache_dir = Path(self.cfg["cache_dir"])
-        if not cache_dir.is_absolute():
-            cache_dir = ROOT / cache_dir
-        return cache_dir / f"{site}_seed{seed}.json"
+    # ---- experiment file for a real year -----------------------------------
+    def _xfile_for_year(self, year: int) -> Path:
+        """Copy of gym-DSSAT's X-file template with every 1982/1983 YYDDD date moved to year/year+1.
+        The jinja placeholders ({{ wther }} etc.) stay; gym-DSSAT fills them."""
+        venv = Path(self.cfg["python"]).parent.parent
+        base = next(venv.glob(f"lib/python3*/site-packages/{XFILE}")).read_text()
+        shift = {BASE_YEAR % 100: year % 100, (BASE_YEAR + 1) % 100: (year + 1) % 100}
+        text = re.sub(r"\b(8[23])(\d{3})\b", lambda m: f"{shift[int(m.group(1))]:02d}{m.group(2)}", base)
+        out_dir = Path(self.cfg["xfile_dir"])
+        out_dir = out_dir if out_dir.is_absolute() else ROOT / out_dir
+        out_dir.mkdir(parents=True, exist_ok=True)
+        path = out_dir / f"UFGA{year}.jinja2"
+        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        tmp.write_text(text)
+        tmp.replace(path)
+        return path
 
     # ---- Simulator interface --------------------------------------------
-    def reset(self, site: str, weather_seed: int) -> dict:
+    def reset(self, site: str, year: int) -> dict:
         if site not in SITES:
             raise ValueError(f"dssat simulator supports sites {sorted(SITES)}, got {site!r}")
+        self.year_weather = load_year(site, year)   # also validates that the year exists
+        wth = wth_path(site, year)
         self._start_worker()
-        cache = self._cache_path(site, weather_seed)
-        weather = json.loads(cache.read_text()) if cache.exists() else None
-        resp = self._request({"cmd": "start", "seed": int(weather_seed), "record_weather": weather is None})
-        if weather is None:
-            weather = resp["weather"]
-            cache.parent.mkdir(parents=True, exist_ok=True)
-            tmp = cache.with_suffix(f".{os.getpid()}.tmp")
-            tmp.write_text(json.dumps(weather))
-            tmp.replace(cache)
+        resp = self._request({"cmd": "start", "xfile_template": str(self._xfile_for_year(year)),
+                              "wth": str(wth)})
         self.planting_index = None
-        self.season_weather = weather        # true daily weather by simulation-day index
         self.state = resp["state"]
+        if self.state["yrdoy"] // 1000 != year:     # e.g. a two-digit-year mix-up in DSSAT
+            self.close()
+            raise DssatError(f"DSSAT simulated year {self.state['yrdoy'] // 1000}, expected {year}")
         self.sim_day = 0                     # simulation-day index of self.state
         self.done = False
         self.observed = [self._weather_day(self.state)]
@@ -204,9 +218,11 @@ class DssatSimulator(Simulator):
         return [dict(w) for w in self.observed[-days:]] if days > 0 else []
 
     def weather_outlook(self, days: int, rng) -> list[dict]:
-        upcoming = self.season_weather[self.sim_day + 1:self.sim_day + 1 + days]
-        start = self.sim_day + 1
-        true_days = [self._weather_day(w, start + k) for k, w in enumerate(upcoming)]
+        # DSSAT's yrdoy is already the NEXT day: the weather in a state with yrdoy D is day D-1's.
+        last_seen = self.state["yrdoy"] % 1000 - 2  # 0-based index of the latest observed day
+        upcoming = self.year_weather[last_seen + 1:last_seen + 1 + days]
+        true_days = [{"day": self.sim_day + 1 + k - self.planting_index, "tmax": d["tmax_c"],
+                      "tmin": d["tmin_c"], "rain_mm": d["rain_mm"]} for k, d in enumerate(upcoming)]
         return self.noisy_outlook(true_days, rng)
 
     def crop_state(self) -> dict:

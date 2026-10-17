@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from env import make_simulator
+from env.weather import legacy_seed_to_year
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ["get_weather", "get_crop_state", "get_soil", "get_history", "get_budget"]
@@ -36,7 +37,8 @@ def load_config(path: str | os.PathLike | None = None) -> dict:
 class ResetRequest(BaseModel):
     task_id: str
     site: str
-    weather_seed: int
+    year: int | None = None           # real weather year (NASA POWER)
+    weather_seed: int | None = None   # deprecated; used only when year is missing
 
 
 class StepRequest(BaseModel):
@@ -47,9 +49,9 @@ class StepRequest(BaseModel):
 
 
 class Episode:
-    def __init__(self, req: ResetRequest, sim):
-        self.task_id = req.task_id
-        self.weather_seed = req.weather_seed
+    def __init__(self, task_id: str, year: int, sim):
+        self.task_id = task_id
+        self.year = year
         self.sim = sim
         self.week = 0
         self.done = False
@@ -100,11 +102,19 @@ def create_app(config: dict | None = None) -> FastAPI:
 
     @app.post("/reset")
     def reset(req: ResetRequest):
+        if req.year is None and req.weather_seed is None:
+            return error(422, "reset needs 'year' (e.g. {\"task_id\": \"UFGA-2015\", \"site\": \"UFGA\", "
+                              "\"year\": 2015}).")
+        year = req.year if req.year is not None else legacy_seed_to_year(req.weather_seed)
         sim = make_simulator(env_cfg["simulator"], env_cfg)
-        obs = sim.reset(req.site, req.weather_seed)
+        try:
+            obs = sim.reset(req.site, year)
+        except (FileNotFoundError, ValueError) as e:
+            sim.close()
+            return error(400, str(e))
         episode_id = uuid.uuid4().hex
         with episodes_lock:
-            episodes[episode_id] = Episode(req, sim)
+            episodes[episode_id] = Episode(req.task_id, year, sim)
         return {"episode_id": episode_id, "obs": obs, "week": 0}
 
     @app.post("/step")
@@ -149,8 +159,8 @@ def create_app(config: dict | None = None) -> FastAPI:
         with ep.lock:
             sim = ep.sim
             if name == "get_weather":
-                # Same seed per (task, week), so every policy sees the same outlook.
-                rng = np.random.default_rng(ep.weather_seed * 1000 + ep.week)
+                # Same seed per (year, week), so every policy sees the same outlook.
+                rng = np.random.default_rng(ep.year * 1000 + ep.week)
                 return {"history": sim.weather_history(14), "outlook": sim.weather_outlook(7, rng)}
             if name == "get_crop_state":
                 return sim.crop_state()
