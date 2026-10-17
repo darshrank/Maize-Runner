@@ -5,20 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FieldTwin</title>
   <link rel="stylesheet" href="style.css">
-  <!-- three.js 0.160.0 and fonts are vendored (ui/vendor/README.md): replay makes no CDN calls. -->
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "./vendor/three/build/three.module.js",
-        "three/addons/": "./vendor/three/examples/jsm/"
-      }
-    }
-  </script>
+  <!-- Fonts are vendored (ui/vendor/README.md): replay makes no CDN calls. -->
 </head>
-<body>
-  <!-- Full-bleed 3D scene; everything else floats over it. -->
-  <div id="stage"></div>
-  <div id="vignette"></div>
+<body class="not-loaded">
+  <!-- One shared glow filter for every SVG on the page: small blur merged under the stroke. ?lite=1 drops it. -->
+  <svg class="defs" width="0" height="0" aria-hidden="true">
+    <filter id="glow" filterUnits="userSpaceOnUse" x="-40" y="-60" width="720" height="600" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </svg>
 
   <header id="bar">
     <div class="brand"><i class="mark"></i><span>FieldTwin</span></div>
@@ -30,51 +26,59 @@
       <button data-view="how"><span class="key">5</span>How it works</button>
     </nav>
     <label class="pick"><span class="label">Season</span><select id="task" aria-label="Season"></select></label>
-    <span id="split" class="badge" hidden></span>
     <span id="fake" class="badge fake" hidden title="FAKE data from ui/fake/ (UI testing only)">FAKE</span>
     <div class="grow"></div>
     <div id="chips"></div>
   </header>
 
   <main id="season" class="view">
-    <!-- Top left: which field, which week. -->
-    <section id="field-hud" class="hud">
-      <div id="field-pick" class="seg" role="group" aria-label="Field"></div>
-      <div class="week">
-        <span class="label">Week</span>
-        <span id="week-num" class="hero mono">00</span>
-        <span id="week-of" class="sub mono"></span>
-      </div>
-      <dl class="readout">
-        <dt class="label">Stage</dt><dd id="stage-v" class="mono">n/a</dd>
-        <dt class="label">Soil water</dt><dd id="water-v" class="mono water">n/a</dd>
-        <dt class="label">Biomass</dt><dd id="biomass-v" class="mono">n/a</dd>
-        <dt class="label">Rain this week</dt><dd id="rain-v" class="mono rain">n/a</dd>
-      </dl>
-      <ul class="legend">
-        <li><i class="sw canopy"></i>Canopy height and edges: biomass</li>
-        <li><i class="sw water"></i>Soil edges: soil water fraction, filled bottom up</li>
-        <li><i class="sw leach"></i>Floor tint: N leached to groundwater, season to date</li>
-        <li class="ripples">Ripples: <span class="n">N dose</span> · <span class="leach">leaching</span> · <span class="rain">storm</span></li>
-      </ul>
-    </section>
+    <div id="week" aria-live="polite">
+      <span id="week-num" class="mono">Week 0</span><span id="week-of" class="mono quiet"></span><span id="week-date" class="quiet"></span>
+    </div>
 
-    <div id="storm" class="storm" hidden><span class="label">Storm</span><span id="storm-v" class="mono"></span></div>
+    <div id="fields">
+      <section class="field" id="field-left">
+        <header class="field-head">
+          <h2 id="name-left">Farmer calendar</h2>
+          <span id="src-left" class="badge" hidden></span>
+          <span id="fb-left" class="badge fallback" hidden></span>
+        </header>
+        <div class="plot" id="plot-left"></div>
+        <div class="tally" id="tally-left">
+          <div class="live"><span class="label">N leached</span><span class="v mono leach">n/a</span><span class="unit">kg/ha</span></div>
+          <div class="end" id="end-left" hidden>
+            <span class="label">Profit</span><span class="v mono profit">n/a</span><span class="unit">$/ha</span>
+            <span class="label">Grain</span><span class="v mono grain">n/a</span><span class="unit">kg/ha</span>
+          </div>
+        </div>
+        <div class="lines">
+          <div class="objection" id="obj-left" hidden><span class="who">Critic</span><span class="t"></span></div>
+          <div class="why" id="why-left"><span class="who"></span><span class="t"></span><span class="flag" hidden>fallback</span></div>
+        </div>
+      </section>
 
-    <!-- Right: this week's decision (full agent chat is unit 3). -->
-    <aside id="decision" class="hud card"></aside>
+      <section class="field" id="field-right">
+        <header class="field-head">
+          <h2 id="name-right">FieldTwin agent team</h2>
+          <span id="src-right" class="badge" hidden></span>
+          <span id="fb-right" class="badge fallback" hidden></span>
+        </header>
+        <div class="plot" id="plot-right"></div>
+        <div class="tally" id="tally-right">
+          <div class="live"><span class="label">N leached</span><span class="v mono leach">n/a</span><span class="unit">kg/ha</span></div>
+          <div class="end" id="end-right" hidden>
+            <span class="label">Profit</span><span class="v mono profit">n/a</span><span class="unit">$/ha</span>
+            <span class="label">Grain</span><span class="v mono grain">n/a</span><span class="unit">kg/ha</span>
+          </div>
+        </div>
+        <div class="lines">
+          <div class="objection" id="obj-right" hidden><span class="who">Critic</span><span class="t"></span></div>
+          <div class="why" id="why-right"><span class="who"></span><span class="t"></span><span class="flag" hidden>fallback</span></div>
+        </div>
+      </section>
+    </div>
 
-    <!-- Bottom: counters, controls, timeline. -->
     <section id="bottom">
-      <div id="counters">
-        <div class="counter-head"><span class="label" id="counters-for">n/a</span><span id="src" class="badge" hidden></span></div>
-        <div class="counter" data-k="nApplied"><span class="label">N applied</span><span class="v mono n">n/a</span><span class="unit">kg/ha</span></div>
-        <div class="counter" data-k="nLeached"><span class="label">N leached</span><span class="v mono leach">n/a</span><span class="unit">kg/ha</span></div>
-        <div class="counter" data-k="irr"><span class="label">Irrigation</span><span class="v mono water">n/a</span><span class="unit">mm</span></div>
-        <div class="counter" data-k="grain"><span class="label">Grain</span><span class="v mono">n/a</span><span class="unit">kg/ha</span></div>
-        <div class="counter" data-k="profit"><span class="label">Profit</span><span class="v mono">n/a</span><span class="unit">$/ha</span></div>
-        <div class="counter" data-k="reward"><span class="label">Reward</span><span class="v mono">n/a</span><span class="unit">$/ha</span></div>
-      </div>
       <div id="controls">
         <button id="play" class="btn" aria-label="Play">Play</button>
         <button id="prev" class="btn" aria-label="Previous week">&lsaquo;</button>
@@ -83,10 +87,16 @@
           <button data-speed="0.5">0.5x</button><button data-speed="1" class="on">1x</button><button data-speed="2">2x</button><button data-speed="4">4x</button>
         </div>
         <button id="reset" class="btn" aria-label="Reset to week 0">Reset</button>
-        <span class="keys label">Space play · arrows step · R reset · drag to orbit · double click resets view</span>
+        <button id="chat-toggle" class="btn" aria-label="Agent chat">Agent chat <span class="key">A</span></button>
+        <span class="keys quiet">Space play · arrows step · R reset</span>
       </div>
-      <svg id="timeline" role="img" aria-label="Season timeline"></svg>
+      <svg id="timeline" role="img" aria-label="Season timeline: daily rain and week scrubber"></svg>
     </section>
+
+    <aside id="chat" hidden>
+      <div class="chat-bar"><span class="label">Agent chat, this week</span><button id="chat-close" class="btn" aria-label="Close agent chat">Close</button></div>
+      <div id="chat-body"></div>
+    </aside>
   </main>
 
   <main id="placeholder" class="view" hidden>

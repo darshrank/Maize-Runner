@@ -8,4 +8,4 @@ Each file is copied unchanged from an npm tarball whose sha512 matched the regis
 | @fontsource-variable/inter@5.2.8 (OFL 1.1, `fonts/LICENSE-inter.txt`) | `fonts/inter-latin-wght-normal.woff2` | sha512-kOfP2D+ykbcX/P3IFnokOhV |
 | @fontsource-variable/jetbrains-mono@5.2.8 (OFL 1.1, `fonts/LICENSE-jetbrains-mono.txt`) | `fonts/jetbrains-mono-latin-wght-normal.woff2` | sha512-WBA9elru6Jdp5df2mES55wu |
 
-The import map in `ui/index.html` maps `three` and `three/addons/` to `vendor/three/`.
+three.js is unused since the R1 Season rebuild (2D SVG fields); the files stay vendored, with js/edgeMaterial.js, in case a later unit needs them. ui/index.html no longer has an import map.

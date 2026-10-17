@@ -1,28 +1,29 @@
-// Boot, view routing, keyboard, playback (UI_SPEC.md section 8). Unit 1: the Season view with one field and
-// the timeline; the other views are quiet placeholders until their units.
+// Boot, view routing, keyboard, playback (UI_SPEC.md section 8). R1: the Season view is two 2D neon fields
+// side by side (fieldSvg.js), LEFT farmer baseline, RIGHT agent team, plus the rain strip and week scrubber.
+// The other views are quiet placeholders until their units.
 //
 // Week semantics (STATE.md): position k in 0..W-1 shows week k's decision and its outcome (obs at the end of
-// week k); k = W is harvest (the final line). Every number on screen comes from data.js; a missing value
-// shows "n/a" or "at harvest". Theme: js/theme.js (all colors and sizes).
+// week k); k = W is harvest (the final line). Every number on screen comes from data.js. Theme: js/theme.js.
 
 import { theme, applyCssTheme } from "./theme.js";
 import * as data from "./data.js";
-import { Stage } from "./scene.js";
-import { Field } from "./field3d.js";
+import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
-import { decisionHtml } from "./agents.js";
+import { weekLines, chatHtml, esc } from "./agents.js";
 
 export { theme };
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["season", "results", "improve", "serving", "how"];
 const VIEW_TITLES = { results: "Results", improve: "Improve", serving: "Serving", how: "How it works" };
+const SIDES = ["left", "right"];
 
 const state = {
-  index: null, task: null, pair: { left: null, right: null }, shown: null,
-  runs: {}, days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season",
+  index: null, task: null, pair: { left: null, right: null }, runs: { left: null, right: null },
+  days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", chat: false,
 };
-let stage, field, timeline;
+const fields = {};
+let timeline;
 
 // ---------------------------------------------------------------- formatting
 
@@ -57,10 +58,6 @@ function setNumber(el, value, digits = 0, pending = "n/a") {
   step(t0);
 }
 
-function esc(s) {
-  return String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
-}
-
 // ---------------------------------------------------------------- views
 
 function setView(view) {
@@ -75,27 +72,28 @@ function setView(view) {
   }
 }
 
-// ---------------------------------------------------------------- top bar
-
-function taskLabel(task) {
-  const p = data.parseTaskId(task);
-  return p ? `${p.year}` : task;
+function setChat(on) {
+  state.chat = on;
+  $("chat").hidden = !on;
+  $("chat-toggle").classList.toggle("on", on);
+  if (on) renderChat();
 }
+
+// ---------------------------------------------------------------- top bar
 
 function renderTaskPicker() {
   const tasks = data.sortTasks(state.index);
-  $("task").innerHTML = tasks.map((t) => `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>${esc(taskLabel(t))}</option>`).join("");
+  $("task").innerHTML = tasks.map((t) => {
+    const p = data.parseTaskId(t);
+    return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>${esc(p ? p.year : t)}</option>`;
+  }).join("");
 }
 
 function renderBadges() {
-  const runs = Object.values(state.runs).filter(Boolean);
-  const splits = [...new Set(runs.map((r) => r.split).filter(Boolean))];
-  $("split").textContent = splits.join(" / ");
-  $("split").hidden = !splits.length;
+  const runs = SIDES.map((s) => state.runs[s]).filter(Boolean);
   $("fake").hidden = !(data.FAKE || runs.some((r) => r.fake));
 }
 
-// Chips come from data only: model and vLLM version from vllm_metrics.json, when it exists.
 function renderChips(metrics) {
   const chips = [];
   if (metrics && metrics.model) chips.push(metrics.model);
@@ -103,103 +101,115 @@ function renderChips(metrics) {
   $("chips").innerHTML = chips.map((c) => `<span>${esc(c)}</span>`).join("");
 }
 
-// ---------------------------------------------------------------- season: field picker, HUD, counters
-
-function fieldConfigs() {
-  return data.configsFor(state.index, state.task);
-}
-
-function renderFieldPick() {
-  const configs = fieldConfigs();
-  $("field-pick").innerHTML = configs.map((c) => `<button data-config="${esc(c)}" class="${c === state.shown ? "on" : ""}">`
-    + `${esc(data.configName(c))}${data.isFakeConfig(c) && !data.FAKE ? '<span class="tag">FAKE</span>' : ""}</button>`).join("")
-    || `<span class="label">No runs for this season</span>`;
-}
-
-function shownRun() {
-  return state.runs[state.shown] || null;
-}
-
-function weekState(run, k) {
-  const w = run && run.weeks[Math.min(k, run.W)];
-  if (!w || !w.obs) return null;
-  return { biomass: w.obs.biomass_kg_ha, waterFrac: w.obs.soil_water_frac, leachedCum: w.cum ? w.cum.nLeached : null };
-}
-
-function renderHud() {
-  const run = shownRun(), k = state.week;
-  const W = run ? run.W : maxW();
-  const w = run && run.weeks[Math.min(k, run.W)];
-  const harvest = k >= W;
-  $("week-num").textContent = harvest ? "H" : String(k).padStart(2, "0");
-  $("week-of").textContent = harvest ? "harvest" : `of ${W - 1}`;
-  const obs = (w && w.obs) || {};
-  $("stage-v").textContent = obs.stage || "n/a";
-  $("water-v").textContent = has(obs.soil_water_frac) ? obs.soil_water_frac.toFixed(3) : "n/a";
-  $("biomass-v").textContent = has(obs.biomass_kg_ha) ? `${fmt(obs.biomass_kg_ha)} kg/ha` : "n/a";
-  const rain = w && w.weekly && has(w.weekly.rain_mm) ? w.weekly.rain_mm : null;
-  $("rain-v").textContent = rain !== null ? `${fmt(rain, 1)} mm` : "n/a";
-
-  // Storm tag: a week whose logged rain is above theme.stormMm (UI_SPEC.md section 6).
-  const storm = rain !== null && rain > theme.stormMm && !harvest;
-  $("storm").hidden = !storm;
-  if (storm) $("storm-v").textContent = `${fmt(rain, 0)} mm`;
-
-  const card = $("decision");
-  card.innerHTML = decisionHtml(run, Math.min(k, run ? run.W : k));
-  card.classList.remove("enter");
-  void card.offsetWidth;   // restart the fade
-  card.classList.add("enter");
-}
-
-function renderCounters() {
-  const run = shownRun();
-  const w = run && run.weeks[Math.min(state.week, run.W)];
-  const cum = (w && w.cum) || {};
-  const final = w && w.harvest ? run.final : null;
-  $("counters-for").textContent = run ? data.configName(run.config) : "No run";
-  const src = data.sourceLabel(run);
-  $("src").textContent = src || "";
-  $("src").hidden = !src;
-  $("src").classList.toggle("fake", !!(run && run.fake));
-  const set = (key, v, digits, pending) => setNumber(document.querySelector(`.counter[data-k="${key}"] .v`), v, digits, pending);
-  set("nApplied", run ? cum.nApplied : null, 0);
-  set("nLeached", run ? cum.nLeached : null, 1);
-  set("irr", run ? cum.irr : null, 0);
-  const atHarvest = run && run.final ? "at harvest" : "n/a";
-  set("grain", final ? final.grain_kg_ha : null, 0, atHarvest);
-  set("profit", final ? final.profit_usd_ha : null, 0, atHarvest);
-  set("reward", final ? final.reward : null, 0, atHarvest);
-}
-
-// ---------------------------------------------------------------- timeline model
+// ---------------------------------------------------------------- season
 
 function maxW() {
-  const ws = Object.values(state.runs).filter(Boolean).map((r) => r.W);
+  const ws = SIDES.map((s) => state.runs[s]).filter(Boolean).map((r) => r.W);
   return ws.length ? Math.max(...ws) : 20;
 }
 
-function timelineRows() {
-  const order = [state.pair.left, state.pair.right, state.shown].filter(Boolean);
-  return [...new Set(order)].map((c) => ({ config: c, run: state.runs[c] || null, active: c === state.shown, fake: data.isFakeConfig(c) }));
+// Shared scale for both fields: max of each value across both runs for this task.
+function taskScale() {
+  const sc = { biomass: 0, soilN: 0, dose: 0, uptake: 0, leachWeek: 0, leachCum: 0 };
+  for (const run of SIDES.map((s) => state.runs[s]).filter(Boolean)) {
+    for (const w of run.weeks) {
+      const o = w.obs || {}, wk = w.weekly || {};
+      if (has(o.biomass_kg_ha)) sc.biomass = Math.max(sc.biomass, o.biomass_kg_ha);
+      if (has(o.soil_n_kg_ha)) sc.soilN = Math.max(sc.soilN, o.soil_n_kg_ha);
+      if (w.decision && has(w.decision.n_kg_ha)) sc.dose = Math.max(sc.dose, w.decision.n_kg_ha);
+      if (has(wk.n_uptake)) sc.uptake = Math.max(sc.uptake, wk.n_uptake);
+      if (has(wk.n_leached)) sc.leachWeek = Math.max(sc.leachWeek, wk.n_leached);
+      if (w.cum && has(w.cum.nLeached)) sc.leachCum = Math.max(sc.leachCum, w.cum.nLeached);
+    }
+  }
+  return sc;
+}
+
+function snapshot(run, k) {
+  const w = run && run.weeks[Math.min(k, run.W)];
+  if (!w) return null;
+  return { k: Math.min(k, run.W), W: run.W, obs: w.obs, weekly: w.weekly, harvest: w.harvest,
+    cumLeached: w.cum ? w.cum.nLeached : null };
+}
+
+function renderFieldHeads() {
+  const others = data.configsFor(state.index, state.task);
+  for (const side of SIDES) {
+    const config = state.pair[side], run = state.runs[side];
+    $(`name-${side}`).textContent = config ? data.fieldLabel(config, others) : "No run";
+    const src = data.sourceLabel(run);
+    $(`src-${side}`).textContent = src || "";
+    $(`src-${side}`).hidden = !src;
+    $(`src-${side}`).classList.toggle("fake", !!(run && run.fake));
+    const fb = run ? run.fallbackWeeks.length : 0;
+    $(`fb-${side}`).textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
+    $(`fb-${side}`).hidden = !fb;
+  }
+}
+
+function renderWeekLabel() {
+  const W = maxW(), k = state.week;
+  const harvest = k >= W;
+  $("week-num").textContent = harvest ? "Harvest" : `Week ${k}`;
+  $("week-of").textContent = harvest ? "" : `of ${W - 1}`;
+  const day = state.days && state.dayStart !== null && !harvest ? state.days[state.dayStart + 7 * k] : null;
+  const date = day && day.date ? new Date(`${day.date}T00:00:00`) : null;
+  $("week-date").textContent = date && !Number.isNaN(+date)
+    ? `from ${date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "";
+}
+
+function renderTallies() {
+  for (const side of SIDES) {
+    const run = state.runs[side];
+    const w = run && run.weeks[Math.min(state.week, run.W)];
+    setNumber(document.querySelector(`#tally-${side} .live .v`), w && w.cum ? w.cum.nLeached : null, 1);
+    const final = w && w.harvest ? run.final : null;
+    $(`end-${side}`).hidden = !final;
+    if (final) {
+      setNumber(document.querySelector(`#end-${side} .profit`), final.profit_usd_ha, 0);
+      setNumber(document.querySelector(`#end-${side} .grain`), final.grain_kg_ha, 0);
+    }
+    const lines = weekLines(run, state.week);
+    const obj = $(`obj-${side}`), why = $(`why-${side}`);
+    obj.hidden = !lines.objection;
+    obj.querySelector(".t").textContent = lines.objection || "";
+    obj.title = lines.objection || "";
+    why.querySelector(".who").textContent = lines.who || "";
+    why.querySelector(".t").textContent = lines.reason || (run && !(w && w.harvest) ? "No reason logged this week." : "");
+    why.title = lines.reason || "";
+    why.querySelector(".flag").hidden = !lines.fallback;
+    why.classList.toggle("enter", false);
+    void why.offsetWidth;   // restart the fade
+    why.classList.add("enter");
+  }
+}
+
+function renderChat() {
+  if (!state.chat) return;
+  const others = data.configsFor(state.index, state.task);
+  $("chat-body").innerHTML = SIDES.map((side) => `<section class="chat-col">${chatHtml(state.runs[side],
+    state.pair[side] ? data.fieldLabel(state.pair[side], others) : "No run", state.week)}</section>`).join("");
 }
 
 function renderTimeline() {
   const W = maxW();
-  const ref = shownRun() || Object.values(state.runs).find(Boolean) || null;
+  const ref = state.runs.left || state.runs.right;
   const weeklyRain = Array.from({ length: W }, (_, k) => {
     const w = ref && ref.weeks[k];
     return w && w.weekly && has(w.weekly.rain_mm) ? w.weekly.rain_mm : null;
   });
   let days = null, rainNote = null;
   if (state.days && state.dayStart !== null) {
-    days = state.days.slice(state.dayStart, state.dayStart + 7 * W).map((d) => (has(d.rain_mm) ? d.rain_mm : null));
+    days = Array.from({ length: 7 * W }, (_, i) => {
+      const d = state.days[state.dayStart + i];
+      return d && has(d.rain_mm) ? d.rain_mm : null;
+    });
   } else if (state.days) {
     rainNote = "weather file does not match the log";
   } else if (ref && ref.year) {
     rainNote = "no weather file";
   }
-  timeline.setModel({ W, rows: timelineRows(), days, weeklyRain, rainNote });
+  timeline.setModel({ W, days, weeklyRain, rainNote });
 }
 
 // ---------------------------------------------------------------- loading
@@ -207,41 +217,38 @@ function renderTimeline() {
 async function selectTask(task) {
   state.task = task;
   state.pair = data.defaultPair(state.index, task);
-  const configs = fieldConfigs();
-  // Never a fake config by default in real mode (defaultPair excludes runs/fake_*); the picker still offers it.
-  if (!configs.includes(state.shown)) state.shown = state.pair.left || state.pair.right || null;
-  const wanted = [...new Set([state.pair.left, state.pair.right, state.shown].filter(Boolean))];
-  const loaded = await Promise.all(wanted.map((c) => data.loadRun(c, task)));
-  state.runs = Object.fromEntries(wanted.map((c, i) => [c, loaded[i]]));
-  const ref = state.runs[state.shown] || loaded.find(Boolean);
+  const loaded = await Promise.all(SIDES.map((s) => (state.pair[s] ? data.loadRun(state.pair[s], task) : null)));
+  SIDES.forEach((s, i) => (state.runs[s] = loaded[i]));
+  const ref = loaded.find(Boolean);
   state.days = ref ? await data.loadWeather(ref.site, ref.year) : null;
-  state.dayStart = data.alignSeason(ref, state.days);
+  state.dayStart = data.seasonStart(ref, state.days);
+  const scale = taskScale();
+  for (const s of SIDES) {
+    fields[s].setScale(scale);
+    fields[s].motes.clear();
+  }
   renderTaskPicker();
-  renderFieldPick();
   renderBadges();
+  renderFieldHeads();
   renderTimeline();
-  setWeek(Math.min(state.week, maxW()));
+  setWeek(Math.min(state.week, maxW()), { force: true });
 }
 
-async function showConfig(config) {
-  if (!config || config === state.shown) return;
-  state.shown = config;
-  if (!(config in state.runs)) state.runs[config] = await data.loadRun(config, state.task);
-  renderFieldPick();
-  renderBadges();
-  renderTimeline();
-  setWeek(state.week);
-}
-
-// Ripples fire when the shown week changes, from the data.js weeks model (storm, N dose, leaching).
-function setWeek(k, { ripple = true } = {}) {
+// Week change: fields animate this week's data events (dose, uptake, leaching, storm) when the week moved.
+function setWeek(k, { force = false } = {}) {
   const prev = state.week;
   state.week = Math.max(0, Math.min(maxW(), k));
-  field.setTarget(weekState(shownRun(), state.week));
-  if (ripple && state.week !== prev) field.trigger(data.weekEvents(shownRun(), state.week, theme.stormMm));
+  const moved = state.week !== prev || force;
+  const spread = Math.min(1.2, (theme.motion.weekSeconds / state.speed) * 0.7);
+  for (const side of SIDES) {
+    const run = state.runs[side];
+    const events = moved && run ? data.weekEvents(run, Math.min(state.week, run.W), theme.stormMm) : [];
+    fields[side].show(run ? snapshot(run, state.week) : null, events, spread);
+  }
   timeline.setWeek(state.week);
-  renderHud();
-  renderCounters();
+  renderWeekLabel();
+  renderTallies();
+  renderChat();
 }
 
 // ---------------------------------------------------------------- playback and input
@@ -262,11 +269,12 @@ function setSpeed(s) {
 function bind() {
   document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
   $("task").onchange = (e) => selectTask(e.target.value);
-  $("field-pick").onclick = (e) => { const b = e.target.closest("button[data-config]"); if (b) showConfig(b.dataset.config); };
   $("play").onclick = () => setPlaying(!state.playing);
   $("prev").onclick = () => setWeek(state.week - 1);
   $("next").onclick = () => setWeek(state.week + 1);
   $("reset").onclick = () => { setPlaying(false); setWeek(0); };
+  $("chat-toggle").onclick = () => setChat(!state.chat);
+  $("chat-close").onclick = () => setChat(false);
   document.querySelectorAll(".speed button").forEach((b) => (b.onclick = () => setSpeed(+b.dataset.speed)));
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("select, input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -278,11 +286,13 @@ function bind() {
       if (!e.repeat) setPlaying(!state.playing);
     } else if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
     else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }
-    else if (e.key === "r" || e.key === "R") { setPlaying(false); setWeek(0); stage.resetCamera(); }
+    else if (e.key === "r" || e.key === "R") { setPlaying(false); setWeek(0); }
+    else if (e.key === "a" || e.key === "A") setChat(!state.chat);
+    else if (e.key === "Escape" && state.chat) setChat(false);
   });
 }
 
-// One loop: play clock (wall time, so slow frames do not slow playback) and rendering.
+// One loop: play clock (wall time, so slow frames do not slow playback) and the mote canvases.
 function loop() {
   let last = performance.now(), clock = 0;
   const frame = (now) => {
@@ -295,7 +305,7 @@ function loop() {
         if (state.week >= maxW()) setPlaying(false); else setWeek(state.week + 1);
       }
     }
-    stage.render(Math.min(elapsed, 0.1));
+    if (state.view === "season") for (const s of SIDES) fields[s].tick(elapsed);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
@@ -306,26 +316,31 @@ function notice(text) {
   $("notice").hidden = !text;
 }
 
+function loaded() {
+  document.body.classList.remove("not-loaded");
+  loop();
+}
+
 async function main() {
   applyCssTheme();
-  stage = new Stage($("stage"), { lite: data.LITE });
+  if (data.LITE) document.body.classList.add("lite");
   const reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  field = new Field({ lite: data.LITE, reduceMotion, pixelRatio: stage.pixelRatio });
-  stage.addField(field, 0);
-  timeline = new Timeline($("timeline"), { onSeek: setWeek, onPickRow: showConfig });
+  for (const s of SIDES) fields[s] = new FieldView($(`plot-${s}`), { lite: data.LITE, reduceMotion });
+  timeline = new Timeline($("timeline"), { onSeek: (k) => setWeek(k) });
   bind();
-  loop();
   data.loadVllmMetrics().then(renderChips);
   state.index = await data.loadIndex();
   const task = state.index && data.defaultTask(state.index);
   if (!task) {
     notice(data.FAKE ? "No fake data: run uv run python -m lanec.scripts.fake_logs --ui"
-      : "No runs yet: runs/index.json is missing or empty. Play a season, or open with ?fake=1.");
-    renderHud();
-    renderCounters();
+      : "No runs yet: runs/index.json is missing or lists no task from tasks/. Play a season, or open with ?fake=1.");
+    renderFieldHeads();
+    setWeek(0, { force: true });
+    loaded();
     return;
   }
   await selectTask(task);
+  loaded();
 }
 
 main();

@@ -1,34 +1,49 @@
 // Loaders and the log -> weeks model (UI_SPEC.md section 3). Everything else in the UI reads these structures.
 //
-// ?fake=1 reads ui/fake/ (written by `uv run python -m lanec.scripts.fake_logs --ui`); otherwise the repo root:
-// runs/, data/weather/, results/. A missing or broken file returns null; callers show a quiet placeholder.
+// Sources:
+//   ?fake=1          ui/fake/ (written by `uv run python -m lanec.scripts.fake_logs --ui`)
+//   default          the repo root: runs/, data/weather/, results/
+//   ?runs=baseline   run logs from results_baseline/runs/ (A's frozen baselines), dev tasks only. The index
+//                    is built from tasks/dev.jsonl x BASELINE_CONFIGS; results_baseline/runs/index.json,
+//                    eval.csv and summary.md are never read (they include test years; pending ask to A).
+// A missing or broken file returns null; callers show a quiet placeholder.
+//
+// Real modes only show task ids listed in tasks/dev.jsonl or tasks/test.jsonl (stale skeleton runs such as
+// UFGA-s1 drop out), and take a missing split from there.
 //
 // Parsing rules (STATE.md): the line-level week is the decision week (0..W-1); the final line sits at week W
 // (harvest). A coordinator decision wins over the runner's policy/decision line. Critic messages are
-// {text, objection}; other messages {text}; fallbacks {why} (UI_SPEC) or {text} (our earlier proposal).
+// {text, objection}; other messages {text} (or {content}); fallbacks {why} (UI_SPEC) or {text}.
 
 const params = new URLSearchParams(location.search);
 export const FAKE = params.get("fake") === "1";
 export const LITE = params.get("lite") === "1";
+export const BASELINE = !FAKE && params.get("runs") === "baseline";
 
 const ROOT = FAKE ? "fake/" : "../";
+const RUNS = BASELINE ? "../results_baseline/runs/" : `${ROOT}runs/`;
 export const paths = {
-  index: `${ROOT}runs/index.json`,
-  run: (config, task) => `${ROOT}runs/${config}/${task}.jsonl`,
+  index: `${RUNS}index.json`,
+  run: (config, task) => `${RUNS}${config}/${task}.jsonl`,
+  tasks: (split) => `../tasks/${split}.jsonl`,
   weather: (site, year) => `${ROOT}data/weather/${site}_${year}.json`,
   eval: `${ROOT}results/eval.csv`,
   iterations: `${ROOT}results/iterations.json`,
   vllm: `${ROOT}results/vllm_metrics.json`,
 };
 
+// Baseline configs A froze in results_baseline/ (README.md, config.yaml eval.configs).
+const BASELINE_CONFIGS = ["farmer_ufga", "farmer", "hindsight", "no_n"];
+
 export const AGENTS = ["weather", "crop", "planner", "critic", "coordinator"];
 export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator" };
 const CONFIG_NAMES = {
-  farmer: "Farmer calendar", multi: "FieldTwin agent team", single: "Single agent", no_n: "No nitrogen",
+  farmer_ufga: "Farmer calendar", farmer: "Farmer calendar", multi: "FieldTwin agent team", single: "Single agent", no_n: "No nitrogen",
   hindsight: "grid hindsight", multi_no_critic: "Team, no critic", multi_no_weather: "Team, no weather",
   multi_no_tools: "Team, no tools", fake_multi: "FieldTwin agent team",
 };
-const RIGHT_ORDER = ["multi", "single", "hindsight"];   // default for the right-hand (agent) side
+const LEFT_ORDER = ["farmer_ufga", "farmer"];             // farmer practice = farmer_ufga (a-env config.yaml)
+const RIGHT_ORDER = ["multi", "single", "hindsight"];     // default for the right-hand (agent) side
 
 // ---------------------------------------------------------------- fetch helpers
 
@@ -62,6 +77,13 @@ export function configName(config) {
   return CONFIG_NAMES[config] || config;
 }
 
+// Both farmer configs read "Farmer calendar". When a task has both, farmer_ufga keeps that name and the
+// other shows its raw config name (STATE.md defines no second label).
+export function fieldLabel(config, others = []) {
+  if (config === "farmer" && others.includes("farmer_ufga")) return config;
+  return configName(config);
+}
+
 export function parseTaskId(id) {
   const m = /^([A-Za-z0-9]+)-(\d{4})$/.exec(id || "");
   return m ? { site: m[1], year: +m[2] } : null;
@@ -81,7 +103,7 @@ export function defaultPair(index, task) {
   const all = configsFor(index, task);
   const real = all.filter((c) => !c.startsWith("fake_"));
   const pool = FAKE ? all : real;
-  const left = pool.includes("farmer") ? "farmer" : pool[0] || null;
+  const left = LEFT_ORDER.find((c) => pool.includes(c)) || pool[0] || null;
   const rest = pool.filter((c) => c !== left);
   const right = RIGHT_ORDER.find((c) => rest.includes(c)) || rest[0] || null;
   return { left, right };
@@ -93,14 +115,47 @@ export function defaultTask(index) {
   return tasks.find((t) => { const p = defaultPair(index, t); return p.left && p.right; }) || tasks[0] || null;
 }
 
+// Known task ids and splits from tasks/*.jsonl ({task_id, site, year, split}). Baseline mode reads dev only.
+const taskSplits = new Map();
+
+async function loadTaskList(split) {
+  const text = await fetchText(paths.tasks(split));
+  if (text === null) return 0;
+  let n = 0;
+  for (const line of text.split("\n")) {
+    try {
+      const t = JSON.parse(line);
+      if (t && typeof t.task_id === "string") { taskSplits.set(t.task_id, t.split || split); n++; }
+    } catch { /* blank or broken line */ }
+  }
+  return n;
+}
+
+export function taskSplit(task) {
+  return taskSplits.get(task) || null;
+}
+
 export async function loadIndex() {
-  const index = await fetchJson(paths.index);
-  return index && typeof index === "object" && !Array.isArray(index) ? index : null;
+  if (FAKE) {
+    const index = await fetchJson(paths.index);
+    return index && typeof index === "object" && !Array.isArray(index) ? index : null;
+  }
+  if (BASELINE) {
+    if (!(await loadTaskList("dev"))) return null;
+    const dev = [...taskSplits.keys()];
+    return Object.fromEntries(BASELINE_CONFIGS.map((c) => [c, dev]));
+  }
+  const [index] = await Promise.all([fetchJson(paths.index), loadTaskList("dev"), loadTaskList("test")]);
+  if (!index || typeof index !== "object" || Array.isArray(index)) return null;
+  if (!taskSplits.size) return index;   // no tasks/ files: show everything rather than nothing
+  return Object.fromEntries(Object.entries(index)
+    .map(([c, ids]) => [c, (Array.isArray(ids) ? ids : []).filter((t) => taskSplits.has(t))]));
 }
 
 // ---------------------------------------------------------------- run log -> weeks model
 
 export async function loadRun(config, task) {
+  if (BASELINE && taskSplit(task) !== "dev") return null;   // never open a non-dev baseline log
   const text = await fetchText(paths.run(config, task));
   if (text === null) return null;
   const events = [];
@@ -200,7 +255,7 @@ export function buildRun(config, task, events) {
     config, task, W, weeks, final,
     site: meta.site || (parsed && parsed.site) || null,
     year: num(meta.year) || (parsed && parsed.year) || null,
-    split: meta.split || null,
+    split: meta.split || taskSplit(task) || null,
     fake: isFakeConfig(config),
     hasAgents: weeks.some((w) => w.chat.length > 0),
     fallbackWeeks: weeks.filter((w) => w.fallback).map((w) => w.week),
@@ -208,8 +263,9 @@ export function buildRun(config, task, events) {
   };
 }
 
-// Data events for one week, in beat order, for the field ripples (field3d.js trigger()):
-//   storm: weekly.rain_mm above stormMm; n: the chosen decision's n_kg_ha > 0; leach: weekly.n_leached > 0.05
+// Data events for one week, in beat order, for the field motes (fieldSvg.js show()):
+//   storm: weekly.rain_mm above stormMm; n: the chosen decision's n_kg_ha > 0; leach: weekly.n_leached > 0.05;
+//   uptake: weekly.n_uptake > 0.5
 // Amounts are the logged values. Harvest and missing weeks have no events.
 export function weekEvents(run, k, stormMm) {
   const w = run && run.weeks[k];
@@ -221,6 +277,8 @@ export function weekEvents(run, k, stormMm) {
   if (rain !== null && rain > stormMm) events.push({ kind: "storm", amount: rain });
   if (n !== null && n > 0) events.push({ kind: "n", amount: n });
   if (leached !== null && leached > 0.05) events.push({ kind: "leach", amount: leached });
+  const uptake = w.weekly ? num(w.weekly.n_uptake) : null;
+  if (uptake !== null && uptake > 0.5) events.push({ kind: "uptake", amount: uptake });
   return events;
 }
 
@@ -232,7 +290,18 @@ export async function loadWeather(site, year) {
   return Array.isArray(days) && days.length ? days : null;
 }
 
-// Find where week 0 starts in the weather file by matching the log's weekly rain to 7-day sums, so the
+// Index of week 0 in the weather days: the day field (relative to week 0, negative before it) when the file
+// has one, else rain matching (alignSeason). Returns a day index or null.
+export function seasonStart(run, days) {
+  if (!days) return null;
+  if (days.some((d) => typeof d.day === "number")) {
+    const i = days.findIndex((d) => d.day === 0);
+    return i >= 0 ? i : null;
+  }
+  return alignSeason(run, days);
+}
+
+// Fallback: find where week 0 starts in the weather file by matching the log's weekly rain to 7-day sums, so the
 // daily rain bars line up without assuming a planting date. The last week is skipped (the final step may
 // run on to maturity). Same rule as lanec/scripts/validate_logs.py check_rain. Returns a day index or null.
 export function alignSeason(run, days, tolMm = 0.5) {
