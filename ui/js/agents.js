@@ -1,6 +1,7 @@
-// Agent text (R1). Under each field: one line with the week's reason (the Coordinator's, or the policy's for
-// non-LLM configs) and, in a week where the Critic objects, the objection as one orange line above it.
-// The full chat (Weather, Crop, Planner, Critic, Coordinator, tool calls) sits behind a toggle (key A).
+// Agent text. weekLines feeds the 2D Season fallback (?view2d=1): the week's reason (the Coordinator's, or the
+// policy's for non-LLM configs) and, in a week where the Critic objects, the objection as one orange line.
+// chatHtml renders the full weekly chat on the Agents page (R2): decision, every message in log order (Critic
+// objections in orange), fallbacks, and the tool calls collapsed under <details>.
 
 import { AGENT_NAMES } from "./data.js";
 
@@ -32,23 +33,23 @@ function toolText(v) {
   return s.length > 600 ? `${s.slice(0, 600)}…` : s;
 }
 
-// Full chat for one field and week, in log order.
-export function chatHtml(run, label, k) {
-  const head = `<div class="chat-head"><span class="chat-title">${esc(label)}</span></div>`;
-  if (!run) return head + `<div class="quiet">No log for this season.</div>`;
+// Full chat for one run and week, in log order.
+export function chatHtml(run, k) {
+  if (!run) return `<div class="quiet">No log for this season.</div>`;
   const w = run.weeks[Math.min(k, run.W)];
-  if (!w || w.harvest) return head + `<div class="quiet">Harvest: no decision this week.</div>`;
+  if (!w || w.harvest) return `<div class="quiet">Harvest: no decision this week.</div>`;
   const d = w.decision;
   const card = d ? `<div class="chat-decision">Apply <b class="n">${fmt(d.n_kg_ha, 0)} kg N/ha</b>, `
     + `<b class="water">${fmt(d.irr_mm, 0)} mm</b> water.</div>` : "";
   if (!run.hasAgents) {
-    return head + card + (d && d.reason ? `<div class="bubble policy"><span class="who">Schedule</span>${esc(d.reason)}</div>` : "")
+    return card + (d && d.reason ? `<div class="bubble policy"><span class="who">Schedule</span>${esc(d.reason)}</div>` : "")
       + `<div class="quiet">No agent chat: fixed policy.</div>`;
   }
   const items = w.chat.map((m) => `<div class="bubble ${m.agent}${m.objection ? " objection" : ""}">`
-    + `<span class="who">${esc(AGENT_NAMES[m.agent] || m.agent)}</span>${esc(m.text)}</div>`);
+    + `<span class="who">${esc(AGENT_NAMES[m.agent] || m.agent)}${m.objection ? " · objection" : ""}</span>${esc(m.text)}</div>`);
   const tools = w.tools.map((t) => `<details class="tool"><summary><span class="who ${esc(t.agent)}">${esc(AGENT_NAMES[t.agent] || t.agent)}</span>${esc(t.name || "tool")}</summary>`
     + `<pre>${esc(toolText(t.args))}\n→ ${esc(toolText(t.result))}</pre></details>`).join("");
   const falls = w.fallbacks.map((f) => `<div class="bubble fallback"><span class="who">Fallback</span>${esc(f.why)}</div>`).join("");
-  return head + card + items.join("") + falls + (tools ? `<div class="tools">${tools}</div>` : "");
+  return card + items.join("") + falls
+    + (tools ? `<div class="tools"><span class="label">Tool calls (${w.tools.length})</span>${tools}</div>` : "");
 }

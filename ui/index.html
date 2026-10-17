@@ -8,29 +8,22 @@
   <!-- Fonts are vendored (ui/vendor/README.md): replay makes no CDN calls. -->
 </head>
 <body class="not-loaded">
-  <!-- One shared glow filter for every SVG on the page: small blur merged under the stroke. ?lite=1 drops it. -->
+  <!-- Shared glow filters: #glow for the field SVGs, #glow-icon for the dock icons. ?lite=1 drops both. -->
   <svg class="defs" width="0" height="0" aria-hidden="true">
     <filter id="glow" filterUnits="userSpaceOnUse" x="-40" y="-60" width="720" height="600" color-interpolation-filters="sRGB">
       <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <filter id="glow-icon" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </svg>
 
-  <header id="bar">
-    <div class="brand"><i class="mark"></i><span>FieldTwin</span></div>
-    <nav id="tabs">
-      <button data-view="season" class="on"><span class="key">1</span>Season</button>
-      <button data-view="results"><span class="key">2</span>Results</button>
-      <button data-view="improve"><span class="key">3</span>Improve</button>
-      <button data-view="serving"><span class="key">4</span>Serving</button>
-      <button data-view="how"><span class="key">5</span>How it works</button>
-    </nav>
-    <label class="pick"><span class="label">Season</span><select id="task" aria-label="Season"></select></label>
-    <span id="fake" class="badge fake" hidden title="FAKE data from ui/fake/ (UI testing only)">FAKE</span>
-    <div class="grow"></div>
-    <div id="chips"></div>
-  </header>
+  <div id="wordmark"><i class="mark"></i><span>FieldTwin</span></div>
+  <span id="src" class="badge" hidden title="Data source of every number on screen"></span>
 
+  <!-- 1 Season (R1 2D side view) -->
   <main id="season" class="view">
     <div id="week" aria-live="polite">
       <span id="week-num" class="mono">Week 0</span><span id="week-of" class="mono quiet"></span><span id="week-date" class="quiet"></span>
@@ -40,7 +33,6 @@
       <section class="field" id="field-left">
         <header class="field-head">
           <h2 id="name-left">Farmer calendar</h2>
-          <span id="src-left" class="badge" hidden></span>
           <span id="fb-left" class="badge fallback" hidden></span>
         </header>
         <div class="plot" id="plot-left"></div>
@@ -60,7 +52,6 @@
       <section class="field" id="field-right">
         <header class="field-head">
           <h2 id="name-right">FieldTwin agent team</h2>
-          <span id="src-right" class="badge" hidden></span>
           <span id="fb-right" class="badge fallback" hidden></span>
         </header>
         <div class="plot" id="plot-right"></div>
@@ -87,22 +78,40 @@
           <button data-speed="0.5">0.5x</button><button data-speed="1" class="on">1x</button><button data-speed="2">2x</button><button data-speed="4">4x</button>
         </div>
         <button id="reset" class="btn" aria-label="Reset to week 0">Reset</button>
-        <button id="chat-toggle" class="btn" aria-label="Agent chat">Agent chat <span class="key">A</span></button>
+        <label class="pick"><span class="label">Season</span><select id="task" class="task" aria-label="Season"></select></label>
         <span class="keys quiet">Space play · arrows step · R reset</span>
       </div>
       <svg id="timeline" role="img" aria-label="Season timeline: daily rain and week scrubber"></svg>
     </section>
-
-    <aside id="chat" hidden>
-      <div class="chat-bar"><span class="label">Agent chat, this week</span><button id="chat-close" class="btn" aria-label="Close agent chat">Close</button></div>
-      <div id="chat-body"></div>
-    </aside>
   </main>
 
+  <!-- 2 Agents: the full weekly chat for one run -->
+  <main id="agents" class="view" hidden>
+    <div class="agents-wrap">
+      <header class="agents-bar">
+        <div class="seg cfg" id="cfg" role="group" aria-label="Run"></div>
+        <label class="pick"><span class="label">Season</span><select id="task-agents" class="task" aria-label="Season"></select></label>
+        <div class="stepper">
+          <button id="a-prev" class="btn" aria-label="Previous week">&lsaquo;</button>
+          <span id="a-week" class="mono" aria-live="polite">Week 0</span>
+          <button id="a-next" class="btn" aria-label="Next week">&rsaquo;</button>
+        </div>
+        <span id="a-fb" class="badge fallback" hidden></span>
+      </header>
+      <div id="agents-body"></div>
+    </div>
+  </main>
+
+  <!-- 3-5 Results, Gym, Serving: quiet placeholders until their units -->
   <main id="placeholder" class="view" hidden>
-    <div class="placeholder"><span class="label" id="placeholder-title"></span><span class="quiet" id="placeholder-text"></span></div>
+    <div class="placeholder">
+      <span class="label" id="placeholder-title"></span>
+      <span id="placeholder-text">Coming soon</span>
+      <span class="quiet mono" id="placeholder-file"></span>
+    </div>
   </main>
 
+  <nav id="dock" aria-label="Pages"></nav>
   <div id="notice" class="quiet" hidden></div>
 
   <script type="module" src="js/main.js"></script>

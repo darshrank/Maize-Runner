@@ -1,6 +1,7 @@
-// Boot, view routing, keyboard, playback (UI_SPEC.md section 8). R1: the Season view is two 2D neon fields
-// side by side (fieldSvg.js), LEFT farmer baseline, RIGHT agent team, plus the rain strip and week scrubber.
-// The other views are quiet placeholders until their units.
+// Boot, page routing, keyboard, playback (UI_SPEC.md section 8). R2: pages Season, Agents, Results, Gym,
+// Serving, switched by the dock (dock.js) or keys 1-5; no top bar. Season: two 2D neon fields side by side
+// (fieldSvg.js), LEFT farmer baseline, RIGHT agent team, plus the rain strip and week scrubber. Agents: the
+// full weekly chat for one run (agents.js). Results, Gym, Serving: quiet placeholders until their units.
 //
 // Week semantics (STATE.md): position k in 0..W-1 shows week k's decision and its outcome (obs at the end of
 // week k); k = W is harvest (the final line). Every number on screen comes from data.js. Theme: js/theme.js.
@@ -10,20 +11,29 @@ import * as data from "./data.js";
 import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
 import { weekLines, chatHtml, esc } from "./agents.js";
+import { Dock } from "./dock.js";
 
 export { theme };
 
 const $ = (id) => document.getElementById(id);
-const VIEWS = ["season", "results", "improve", "serving", "how"];
-const VIEW_TITLES = { results: "Results", improve: "Improve", serving: "Serving", how: "How it works" };
+// "How it works" moved to the deck (R2). Each placeholder names the data file its page will read.
+const PAGES = [
+  { id: "season", label: "Season", icon: "sprout" },
+  { id: "agents", label: "Agents", icon: "chats" },
+  { id: "results", label: "Results", icon: "bars", file: "results/eval.csv" },
+  { id: "gym", label: "Gym", icon: "loop", file: "results/iterations.json" },
+  { id: "serving", label: "Serving", icon: "chip", file: "results/vllm_metrics.json" },
+];
+const VIEWS = PAGES.map((p) => p.id);
+const STORY = new URLSearchParams(location.search).get("story") === "1";
 const SIDES = ["left", "right"];
 
 const state = {
   index: null, task: null, pair: { left: null, right: null }, runs: { left: null, right: null },
-  days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", chat: false,
+  days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right",
 };
 const fields = {};
-let timeline;
+let timeline, dock;
 
 // ---------------------------------------------------------------- formatting
 
@@ -61,44 +71,40 @@ function setNumber(el, value, digits = 0, pending = "n/a") {
 // ---------------------------------------------------------------- views
 
 function setView(view) {
-  if (!VIEWS.includes(view)) return;
+  const page = PAGES.find((p) => p.id === view);
+  if (!page) return;
   state.view = view;
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.view === view));
+  if (dock) dock.setActive(view);
   $("season").hidden = view !== "season";
-  $("placeholder").hidden = view === "season";
-  if (view !== "season") {
-    $("placeholder-title").textContent = VIEW_TITLES[view];
-    $("placeholder-text").textContent = "Not built yet (UI_SPEC.md section 10, later unit).";
+  $("agents").hidden = view !== "agents";
+  $("placeholder").hidden = !page.file;
+  if (page.file) {
+    $("placeholder-title").textContent = page.label;
+    $("placeholder-file").textContent = `Needs ${page.file}`;
   }
+  if (view === "agents") renderAgents();
 }
 
-function setChat(on) {
-  state.chat = on;
-  $("chat").hidden = !on;
-  $("chat-toggle").classList.toggle("on", on);
-  if (on) renderChat();
-}
-
-// ---------------------------------------------------------------- top bar
+// ---------------------------------------------------------------- chrome
 
 function renderTaskPicker() {
   const tasks = data.sortTasks(state.index);
-  $("task").innerHTML = tasks.map((t) => {
+  const html = tasks.map((t) => {
     const p = data.parseTaskId(t);
     return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>${esc(p ? p.year : t)}</option>`;
   }).join("");
+  document.querySelectorAll("select.task").forEach((s) => (s.innerHTML = html));
 }
 
+// One source label top right: dev, test or FAKE (FAKE wins), from the runs on screen.
 function renderBadges() {
   const runs = SIDES.map((s) => state.runs[s]).filter(Boolean);
-  $("fake").hidden = !(data.FAKE || runs.some((r) => r.fake));
-}
-
-function renderChips(metrics) {
-  const chips = [];
-  if (metrics && metrics.model) chips.push(metrics.model);
-  if (metrics && metrics.vllm_version) chips.push(`vLLM ${metrics.vllm_version}`);
-  $("chips").innerHTML = chips.map((c) => `<span>${esc(c)}</span>`).join("");
+  const fake = data.FAKE || runs.some((r) => r.fake);
+  const split = (runs.find((r) => r.split) || {}).split || null;
+  const label = fake ? (split ? `FAKE · ${split}` : "FAKE") : split;
+  $("src").textContent = label || "";
+  $("src").hidden = !label;
+  $("src").classList.toggle("fake", fake);
 }
 
 // ---------------------------------------------------------------- season
@@ -137,10 +143,6 @@ function renderFieldHeads() {
   for (const side of SIDES) {
     const config = state.pair[side], run = state.runs[side];
     $(`name-${side}`).textContent = config ? data.fieldLabel(config, others) : "No run";
-    const src = data.sourceLabel(run);
-    $(`src-${side}`).textContent = src || "";
-    $(`src-${side}`).hidden = !src;
-    $(`src-${side}`).classList.toggle("fake", !!(run && run.fake));
     const fb = run ? run.fallbackWeeks.length : 0;
     $(`fb-${side}`).textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
     $(`fb-${side}`).hidden = !fb;
@@ -184,11 +186,23 @@ function renderTallies() {
   }
 }
 
-function renderChat() {
-  if (!state.chat) return;
+// Agents page: config switch (the two runs on Season), week stepper, the chat for that run and week.
+function renderAgents() {
+  if (state.view !== "agents") return;
   const others = data.configsFor(state.index, state.task);
-  $("chat-body").innerHTML = SIDES.map((side) => `<section class="chat-col">${chatHtml(state.runs[side],
-    state.pair[side] ? data.fieldLabel(state.pair[side], others) : "No run", state.week)}</section>`).join("");
+  $("cfg").innerHTML = SIDES.map((side) => {
+    const config = state.pair[side];
+    return `<button data-side="${side}" class="${side === state.agentSide ? "on" : ""}"${config ? "" : " disabled"}>`
+      + `${esc(config ? data.fieldLabel(config, others) : "No run")}</button>`;
+  }).join("");
+  $("cfg").querySelectorAll("button").forEach((b) => (b.onclick = () => { state.agentSide = b.dataset.side; renderAgents(); }));
+  const run = state.runs[state.agentSide];
+  const W = run ? run.W : maxW(), k = Math.min(state.week, W);
+  $("a-week").textContent = k >= W ? "Harvest" : `Week ${k} of ${W - 1}`;
+  const fb = run ? run.fallbackWeeks.length : 0;
+  $("a-fb").textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
+  $("a-fb").hidden = !fb;
+  $("agents-body").innerHTML = chatHtml(run, k);
 }
 
 function renderTimeline() {
@@ -248,7 +262,7 @@ function setWeek(k, { force = false } = {}) {
   timeline.setWeek(state.week);
   renderWeekLabel();
   renderTallies();
-  renderChat();
+  renderAgents();
 }
 
 // ---------------------------------------------------------------- playback and input
@@ -267,18 +281,22 @@ function setSpeed(s) {
 }
 
 function bind() {
-  document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
-  $("task").onchange = (e) => selectTask(e.target.value);
+  document.querySelectorAll("select.task").forEach((s) => (s.onchange = (e) => selectTask(e.target.value)));
   $("play").onclick = () => setPlaying(!state.playing);
   $("prev").onclick = () => setWeek(state.week - 1);
   $("next").onclick = () => setWeek(state.week + 1);
   $("reset").onclick = () => { setPlaying(false); setWeek(0); };
-  $("chat-toggle").onclick = () => setChat(!state.chat);
-  $("chat-close").onclick = () => setChat(false);
+  $("a-prev").onclick = () => setWeek(state.week - 1);
+  $("a-next").onclick = () => setWeek(state.week + 1);
   document.querySelectorAll(".speed button").forEach((b) => (b.onclick = () => setSpeed(+b.dataset.speed)));
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("select, input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key >= "1" && e.key <= "5") { setView(VIEWS[+e.key - 1]); return; }
+    if (state.view === "agents") {
+      if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }
+      return;
+    }
     if (state.view !== "season") return;
     if (e.key === " ") {
       e.preventDefault();
@@ -287,8 +305,6 @@ function bind() {
     } else if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
     else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }
     else if (e.key === "r" || e.key === "R") { setPlaying(false); setWeek(0); }
-    else if (e.key === "a" || e.key === "A") setChat(!state.chat);
-    else if (e.key === "Escape" && state.chat) setChat(false);
   });
 }
 
@@ -324,11 +340,15 @@ function loaded() {
 async function main() {
   applyCssTheme();
   if (data.LITE) document.body.classList.add("lite");
+  if (STORY) document.body.classList.add("story");   // story mode (later unit) hides the dock
   const reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  dock = new Dock($("dock"), PAGES.map((p, i) => ({ id: p.id, label: p.label, icon: p.icon, key: String(i + 1) })),
+    { onSelect: setView, reduceMotion });
+  dock.setHidden(STORY);
+  setView(state.view);
   for (const s of SIDES) fields[s] = new FieldView($(`plot-${s}`), { lite: data.LITE, reduceMotion });
   timeline = new Timeline($("timeline"), { onSeek: (k) => setWeek(k) });
   bind();
-  data.loadVllmMetrics().then(renderChips);
   state.index = await data.loadIndex();
   const task = state.index && data.defaultTask(state.index);
   if (!task) {
