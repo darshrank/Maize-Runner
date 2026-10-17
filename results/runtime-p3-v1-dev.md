@@ -144,6 +144,39 @@ they do not isolate the effect of facts/verification.
   gone at finish (2 running at 21:15:27Z including any residue); latency is confounded.
 - GPU cost and allocated GPU time are not measured; they are unknown, not zero.
 
+## Prompt-only run: protocol 3, v3 prompts, dev 1990-2009
+
+Classification **prompt_only** versus the v1 run above: same Brev checkout (afffb23),
+runtime, inference settings (thinking off), tasks and concurrency; only the prompt
+set changes (v3 differs from v1 in coordinator.txt only). Started 21:22:26Z, output
+`results/prompt-p3-v3-dev-20261017T212226Z`; archive
+`results/prompt-p3-v3-dev-20261017T212226Z.tar.gz`, comparison
+`results/prompt-p3-v3-dev-comparison.json`. 40/40 completed, audit passed.
+
+| Policy | Reward | Profit | Grain kg/ha | N kg/ha | Irr mm | N leached | Years > farmer_ufga | Fallbacks |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| farmer_ufga (frozen) | 1116.72 | 1166.56 | 7814.90 | 116.00 | 264.00 | 20.43 | - | 0 |
+| single p3 v3 | **97.14** | 181.23 | 2737.64 | 50.00 | 467.50 | 34.46 | 0/20 | 1 |
+| multi p3 v3 | **905.96** | 1058.48 | 9175.03 | 292.75 | 400.60 | 62.51 | 6/20 | 0 |
+| single p3 v1 | 379.25 | 423.09 | 4512.17 | 251.00 | 55.05 | 17.97 | 2/20 | 0 |
+| multi p3 v1 | 646.35 | 700.54 | 6454.46 | 293.50 | 102.58 | 22.21 | 2/20 | 0 |
+
+- **Multi v3 is the best measured configuration so far**: +259.6 over multi p3 v1,
+  211 below farmer_ufga (median -169), with the highest yield, but 2.5x farmer N,
+  1.5x water and 3.1x leaching.
+- **Negative result, single v3 collapsed** (-282 vs p3 v1; archived p2 single v3 was
+  593.24). It applied N in only 7/20 seasons (13 seasons zero N) and 25 mm almost every
+  week. UFGA-1990 trace: 25 mm in all 18 weeks at moisture 0.67-1.0 while reasons
+  often said "no irrigation needed per farmer rule"; soil N 6.8 kg/ha called
+  "adequate" under N stress. Reason-action contradiction, not a limit violation.
+- One single fallback (UFGA-2000 week 14, coordinator exceeded six model turns).
+  Five `length` finishes (coordinator). 30 recovered validation errors: 20 multi
+  coordinator empty/prose content, 3 critic, 2 planner, 3 single "extra data" after JSON.
+- Tokens: 30,122,236 prompt / 433,901 completion; 3,630 multi + 1,522 single calls.
+  Latency confounded by the intermittent foreign vLLM client. GPU cost unmeasured.
+- The read-only inspector initially flagged the fallback week's verification as an
+  unrecorded proposal; fallback actions have no proposal record by design. Fixed.
+
 ### Next (separate experiment, same dev years)
 
 Diagnosed targets for a labelled agent-fix experiment: budget misstatements and

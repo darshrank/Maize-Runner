@@ -35,6 +35,8 @@ results/*
 !results/runtime-p3-pilot-20261017T203747Z.tar.gz
 !results/runtime-p3-v1-dev-20261017T205016Z.tar.gz
 !results/runtime-p3-v1-dev-comparison.json
+!results/prompt-p3-v3-dev-20261017T212226Z.tar.gz
+!results/prompt-p3-v3-dev-comparison.json
 /tmp/
 /build/
 /dist/

@@ -87,7 +87,7 @@ def inspect_season(path: Path, context_limit: int, weeks: bool):
         elif (float(dec["n_kg_ha"]), float(dec["irr_mm"])) != (float(v["final_action"]["n_kg_ha"]),
                                                                float(v["final_action"]["irr_mm"])):
             problems.append(f"week {w}: decision differs from verified final action")
-        if v["source_proposal"]["proposal_id"] not in proposals:
+        if v["source_proposal"]["stage"] != "fallback" and v["source_proposal"]["proposal_id"] not in proposals:
             problems.append(f"week {w}: verified source proposal not recorded")
     if len(verifications) != len(decisions):
         problems.append(f"{len(verifications)} verifications for {len(decisions)} decisions")

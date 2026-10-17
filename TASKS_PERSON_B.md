@@ -67,7 +67,9 @@ See results/runtime-p3-v1-dev.md.
 - [x] Deploy afffb23 to a fresh isolated Brev checkout; verify services, model identity, context limit and served env code.
 - [x] Live smoke (one failure recorded, 9/10 diagnostic) and UFGA-1990 pilot audited, inspected and archived.
 - [x] Full v1 single + multi on all 20 dev years: 40/40 completed and audited; single 379.25, multi 646.35 vs farmer_ufga 1116.72 (negative result). Archive and comparison committed.
-- [ ] Separate agent-fix experiment after the baseline, on the same dev years.
+- [x] v3 prompt-only run on protocol 3: multi 905.96 (best so far), single 97.14 (collapsed). Archived.
+- [x] Protocol 4 code checks and configurable thinking implemented locally; 73 tests pass; live thinking parser diagnostic passed.
+- [ ] Combined run: thinking on + protocol 4 + v3 prompts, after vLLM 32K-context restart once the other client is idle; pilot first.
 
 ## Pending, in priority order
 

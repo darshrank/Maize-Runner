@@ -67,10 +67,21 @@ no held-out years, no simulator/price/reward/cap change.
   refer to the archived source logs. The live logger now writes these formats too
   (log-only change in the unpushed-then-pushed protocol-4 code; env request unchanged).
   Old local toy `runs/` content was moved to ignored `tmp/old-runs-backup/`.
-- [ ] Protocol 4 (`e7d23a5`): code-computed `proposal_check` for critic/coordinator,
-  `max_n_this_week_kg_ha`, visible trailing-JSON extraction. 72 local tests pass.
-  Not yet deployed; pilot then 20-year run pending, after the v3 prompt-only run
-  (`results/prompt-p3-v3-dev-20261017T212226Z`, started 21:22:26Z).
+- [x] v3 prompt-only run on protocol 3 complete and audited: **multi 905.96** (best
+  so far, 211 below farmer_ufga, 6/20 years above it, but 3.1x leaching);
+  **single 97.14** (collapsed: zero N in 13 seasons, 25 mm nearly every week, reasons
+  contradicting actions). See results/runtime-p3-v1-dev.md.
+- [x] Protocol 4 (`e7d23a5`): code-computed `proposal_check`, `max_n_this_week_kg_ha`,
+  visible trailing-JSON extraction. Thinking support (`01b515b`): `--enable-thinking`,
+  `--max-tokens`, reasoning recorded in telemetry only, 1800 s model timeout for
+  thinking runs (180 s otherwise). 73 local tests pass. Not yet deployed.
+- [x] Live thinking diagnostic (model-only): tool parsing and JSON valid 9/9 with
+  thinking on; reasoning separated; ~500 completion tokens and ~11 s per simple
+  review vs ~12 tokens/0.4 s off. `thinking_token_budget` enforcement inconclusive.
+- [ ] User decision: next run = thinking on (all roles) + protocol 4 + v3 prompts
+  (best so far), labelled combined (not attributable to one change). Needs vLLM
+  restart with `--max-model-len 32768` (largest prompt ~13K + 8,192 output > 16,384).
+  User asked to wait until the unidentified other vLLM client is idle before restart.
 
 Read-only helper: `scripts/inspect_live_run.py RUN_DIR --weeks` (copy on Brev at
 `/ephemeral/fieldtwin/tools/`, outside the checkout).
