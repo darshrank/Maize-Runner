@@ -1,8 +1,11 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8). R2: pages Season, Agents, Results, Gym,
 // Serving, switched by the dock (dock.js) or keys 1-5; no top bar.
-// Season (default): the 3D view (season3d.js), two floating field dioramas, LEFT farmer baseline, RIGHT agent
-// team (or grid hindsight). Its only numbers: field names, one week label, and at season end the profit finale.
-// The Critic objection and Coordinator reason show as one short caption in objection or storm weeks only.
+// Season (default): the 3D view (season3d.js), two floating voxel field dioramas. Each field header is a picker of
+// the configs that have a log for the selected season (defaults: LEFT farmer practice, RIGHT the FieldTwin agent
+// team or the best available LLM config), with the model name under it when the log records one. Its only
+// numbers: one week label and, at season end, the profit finale for the two selected fields. The Critic objection
+// and Coordinator reason show as one short caption in objection or storm weeks only. The narrator (narrator.js)
+// adds at most one line per week in a narrow column on the right edge (key N toggles it).
 // Season with ?view2d=1 (or after a WebGL / shader failure): the R1 2D side view (fieldSvg.js), kept as the
 // fallback. Agents: the full weekly chat for one run (agents.js). Results: A's dev baselines
 // (results_baseline/summary.md "Split: dev" table, eval.csv dev rows for the season). Gym, Serving: placeholders.
@@ -17,6 +20,7 @@ import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
 import { weekLines, chatHtml, esc } from "./agents.js";
 import { Dock } from "./dock.js";
+import { narrate } from "./narrator.js";
 
 export { theme };
 
@@ -35,10 +39,12 @@ const STORY = params.get("story") === "1";
 const VIEW2D = params.get("view2d") === "1";
 const REDUCE = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 const SIDES = ["left", "right"];
+const SPEEDS = [0.5, 1, 2, 4];
+const NARRATOR_WEEKS = 5;   // lines kept in the narrator column: this week and the four before it
 
 const state = {
   index: null, task: null, configs: [], pair: { left: null, right: null }, runs: { left: null, right: null },
-  days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right",
+  days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right", narrator: true,
 };
 const fields = {};       // 2D FieldViews (view2d only)
 let s3d = null;          // Season3D (3D only)
@@ -120,6 +126,7 @@ function setView(view) {
   }
   if (view === "agents") renderAgents();
   if (view === "results") renderResults();
+  renderNarrator(false);
 }
 
 // ---------------------------------------------------------------- chrome
@@ -181,21 +188,32 @@ function fieldName(side) {
   return config ? data.configName(config) : "No run for this season";
 }
 
-// A side with no log for the selected season says so quietly.
+// Field headers: a picker per side of the configs with a log for this season (plain labels), the model name
+// small under it when the log records one, and a quiet "No run for this season" when the side has no log.
+// The same pickers serve the 3D overlays and the 2D fallback.
 function renderFieldHeads() {
-  if (s3d) {
-    for (const side of SIDES) {
-      document.querySelector(`#s3-head-${side} .s3-name`).textContent = fieldName(side);
-      document.querySelector(`#s3-head-${side} .s3-none`).hidden = !!state.runs[side] || !state.pair[side];
-    }
-    return;
-  }
   for (const side of SIDES) {
     const config = state.pair[side], run = state.runs[side];
-    $(`name-${side}`).textContent = fieldName(side);
-    const fb = run ? run.fallbackWeeks.length : 0;
-    $(`fb-${side}`).textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
-    $(`fb-${side}`).hidden = !fb;
+    const opts = state.configs.length ? state.configs : config ? [config] : [];
+    document.querySelectorAll(`select.cfg-pick[data-side="${side}"]`).forEach((sel) => {
+      sel.innerHTML = opts.length
+        ? opts.map((c) => `<option value="${esc(c)}"${c === config ? " selected" : ""}>${esc(data.configName(c))}</option>`).join("")
+        : `<option value="">No run for this season</option>`;
+      sel.disabled = opts.length < 2;
+    });
+    const model = run && run.model ? run.model : "";
+    document.querySelectorAll(`.cfg-model[data-side="${side}"]`).forEach((el) => {
+      el.textContent = model.split("/").pop();
+      el.title = model;
+      el.hidden = !model;
+    });
+    // 2D: the plot itself says "No run for this season".
+    document.querySelectorAll(`.cfg-none[data-side="${side}"]`).forEach((el) => (el.hidden = !s3d || !config || !!run));
+    if (!s3d) {
+      const fb = run ? run.fallbackWeeks.length : 0;
+      $(`fb-${side}`).textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
+      $(`fb-${side}`).hidden = !fb;
+    }
   }
 }
 
@@ -371,13 +389,33 @@ function renderTimeline() {
   timeline.setModel({ W, days, weeklyRain, rainNote, fallbackWeeks });
 }
 
+// Narrator column (3D Season only): one line per week for the last NARRATOR_WEEKS weeks up to the current one,
+// computed from the two runs on screen and the weather file. The newest line fades in when the week moved.
+function renderNarrator(moved) {
+  const box = $("narrator");
+  const on = !!s3d && state.narrator && state.view === "season" && SIDES.some((s) => state.runs[s]);
+  box.hidden = !on;
+  if (!on) return;
+  const W = maxW(), names = Object.fromEntries(SIDES.map((s) => [s, fieldName(s)]));
+  const items = [];
+  for (let k = Math.max(0, state.week - NARRATOR_WEEKS + 1); k <= state.week; k++) {
+    const n = narrate({ task: state.task, k, W, runs: state.runs, names, days: state.days, dayStart: state.dayStart,
+      stormMm: theme.stormMm, thirstAt: theme.three.thirst.start });
+    if (n) items.push({ k, ...n });
+  }
+  const html = items.map((it, i) => `<div class="nar-line${moved && it.k === state.week ? " new" : ""}" style="--age:${items.length - 1 - i}">`
+    + `<span class="nar-meta mono">${it.k >= W ? "Harvest" : `Week ${it.k}`}${it.side ? ` · ${esc(names[it.side])}` : ""}</span>`
+    + `<span class="nar-text">${esc(it.text)}</span></div>`).join("");
+  $("nar-lines").innerHTML = html;
+}
+
 // ---------------------------------------------------------------- loading
 
-async function selectTask(task) {
-  state.task = task;
-  state.configs = await data.availableConfigs(state.index, task);
-  state.pair = data.defaultPair(state.configs);
+// Load the logs for the current pair, then rescale and redraw everything.
+async function loadPair() {
+  const task = state.task;
   const loaded = await Promise.all(SIDES.map((s) => (state.pair[s] ? data.loadRun(state.pair[s], task) : null)));
+  if (task !== state.task) return;   // the season changed while loading
   SIDES.forEach((s, i) => (state.runs[s] = loaded[i]));
   const ref = loaded.find(Boolean);
   state.days = ref ? await data.loadWeather(ref.site, ref.year) : null;
@@ -397,6 +435,23 @@ async function selectTask(task) {
   setWeek(Math.min(state.week, maxW()), { force: true });
 }
 
+// New season: keep each side's config when this season has a log for it, else the default.
+async function selectTask(task) {
+  state.task = task;
+  state.configs = await data.availableConfigs(state.index, task);
+  if (task !== state.task) return;
+  const def = data.defaultPair(state.configs);
+  for (const s of SIDES) state.pair[s] = state.configs.includes(state.pair[s]) ? state.pair[s] : def[s];
+  await loadPair();
+}
+
+// Field header picker: show another config on one side. The harvest finale compares whichever two are selected.
+async function selectConfig(side, config) {
+  if (!state.configs.includes(config) || state.pair[side] === config) return;
+  state.pair[side] = config;
+  await loadPair();
+}
+
 // Week change: fields animate this week's data events (dose, uptake, leaching, storm) when the week moved.
 function setWeek(k, { force = false } = {}) {
   const prev = state.week;
@@ -414,6 +469,7 @@ function setWeek(k, { force = false } = {}) {
   if (s3d) {
     s3d.show(views, { spread, moved });
     render3d(moved);
+    renderNarrator(moved);
   } else {
     renderWeekLabel();
     renderTallies();
@@ -437,8 +493,18 @@ function setSpeed(s) {
   document.querySelectorAll(".speed button").forEach((b) => b.classList.toggle("on", +b.dataset.speed === s));
 }
 
+// [ and ] step through SPEEDS.
+function stepSpeed(dir) {
+  const i = SPEEDS.indexOf(state.speed);
+  setSpeed(SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, (i < 0 ? 1 : i) + dir))]);
+}
+
 function bind() {
   document.querySelectorAll("select.task").forEach((s) => (s.onchange = (e) => selectTask(e.target.value)));
+  document.querySelectorAll("select.cfg-pick").forEach((s) => (s.onchange = (e) => {
+    selectConfig(s.dataset.side, e.target.value);
+    e.target.blur();
+  }));
   $("play").onclick = () => setPlaying(!state.playing);
   $("prev").onclick = () => setWeek(state.week - 1);
   $("next").onclick = () => setWeek(state.week + 1);
@@ -462,6 +528,8 @@ function bind() {
     } else if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
     else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }
     else if (e.key === "r" || e.key === "R") { setPlaying(false); setWeek(0); }
+    else if (e.key === "[" || e.key === "]") stepSpeed(e.key === "]" ? 1 : -1);
+    else if (e.key === "n" || e.key === "N") { state.narrator = !state.narrator; renderNarrator(false); }
   });
 }
 

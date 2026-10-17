@@ -31,13 +31,15 @@
   <div id="stage3d" hidden>
     <div class="s3-anchor" id="s3-head-left"><div class="s3-in up">
       <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
-      <div class="s3-name"></div>
-      <div class="s3-none quiet" hidden>No run for this season</div>
+      <select class="s3-name cfg-pick" data-side="left" aria-label="Left field"></select>
+      <div class="cfg-model quiet mono" data-side="left" hidden></div>
+      <div class="cfg-none quiet" data-side="left" hidden>No run for this season</div>
     </div></div>
     <div class="s3-anchor" id="s3-head-right"><div class="s3-in up">
       <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
-      <div class="s3-name"></div>
-      <div class="s3-none quiet" hidden>No run for this season</div>
+      <select class="s3-name cfg-pick" data-side="right" aria-label="Right field"></select>
+      <div class="cfg-model quiet mono" data-side="right" hidden></div>
+      <div class="cfg-none quiet" data-side="right" hidden>No run for this season</div>
     </div></div>
     <div class="s3-anchor" id="s3-mid"><div class="s3-in up">
       <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge"></span></div>
@@ -48,6 +50,12 @@
     <div id="s3-caption" aria-live="polite"></div>
   </div>
 
+  <!-- Narrator (3D Season): at most one line per week, right edge; key N toggles it -->
+  <aside id="narrator" hidden aria-live="polite">
+    <span class="nar-label">Narrator</span>
+    <div id="nar-lines"></div>
+  </aside>
+
   <!-- 1 Season controls; with ?view2d=1 also the R1 2D side view (fallback) -->
   <main id="season" class="view">
     <div id="week" aria-live="polite">
@@ -57,7 +65,9 @@
     <div id="fields">
       <section class="field" id="field-left">
         <header class="field-head">
-          <h2 id="name-left">Farmer practice</h2>
+          <h2><select class="cfg-pick" data-side="left" aria-label="Left field"></select></h2>
+          <span class="cfg-model quiet mono" data-side="left" hidden></span>
+          <span class="cfg-none quiet" data-side="left" hidden>No run for this season</span>
           <span id="fb-left" class="badge fallback" hidden></span>
         </header>
         <div class="plot" id="plot-left"></div>
@@ -76,7 +86,9 @@
 
       <section class="field" id="field-right">
         <header class="field-head">
-          <h2 id="name-right">FieldTwin agent team</h2>
+          <h2><select class="cfg-pick" data-side="right" aria-label="Right field"></select></h2>
+          <span class="cfg-model quiet mono" data-side="right" hidden></span>
+          <span class="cfg-none quiet" data-side="right" hidden>No run for this season</span>
           <span id="fb-right" class="badge fallback" hidden></span>
         </header>
         <div class="plot" id="plot-right"></div>
@@ -99,12 +111,12 @@
         <button id="play" class="btn" aria-label="Play">Play</button>
         <button id="prev" class="btn" aria-label="Previous week">&lsaquo;</button>
         <button id="next" class="btn" aria-label="Next week">&rsaquo;</button>
-        <div class="seg speed" role="group" aria-label="Speed">
+        <button id="reset" class="btn" aria-label="Reset to week 0">Reset</button>
+        <div class="seg speed" role="group" aria-label="Speed ([ and ] keys)">
           <button data-speed="0.5">0.5x</button><button data-speed="1" class="on">1x</button><button data-speed="2">2x</button><button data-speed="4">4x</button>
         </div>
-        <button id="reset" class="btn" aria-label="Reset to week 0">Reset</button>
         <label class="pick"><span class="label">Season</span><select id="task" class="task" aria-label="Season"></select></label>
-        <span class="keys quiet">Space play · arrows step · R reset</span>
+        <span class="keys quiet">Space play · arrows step · [ ] speed · R reset</span>
       </div>
       <svg id="timeline" role="img" aria-label="Season timeline: daily rain and week scrubber"></svg>
     </section>

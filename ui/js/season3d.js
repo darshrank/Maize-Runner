@@ -1,13 +1,15 @@
-// 3D Season view (R2), three.js 0.160.0 (vendored, import map in index.html). Pure black background, black fog
-// for depth, two floating dioramas (diorama3d.js): LEFT farmer baseline, RIGHT agent team (or grid hindsight).
+// 3D Season view, three.js 0.160.0 (vendored, import map in index.html). Pure black background, black fog for
+// depth, two floating voxel dioramas (diorama3d.js), one config per side (main.js pickers).
 //
 //   camera   slow dolly between the two blocks; drag to orbit (OrbitControls), double click to reset
-//   bloom    selective: only objects on BLOOM_LAYER (plant rims, water edge, motes, drips, pool, rain); the
-//            rest is hidden for the bloom pass and the two passes are mixed (three.js selective bloom recipe)
+//   bloom    selective and soft: only objects on BLOOM_LAYER (soil water tint, leach drips, groundwater pool,
+//            lightning bolt). Plants get none. For the bloom pass, other cube materials draw black (uBlack) so they
+//            still hide what is behind them, other objects are hidden; then the two passes are mixed
 //   storm    a week with logged rain over theme.stormMm: rain streaks, strong lean (dioramas), one lightning
-//            flash when the week is entered; the flash stays below the leaching pulse in brightness
+//            flash (cubes lit through uFlash, one bloomed bolt) when the week is entered; it stays below the
+//            leaching pulse in brightness
 //   overlays HTML elements pinned to world anchors (field names, finale numbers), positioned every frame
-//   ?lite=1  no bloom, half the plants, no fog
+//   ?lite=1  no bloom, half the cubes, no fog
 //   shaders  a compile failure is retried once with fresh programs; a second failure calls onFail (main.js
 //            then reloads with ?view2d=1)
 //
@@ -107,6 +109,7 @@ export class Season3D {
     };
     for (const s of SIDES) this.scene.add(this.fields[s].group);
     this.buildRain();
+    this.buildBolt();
 
     this.bloomLayer = new THREE.Layers();
     this.bloomLayer.set(BLOOM_LAYER);
@@ -151,8 +154,32 @@ export class Season3D {
     this.rainMat = new THREE.LineBasicMaterial({ color: theme.color.rain, transparent: true, opacity: 0.55, depthWrite: false });
     this.rainLines = new THREE.LineSegments(g, this.rainMat);
     this.rainLines.frustumCulled = false;
-    this.rainLines.layers.enable(BLOOM_LAYER);
     this.scene.add(this.rainLines);
+  }
+
+  // Lightning bolt between the two blocks: a jagged line, redrawn for each flash, visible only while it lasts.
+  buildBolt() {
+    const n = 14;
+    this.boltPos = new THREE.BufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", this.boltPos);
+    this.boltMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+    this.bolt = new THREE.Line(g, this.boltMat);
+    this.bolt.frustumCulled = false;
+    this.bolt.visible = false;
+    this.bolt.layers.enable(BLOOM_LAYER);
+    this.scene.add(this.bolt);
+  }
+
+  strikeBolt() {
+    const a = this.boltPos.array, n = a.length / 3;
+    let x = (Math.random() * 2 - 1) * 1.2, z = -1.2 - Math.random();
+    for (let i = 0; i < n; i++) {
+      a.set([x, RAIN_TOP + 1 - (i / (n - 1)) * (RAIN_TOP - 1.2), z], i * 3);
+      x += (Math.random() * 2 - 1) * 0.35;
+      z += (Math.random() * 2 - 1) * 0.12;
+    }
+    this.boltPos.needsUpdate = true;
   }
 
   rainDrop(anywhere = false) {
@@ -198,7 +225,10 @@ export class Season3D {
     }
     const storm = rain !== null && rain > theme.stormMm;
     this.rainTarget = storm && !this.reduce ? Math.round(T.motes.rain * Math.min(1, rain / 100)) : 0;
-    if (storm && moved && !this.reduce) this.flashT = 0;
+    if (storm && moved && !this.reduce) {
+      this.flashT = 0;
+      this.strikeBolt();
+    }
     return storm;
   }
 
@@ -291,6 +321,10 @@ export class Season3D {
     }
     this.shared.uFlash.value = f;
     this.rainMat.opacity = 0.55 + 0.4 * f;
+    const bolt = f / T.flashPeak;
+    this.bolt.visible = bolt > 0.04;
+    this.boltMat.opacity = Math.min(1, bolt);
+    this.boltMat.color.setScalar(T.bolt * bolt);
     for (const s of SIDES) {
       this.fields[s].update(dt);
       this.fields[s].flash(f);
@@ -307,15 +341,20 @@ export class Season3D {
       this.renderer.render(this.scene, this.camera);
       return;
     }
-    const hidden = [];
+    const hidden = [], black = [];
     for (const o of this.nonBloom) {
-      if (o.visible) {
+      const u = o.material && o.material.uniforms;
+      if (u && u.uBlack) {
+        u.uBlack.value = 1;
+        black.push(u);
+      } else if (o.visible) {
         o.visible = false;
         hidden.push(o);
       }
     }
     this.bloomComposer.render();
     for (const o of hidden) o.visible = true;
+    for (const u of black) u.uBlack.value = 0;
     this.finalComposer.render();
   }
 

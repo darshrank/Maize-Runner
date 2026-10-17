@@ -1,31 +1,36 @@
-// One floating field diorama for the 3D Season view (R2). season3d.js makes two, side by side.
+// One floating voxel field diorama for the 3D Season view. season3d.js makes two, side by side. Everything is
+// small matte cubes with tight gaps; neon only on data. One InstancedMesh (one draw call) per kind:
 //
-//   top      a row field of neon maize (maize3d.js, instanced): height ~ obs.biomass_kg_ha over the task's max
-//            across both fields, leaves from obs.stage, tassel at VT / R stages, spring ease with a small stagger
-//            per plant; leaves droop when obs.soil_water_frac is low (theme.three.thirst); storm weeks lean
-//   soil     dark translucent block; a cyan water level plane rises with obs.soil_water_frac
-//   motes    green N motes in the topsoil (obs.soil_n_kg_ha); the dose falls in (decision.n_kg_ha); uptake rises
-//            into the plants (weekly.n_uptake)
-//   drips    red nitrate drips fall out of the block bottom (weekly.n_leached) into a groundwater pool whose red
-//            glow builds with cumulative N leached; each splash adds to a pulse, so the worst week flares most
+//   ground   top layer of matte dark-brown cubes; the plants sit directly on it
+//   soil     brown cubes below (outer shell only: the inside is never seen), darker with depth. Water: the cubes
+//            tint cyan from the bottom up with obs.soil_water_frac (glows softly). Leaching: the bottom rows warm
+//            red with each splash
+//   plants   voxel maize (maize3d.js): height ~ obs.biomass_kg_ha over the task's max across both fields, leaves
+//            from obs.stage, tassel at VT / R, cubes pop in as they appear; sway, thirst droop (soil_water_frac),
+//            storm lean
+//   n        small green cubes: soil N sits on the ground (obs.soil_n_kg_ha), the dose falls in (decision.n_kg_ha),
+//            uptake rises into the plants (weekly.n_uptake)
+//   leach    small red cubes fall out of the block bottom (weekly.n_leached) into the groundwater pool
+//   pool     flat red tiles under the block; their glow builds with cumulative N leached, and each splash adds to a
+//            pulse, so the worst leaching week flares most (the strongest event on screen)
 //
-// Every value comes from the week snapshot main.js passes in; amounts scale by the max across both fields.
+// Bloom (season3d.js, selective): soil (water tint, leach warmth), leach cubes and the pool only. Every value comes
+// from the week snapshot main.js passes in; amounts scale by the max across both fields. ?lite=1 halves the cube
+// counts (larger soil cells, half the plants, half the motes).
 
 import * as THREE from "three";
 import { theme } from "./theme.js";
-import { maizeGeometry, maizeMaterial, SHARED_GLSL, LEAVES } from "./maize3d.js";
+import { maizeMaterial, plantSlots, SHARED_GLSL, LEAVES } from "./maize3d.js";
 import { leafCount, hasTassel } from "./fieldSvg.js";
 
 export const BLOOM_LAYER = 1;
 
-const T = theme.three, B = T.block, P = T.plants;
-const POOL_Y = -B.soil - B.gap;
-const WHITE = new THREE.Color(1, 1, 1);
+const T = theme.three, B = T.block, P = T.plants, V = T.voxel;
 const rand = (a = 0, b = 1) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const has = (v) => typeof v === "number" && Number.isFinite(v);
 
-// Deterministic jitter in [0, 1) per plant, so the field looks organic and stays put between weeks.
+// Deterministic jitter in [0, 1) per cube or plant, so the field looks organic and stays put between weeks.
 function jitter(i, k) {
   const x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
   return x - Math.floor(x);
@@ -54,101 +59,58 @@ class Spring {
   }
 }
 
-// ---------------------------------------------------------------- shaders (soil, pool, motes)
+// ---------------------------------------------------------------- voxel material (ground, soil, pool, motes)
 
-const SOIL_VERTEX = /* glsl */ `
-uniform float uSoilH;
-varying float vH;
-varying float vViewZ;
-void main() {
-  vH = 1.0 + position.y / uSoilH;
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vViewZ = -mv.z;
-  gl_Position = projectionMatrix * mv;
-}
-`;
-
-const SOIL_FRAGMENT = /* glsl */ `
-${SHARED_GLSL}
-uniform vec3 uTop;
-uniform vec3 uBottom;
-uniform vec3 uLeachCol;
-uniform float uLeach;
-uniform float uOpacity;
-varying float vH;
-varying float vViewZ;
-void main() {
-  vec3 col = mix(uBottom, uTop, vH);
-  col += uLeachCol * uLeach * (1.0 - smoothstep(0.0, 0.6, vH)) * 0.45;
-  col += vec3(0.5, 0.58, 0.66) * uFlash * 0.18;
-  gl_FragColor = vec4(col * (1.0 - fogFactor(vViewZ)), uOpacity);
-  #include <colorspace_fragment>
-}
-`;
-
-const POOL_VERTEX = /* glsl */ `
-varying vec2 vUv;
-varying float vViewZ;
-void main() {
-  vUv = uv;
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vViewZ = -mv.z;
-  gl_Position = projectionMatrix * mv;
-}
-`;
-
-const POOL_FRAGMENT = /* glsl */ `
-${SHARED_GLSL}
-uniform vec3 uColor;
-uniform float uLevel;
-uniform float uPulse;
-varying vec2 vUv;
-varying float vViewZ;
-void main() {
-  vec2 q = abs(vUv - 0.5) * 2.0;
-  float d = max(q.x, q.y);
-  float body = 1.0 - smoothstep(0.35, 1.0, d);
-  float rim = smoothstep(0.88, 0.97, d) * (1.0 - smoothstep(0.97, 1.0, d));
-  float glow = 0.05 + 0.75 * uLevel + 1.6 * uPulse;
-  vec3 col = uColor * (body * glow * 0.55 + rim * (0.2 + 0.8 * uLevel + 0.9 * uPulse));
-  gl_FragColor = vec4(col * (1.0 - fogFactor(vViewZ)), 1.0);
-  #include <colorspace_fragment>
-}
-`;
-
-const MOTE_VERTEX = /* glsl */ `
+const VOXEL_VERTEX = /* glsl */ `
 attribute vec3 aColor;
-attribute float aSize;
-attribute float aAlpha;
-uniform float uPx;
+attribute vec3 aEmit;
 varying vec3 vColor;
-varying float vAlpha;
+varying vec3 vEmit;
+varying vec3 vNormalW;
 varying float vViewZ;
 void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vViewZ = -mv.z;
-  gl_PointSize = aSize * uPx / max(vViewZ, 0.1);
-  gl_Position = projectionMatrix * mv;
+  vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+  vNormalW = mat3(modelMatrix) * mat3(instanceMatrix) * normal;
   vColor = aColor;
-  vAlpha = aAlpha;
+  vEmit = aEmit;
+  vec4 mv = viewMatrix * wp;
+  vViewZ = -mv.z;
+  gl_Position = projectionMatrix * mv;
 }
 `;
 
-const MOTE_FRAGMENT = /* glsl */ `
+const VOXEL_FRAGMENT = /* glsl */ `
 ${SHARED_GLSL}
+uniform float uEmit;
+uniform float uBlack;
 varying vec3 vColor;
-varying float vAlpha;
+varying vec3 vEmit;
+varying vec3 vNormalW;
 varying float vViewZ;
 void main() {
-  float d = length(gl_PointCoord - 0.5) * 2.0;
-  if (d > 1.0) discard;
-  float core = 1.0 - smoothstep(0.0, 0.4, d);
-  float halo = pow(1.0 - d, 2.0) * 0.5;
-  vec3 col = vColor * (1.5 * core + halo) + vec3(0.35 * core);
-  gl_FragColor = vec4(col, vAlpha * (1.0 - fogFactor(vViewZ)));
+  vec3 col = vColor * matte(vNormalW) + vEmit * uEmit;
+  col += uFlash * (0.5 * vColor + vec3(0.08, 0.09, 0.1));
+  gl_FragColor = vec4(col * (1.0 - fogFactor(vViewZ)) * (1.0 - uBlack), 1.0);
   #include <colorspace_fragment>
 }
 `;
+
+// One instanced cube kind: per-instance base color (lit, matte) and emissive color (unlit, times uEmit).
+function voxels(count, U, emit = 1) {
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const color = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+  const glow = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+  geo.setAttribute("aColor", color);
+  geo.setAttribute("aEmit", glow);
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: VOXEL_VERTEX, fragmentShader: VOXEL_FRAGMENT,
+    uniforms: { uFlash: U.uFlash, uFogOn: U.uFogOn, uFogNear: U.uFogNear, uFogFar: U.uFogFar,
+      uEmit: { value: emit }, uBlack: { value: 0 } },
+  });
+  const mesh = new THREE.InstancedMesh(geo, mat, count);
+  mesh.frustumCulled = false;
+  return { mesh, mat, color, glow };
+}
 
 // ---------------------------------------------------------------- diorama
 
@@ -162,6 +124,15 @@ export class Diorama {
     this.group = new THREE.Group();
     this.group.position.x = x;
     this.cap = lite ? Math.round(T.motes.cap / 2) : T.motes.cap;
+    // Soil cell pitch: lite cells are sqrt(2) larger, so the (surface) cube counts halve.
+    this.cell = lite ? V.cell * Math.SQRT2 : V.cell;
+    this.nx = Math.round(B.w / this.cell);
+    this.nz = Math.round(B.d / this.cell);
+    this.ny = Math.max(4, Math.round(B.soil / this.cell));   // layers, ground layer included
+    this.W = this.nx * this.cell;
+    this.D = this.nz * this.cell;
+    this.depth = this.ny * this.cell;
+    this.poolY = -this.depth - B.gap;
     this.target = { grow: 0, leaves: 1, tassel: 0 };
     this.since = 0;
     this.water = new Spring(0, 30, 10);
@@ -171,143 +142,154 @@ export class Diorama {
     this.level = new Spring(0, 20, 9);
     this.pulse = 0;
     this.leachGlow = 0;
+    this.tint = { wf: -1, red: -1 };
     this.motes = [];
     this.soilTarget = 0;
-    this.lines = [];
+    this.m4 = new THREE.Matrix4();
     this.build();
   }
 
   build() {
-    const c = theme.color, g = this.group, U = this.shared;
+    const c = theme.color, g = this.group, U = this.shared, cell = this.cell, fill = V.fill;
     const bloom = (o) => { o.layers.enable(BLOOM_LAYER); return o; };
+    const col = (hex) => new THREE.Color(hex);
+    const m = this.m4;
+    const cx = (ix) => -this.W / 2 + (ix + 0.5) * cell;
+    const cz = (iz) => -this.D / 2 + (iz + 0.5) * cell;
+    const cy = (layer) => -(layer + 0.5) * cell;
 
-    // Soil block: top face at y 0.
-    const box = new THREE.BoxGeometry(B.w, B.soil, B.d);
-    box.translate(0, -B.soil / 2, 0);
-    this.soilMat = new THREE.ShaderMaterial({
-      vertexShader: SOIL_VERTEX, fragmentShader: SOIL_FRAGMENT, transparent: true, depthWrite: false,
-      side: THREE.DoubleSide,
-      uniforms: { uFlash: U.uFlash, uFogOn: U.uFogOn, uFogNear: U.uFogNear, uFogFar: U.uFogFar,
-        uSoilH: { value: B.soil }, uTop: { value: new THREE.Color("#141a10") }, uBottom: { value: new THREE.Color("#07080a") },
-        uLeachCol: { value: new THREE.Color(c.leach) }, uLeach: { value: 0 }, uOpacity: { value: 0.5 } },
+    // Ground: one full layer of matte dark-brown cubes; its top face sits at y ~ 0.
+    const nTop = this.nx * this.nz;
+    this.ground = voxels(nTop, U, 0);
+    const gTop = col(V.ground.top), gLow = col(V.ground.low), tmp = new THREE.Color();
+    let n = 0;
+    for (let ix = 0; ix < this.nx; ix++) {
+      for (let iz = 0; iz < this.nz; iz++) {
+        this.ground.mesh.setMatrixAt(n, m.makeScale(cell * fill, cell * fill, cell * fill).setPosition(cx(ix), cy(0), cz(iz)));
+        tmp.copy(gTop).lerp(gLow, jitter(n, 11));
+        this.ground.color.setXYZ(n, tmp.r, tmp.g, tmp.b);
+        n++;
+      }
+    }
+    g.add(this.ground.mesh);
+
+    // Soil: the outer shell of the block under the ground layer, darker with depth.
+    const sTop = col(V.soil.top), sBottom = col(V.soil.bottom);
+    this.soilCells = [];
+    for (let layer = 1; layer < this.ny; layer++) {
+      for (let ix = 0; ix < this.nx; ix++) {
+        for (let iz = 0; iz < this.nz; iz++) {
+          const shell = ix === 0 || iz === 0 || ix === this.nx - 1 || iz === this.nz - 1 || layer === this.ny - 1;
+          if (!shell) continue;
+          const k = this.soilCells.length;
+          const base = sTop.clone().lerp(sBottom, (layer - 1) / Math.max(1, this.ny - 2))
+            .multiplyScalar(0.88 + 0.24 * jitter(k, 13));
+          this.soilCells.push({ x: cx(ix), y: cy(layer), z: cz(iz), b: this.ny - 1 - layer, base });
+        }
+      }
+    }
+    this.soil = voxels(this.soilCells.length, U, 1);
+    this.soilCells.forEach((s, i) => {
+      this.soil.mesh.setMatrixAt(i, m.makeScale(cell * fill, cell * fill, cell * fill).setPosition(s.x, s.y, s.z));
+      this.soil.color.setXYZ(i, s.base.r, s.base.g, s.base.b);
     });
-    const soil = new THREE.Mesh(box, this.soilMat);
-    soil.renderOrder = 1;
-    g.add(soil);
-    const edgeMat = new THREE.LineBasicMaterial({ color: "#4a5745", transparent: true, opacity: 0.9 });
-    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(box), edgeMat));
-    this.lines.push({ mat: edgeMat, base: new THREE.Color("#4a5745") });
+    this.soil.color.setUsage(THREE.DynamicDrawUsage);
+    this.soil.glow.setUsage(THREE.DynamicDrawUsage);
+    this.wet = col(V.wet);
+    this.cyan = col(c.water);
+    this.red = col(c.leach);
+    g.add(bloom(this.soil.mesh));
 
-    // Furrows on the field top, one line per plant row.
-    const rowZ = this.rowZ();
-    const furrow = new THREE.BufferGeometry().setFromPoints(rowZ.flatMap((z) => [
-      new THREE.Vector3(-B.w / 2 + 0.08, 0.003, z), new THREE.Vector3(B.w / 2 - 0.08, 0.003, z)]));
-    g.add(new THREE.LineSegments(furrow, new THREE.LineBasicMaterial({ color: c.plant, transparent: true, opacity: 0.2 })));
+    // Groundwater pool: flat red tiles under the block, one cell wider on each side.
+    const px = this.nx + 2, pz = this.nz + 2;
+    this.pool = voxels(px * pz, U, 0);
+    const dark = col(V.pool);
+    n = 0;
+    for (let ix = 0; ix < px; ix++) {
+      for (let iz = 0; iz < pz; iz++) {
+        this.pool.mesh.setMatrixAt(n, m.makeScale(cell * fill, cell * 0.28, cell * fill)
+          .setPosition(cx(ix - 1), this.poolY, cz(iz - 1)));
+        this.pool.color.setXYZ(n, dark.r, dark.g, dark.b);
+        const e = 0.75 + 0.4 * jitter(n, 17);
+        this.pool.glow.setXYZ(n, this.red.r * e, this.red.g * e, this.red.b * e);
+        n++;
+      }
+    }
+    g.add(bloom(this.pool.mesh));
 
-    // Water: additive cyan volume scaled from the bottom, a level plane and its glowing edge.
-    const inset = 0.04;
-    const vol = new THREE.BoxGeometry(B.w - inset, 1, B.d - inset);
-    vol.translate(0, 0.5, 0);
-    this.waterVol = new THREE.Mesh(vol, new THREE.MeshBasicMaterial({ color: c.water, transparent: true, opacity: 0.07,
-      blending: THREE.AdditiveBlending, depthWrite: false }));
-    this.waterVol.position.y = -B.soil;
-    this.waterVol.renderOrder = 2;
-    g.add(this.waterVol);
-    this.waterTop = new THREE.Group();
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(B.w - inset, B.d - inset).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: c.water, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending,
-        depthWrite: false, side: THREE.DoubleSide }));
-    plane.renderOrder = 2;
-    const hw = (B.w - inset) / 2, hd = (B.d - inset) / 2;
-    const loop = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-hw, 0, -hd), new THREE.Vector3(hw, 0, -hd), new THREE.Vector3(hw, 0, hd), new THREE.Vector3(-hw, 0, hd)]),
-    new THREE.LineBasicMaterial({ color: c.water, transparent: true, opacity: 0.9 }));
-    this.waterTop.add(bloom(plane), bloom(loop));
-    g.add(this.waterTop);
-
-    // Groundwater pool under the block.
-    this.poolMat = new THREE.ShaderMaterial({
-      vertexShader: POOL_VERTEX, fragmentShader: POOL_FRAGMENT, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-      uniforms: { uFlash: U.uFlash, uFogOn: U.uFogOn, uFogNear: U.uFogNear, uFogFar: U.uFogFar,
-        uColor: { value: new THREE.Color(c.leach) }, uLevel: { value: 0 }, uPulse: { value: 0 } },
-    });
-    const pool = new THREE.Mesh(new THREE.PlaneGeometry(B.w * 1.08, B.d * 1.08).rotateX(-Math.PI / 2), this.poolMat);
-    pool.position.y = POOL_Y;
-    pool.renderOrder = 2;
-    g.add(bloom(pool));
-
-    // Maize field.
+    // Voxel maize: one instance per cube slot per plant.
     this.plants = [];
-    const per = P.perRow, xs = B.w - 0.5;
-    rowZ.forEach((z0, r) => {
+    const per = P.perRow, xs = this.W - 0.5;
+    this.rowZ().forEach((z0, r) => {
       for (let i = 0; i < per; i++) {
         if (this.lite && (i + r) % 2) continue;
-        const n = r * per + i;
-        const x = -xs / 2 + (xs * i) / (per - 1) + (jitter(n, 1) - 0.5) * 0.14;
-        const z = z0 + (jitter(n, 2) - 0.5) * 0.16;
+        const k = r * per + i;
+        const x = -xs / 2 + (xs * i) / (per - 1) + (jitter(k, 1) - 0.5) * 0.14;
+        const z = z0 + (jitter(k, 2) - 0.5) * 0.16;
         this.plants.push({
-          x, z, yaw: jitter(n, 3) * Math.PI * 2,
-          seed: [jitter(n, 4) * 6.28, 0.86 + 0.2 * jitter(n, 5), jitter(n, 6)],
-          lag: 0.35 * ((x + xs / 2) / xs) + 0.12 * jitter(n, 7),
+          x, z, yaw: Math.floor(jitter(k, 3) * 4) * (Math.PI / 2) + (jitter(k, 8) - 0.5) * 0.3,
+          seed: [jitter(k, 4) * 6.28, 0.86 + 0.2 * jitter(k, 5), jitter(k, 6)],
+          lag: 0.35 * ((x + xs / 2) / xs) + 0.12 * jitter(k, 7),
           grow: new Spring(0), leaves: new Spring(1), tassel: new Spring(0, 40, 12), h: P.sprout,
         });
       }
     });
-    this.maizeMat = maizeMaterial({ uTime: U.uTime, uFlash: U.uFlash, uFogOn: U.uFogOn, uFogNear: U.uFogNear, uFogFar: U.uFogFar },
-      { maxH: P.maxH, sprout: P.sprout, colors: c });
-    const geo = maizeGeometry();
-    const seeds = new Float32Array(this.plants.length * 3);
-    this.state = new THREE.InstancedBufferAttribute(new Float32Array(this.plants.length * 3), 3);
+    this.slots = plantSlots({ maxH: P.maxH, cube: V.plant });
+    const S = this.slots.length, count = this.plants.length * S;
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const slot = new Float32Array(count * 3), seed = new Float32Array(count * 3);
+    this.state = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
     this.state.setUsage(THREE.DynamicDrawUsage);
-    this.plants.forEach((p, i) => seeds.set(p.seed, i * 3));
-    geo.setAttribute("aSeed", new THREE.InstancedBufferAttribute(seeds, 3));
-    geo.setAttribute("aState", this.state);
-    this.maize = new THREE.InstancedMesh(geo, this.maizeMat, this.plants.length);
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
-    this.plants.forEach((p, i) => this.maize.setMatrixAt(i, m.compose(new THREE.Vector3(p.x, 0, p.z), q.setFromAxisAngle(up, p.yaw), one)));
-    this.maize.frustumCulled = false;
-    g.add(bloom(this.maize));
-
-    // Motes and drips: one additive Points cloud.
-    this.colors = { n: new THREE.Color(c.nitrogen), leach: new THREE.Color(c.leach) };
-    const cap = this.cap;
-    const mg = new THREE.BufferGeometry();
-    this.mBuf = {
-      pos: new THREE.BufferAttribute(new Float32Array(cap * 3), 3).setUsage(THREE.DynamicDrawUsage),
-      col: new THREE.BufferAttribute(new Float32Array(cap * 3), 3).setUsage(THREE.DynamicDrawUsage),
-      size: new THREE.BufferAttribute(new Float32Array(cap), 1).setUsage(THREE.DynamicDrawUsage),
-      alpha: new THREE.BufferAttribute(new Float32Array(cap), 1).setUsage(THREE.DynamicDrawUsage),
-    };
-    mg.setAttribute("position", this.mBuf.pos);
-    mg.setAttribute("aColor", this.mBuf.col);
-    mg.setAttribute("aSize", this.mBuf.size);
-    mg.setAttribute("aAlpha", this.mBuf.alpha);
-    mg.setDrawRange(0, 0);
-    this.moteMat = new THREE.ShaderMaterial({
-      vertexShader: MOTE_VERTEX, fragmentShader: MOTE_FRAGMENT, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: { uFlash: U.uFlash, uFogOn: U.uFogOn, uFogNear: U.uFogNear, uFogFar: U.uFogFar, uPx: U.uPx },
+    this.maizeMat = maizeMaterial({ uTime: U.uTime, uFlash: U.uFlash, uFogOn: U.uFogOn, uFogNear: U.uFogNear, uFogFar: U.uFogFar },
+      { maxH: P.maxH, sprout: P.sprout, cube: V.plant, colors: V.maize });
+    this.maize = new THREE.InstancedMesh(geo, this.maizeMat, count);
+    const q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), at = new THREE.Vector3();
+    this.plants.forEach((p, i) => {
+      m.compose(at.set(p.x, 0, p.z), q.setFromAxisAngle(up, p.yaw), one);
+      for (let s = 0; s < S; s++) {
+        const k = i * S + s;
+        this.maize.setMatrixAt(k, m);
+        slot.set(this.slots[s], k * 3);
+        seed.set(p.seed, k * 3);
+      }
     });
-    this.points = new THREE.Points(mg, this.moteMat);
-    this.points.frustumCulled = false;
-    this.points.renderOrder = 3;
-    g.add(bloom(this.points));
+    geo.setAttribute("aSlot", new THREE.InstancedBufferAttribute(slot, 3));
+    geo.setAttribute("aSeed", new THREE.InstancedBufferAttribute(seed, 3));
+    geo.setAttribute("aState", this.state);
+    this.maize.frustumCulled = false;
+    g.add(this.maize);
+
+    // Motes as small cubes: green N (no bloom), red leaching drips and splashes (bloom).
+    this.nCubes = voxels(this.cap, U, 1);
+    this.leachCubes = voxels(this.cap, U, 1);
+    const green = col(c.nitrogen);
+    for (let i = 0; i < this.cap; i++) {
+      this.nCubes.color.setXYZ(i, green.r * 0.3, green.g * 0.3, green.b * 0.3);
+      this.nCubes.glow.setXYZ(i, green.r * 0.85, green.g * 0.85, green.b * 0.85);
+      this.leachCubes.color.setXYZ(i, this.red.r * 0.3, this.red.g * 0.3, this.red.b * 0.3);
+      this.leachCubes.glow.setXYZ(i, this.red.r * 1.6, this.red.g * 1.6, this.red.b * 1.6);
+    }
+    for (const k of [this.nCubes, this.leachCubes]) {
+      k.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      k.mesh.count = 0;
+    }
+    g.add(this.nCubes.mesh);
+    g.add(bloom(this.leachCubes.mesh));
   }
 
   rowZ() {
-    const n = P.rows, span = B.d - 0.8;
+    const n = P.rows, span = this.D - 0.8;
     return Array.from({ length: n }, (_, r) => -span / 2 + (n > 1 ? (span * r) / (n - 1) : span / 2));
   }
 
   materials() {
-    return [this.soilMat, this.poolMat, this.maizeMat, this.moteMat];
+    return [this.ground.mat, this.soil.mat, this.pool.mat, this.maizeMat, this.nCubes.mat, this.leachCubes.mat];
   }
 
   // World-space anchors for the HTML overlays: field name above, N leached under the pool.
   anchor(kind) {
     const x = this.group.position.x;
-    return kind === "pool" ? new THREE.Vector3(x, POOL_Y - 0.12, B.d * 0.54) : new THREE.Vector3(x, T.labelY, 0);
+    return kind === "pool" ? new THREE.Vector3(x, this.poolY - 0.12, this.D * 0.54) : new THREE.Vector3(x, T.labelY, 0);
   }
 
   setScale(scale) {
@@ -326,8 +308,9 @@ export class Diorama {
     const sc = this.scale;
     const share = (v, max) => (has(v) && max > 0 ? clamp(v / max, 0, 1) : 0);
     this.group.visible = true;
+    this.maize.visible = !!snap;   // no log for this season: bare ground
     if (!snap) {
-      Object.assign(this.target, { grow: 0, leaves: 1, tassel: 0 });
+      Object.assign(this.target, { grow: 0, leaves: 0, tassel: 0 });
       this.since = 0;
       this.water.target = 0;
       this.droop.target = 0;
@@ -360,7 +343,7 @@ export class Diorama {
         this.leach(Math.max(3, Math.round(T.motes.leach * s)), spread, s);
       }
     }
-    // After the dose spawns its falling motes, so they settle into the topsoil count instead of doubling it.
+    // After the dose spawns its falling cubes, so they settle into the soil count instead of doubling it.
     this.setSoil(T.motes.soil * share(obs.soil_n_kg_ha, sc.soilN));
     if (this.reduce) this.settle();
   }
@@ -376,11 +359,13 @@ export class Diorama {
     for (const s of [this.water, this.droop, this.lean, this.level]) s.snap();
   }
 
-  // ------------------------------------------------------------ motes
+  // ------------------------------------------------------------ motes (cubes)
 
+  // Soil N: a green cube resting on the ground between the plants.
   soilMote(fadeIn = true) {
-    return { kind: "soil", x: rand(-B.w / 2 + 0.15, B.w / 2 - 0.15), y: rand(-0.55, -0.08), z: rand(-B.d / 2 + 0.15, B.d / 2 - 0.15),
-      vx: 0, vy: 0, vz: 0, a: fadeIn ? 0 : 1, to: 1, size: rand(0.06, 0.085), ph: rand(0, 6.28) };
+    const size = rand(0.05, 0.065);
+    return { kind: "soil", x: rand(-this.W / 2 + 0.1, this.W / 2 - 0.1), y: size / 2, z: rand(-this.D / 2 + 0.1, this.D / 2 - 0.1),
+      a: fadeIn ? 0 : 1, to: 1, size, ph: rand(0, 6.28) };
   }
 
   push(m) {
@@ -399,8 +384,9 @@ export class Diorama {
   dose(count, spread) {
     if (this.reduce) return;
     for (let i = 0; i < count; i++) {
-      this.push({ kind: "fall", x: rand(-B.w / 2 + 0.15, B.w / 2 - 0.15), y: rand(2.6, 3.6), z: rand(-B.d / 2 + 0.15, B.d / 2 - 0.15),
-        vy: -rand(0.8, 1.8), delay: rand(0, spread), land: rand(-0.5, -0.08), a: 1, size: rand(0.07, 0.09) });
+      const size = rand(0.055, 0.07);
+      this.push({ kind: "fall", x: rand(-this.W / 2 + 0.1, this.W / 2 - 0.1), y: rand(2.6, 3.6), z: rand(-this.D / 2 + 0.1, this.D / 2 - 0.1),
+        vy: -rand(0.8, 1.8), delay: rand(0, spread), land: size / 2, a: 1, size });
     }
   }
 
@@ -408,9 +394,9 @@ export class Diorama {
     if (this.reduce || !this.plants.length) return;
     for (let i = 0; i < count; i++) {
       const p = this.plants[Math.floor(Math.random() * this.plants.length)];
-      const y0 = rand(-0.35, -0.05);
-      this.push({ kind: "rise", px: p.x, pz: p.z, x: p.x, y: y0, z: p.z, y0, y1: p.h * rand(0.35, 0.9), t: 0,
-        life: rand(1.2, 1.8), delay: rand(0, spread), a: 0, size: rand(0.05, 0.065), ph: rand(0, 6.28) });
+      const y0 = 0.03, side = Math.random() < 0.5 ? -1 : 1;
+      this.push({ kind: "rise", px: p.x + side * V.plant, pz: p.z, x: p.x, y: y0, z: p.z, y0, y1: p.h * rand(0.35, 0.9), t: 0,
+        life: rand(1.2, 1.8), delay: rand(0, spread), a: 0, size: rand(0.04, 0.05) });
     }
   }
 
@@ -419,9 +405,9 @@ export class Diorama {
     this.leachGlow = Math.max(this.leachGlow, share);
     if (this.reduce) return;
     for (let i = 0; i < count; i++) {
-      this.push({ kind: "leach", x: rand(-B.w / 2 + 0.2, B.w / 2 - 0.2), y: rand(-B.soil + 0.05, -B.soil + 0.35),
-        z: rand(-B.d / 2 + 0.2, B.d / 2 - 0.2), vy: -rand(0.3, 0.8), delay: 0.25 + spread * 0.3 + rand(0, spread * 1.2),
-        a: 1, size: 0.07 + 0.06 * share, share, trail: [] });
+      this.push({ kind: "leach", x: rand(-this.W / 2 + 0.15, this.W / 2 - 0.15), y: -this.depth - rand(0, 0.08),
+        z: rand(-this.D / 2 + 0.15, this.D / 2 - 0.15), vy: -rand(0.3, 0.8), delay: 0.25 + spread * 0.3 + rand(0, spread * 1.2),
+        a: 1, size: 0.05 + 0.05 * share, share, trail: [] });
     }
   }
 
@@ -432,15 +418,7 @@ export class Diorama {
       if (m.delay > 0) { m.delay -= dt; keep.push(m); continue; }
       switch (m.kind) {
         case "soil":
-          if (!this.reduce) {
-            m.vx += rand(-1, 1) * 0.5 * dt; m.vy += rand(-1, 1) * 0.3 * dt; m.vz += rand(-1, 1) * 0.5 * dt;
-            m.vx *= 0.96; m.vy *= 0.96; m.vz *= 0.96;
-            m.x += m.vx * dt; m.y += m.vy * dt; m.z += m.vz * dt;
-            if (m.y < -0.6 || m.y > -0.06) m.vy *= -1;
-            if (Math.abs(m.x) > B.w / 2 - 0.1) m.vx *= -1;
-            if (Math.abs(m.z) > B.d / 2 - 0.1) m.vz *= -1;
-            m.ph += dt * 1.4;
-          }
+          if (!this.reduce) m.ph += dt * 1.4;
           m.a += Math.sign(m.to - m.a) * Math.min(Math.abs(m.to - m.a), dt * 2.5);
           if (m.to > 0 || m.a > 0.01) keep.push(m);
           break;
@@ -449,7 +427,7 @@ export class Diorama {
           if (m.y <= m.land) {
             const stay = soilAlive < this.soilTarget;
             if (stay) soilAlive++;
-            keep.push({ kind: "soil", x: m.x, y: m.land, z: m.z, vx: 0, vy: 0, vz: 0, a: 1, to: stay ? 1 : 0, size: m.size, ph: rand(0, 6.28) });
+            keep.push({ kind: "soil", x: m.x, y: m.land, z: m.z, a: 1, to: stay ? 1 : 0, size: m.size, ph: rand(0, 6.28) });
           } else keep.push(m);
           break;
         case "rise": {
@@ -457,7 +435,7 @@ export class Diorama {
           const p = m.t / m.life;
           if (p >= 1) break;
           m.y = m.y0 + (m.y1 - m.y0) * (1 - (1 - p) ** 2);
-          m.x = m.px + Math.sin(m.ph + p * 6) * 0.03;
+          m.x = m.px;
           m.a = Math.min(1, p * 5) * (p > 0.7 ? (1 - p) / 0.3 : 1);
           keep.push(m);
           break;
@@ -466,8 +444,8 @@ export class Diorama {
           m.trail.unshift(m.y);
           if (m.trail.length > 4) m.trail.pop();
           m.vy -= 5 * dt; m.y += m.vy * dt;
-          if (m.y <= POOL_Y) {
-            keep.push({ kind: "splash", x: m.x, y: POOL_Y + 0.01, z: m.z, t: 0, life: 0.6, size: m.size });
+          if (m.y <= this.poolY) {
+            keep.push({ kind: "splash", x: m.x, y: this.poolY + 0.04, z: m.z, t: 0, life: 0.6, size: m.size });
             this.pulse = Math.min(1.6, this.pulse + 0.03 * (0.6 + m.share));
           } else keep.push(m);
           break;
@@ -482,32 +460,55 @@ export class Diorama {
     this.writeMotes();
   }
 
+  // Cube scale stands in for alpha: fading cubes shrink.
   writeMotes() {
-    const { pos, col, size, alpha } = this.mBuf;
-    let n = 0;
-    const put = (x, y, z, color, s, a) => {
-      if (n >= this.cap || a <= 0.01) return;
-      pos.array[n * 3] = x; pos.array[n * 3 + 1] = y; pos.array[n * 3 + 2] = z;
-      col.array[n * 3] = color.r; col.array[n * 3 + 1] = color.g; col.array[n * 3 + 2] = color.b;
-      size.array[n] = s;
-      alpha.array[n] = Math.min(1, a);
-      n++;
+    const m4 = this.m4, N = this.nCubes, L = this.leachCubes;
+    let nn = 0, nl = 0;
+    const put = (k, x, y, z, s) => {
+      if (s <= 0.004) return;
+      if (k === N ? nn >= this.cap : nl >= this.cap) return;
+      k.mesh.setMatrixAt(k === N ? nn++ : nl++, m4.makeScale(s, s, s).setPosition(x, y, z));
     };
-    const green = this.colors.n, red = this.colors.leach;
     for (const m of this.motes) {
       if (m.delay > 0) continue;
-      if (m.kind === "soil") put(m.x, m.y, m.z, green, m.size, m.a * (this.reduce ? 0.8 : 0.6 + 0.3 * Math.sin(m.ph)));
-      else if (m.kind === "fall" || m.kind === "rise") put(m.x, m.y, m.z, green, m.size, m.a);
+      if (m.kind === "soil") put(N, m.x, m.y, m.z, m.size * m.a * (this.reduce ? 1 : 0.92 + 0.08 * Math.sin(m.ph)));
+      else if (m.kind === "fall" || m.kind === "rise") put(N, m.x, m.y, m.z, m.size * Math.min(1, m.a));
       else if (m.kind === "leach") {
-        put(m.x, m.y, m.z, red, m.size, 1);
-        m.trail.forEach((ty, i) => put(m.x, ty, m.z, red, m.size * 0.7, (1 - (i + 1) / (m.trail.length + 1)) * 0.5));
+        put(L, m.x, m.y, m.z, m.size);
+        m.trail.forEach((ty, i) => put(L, m.x, ty, m.z, m.size * 0.6 * (1 - (i + 1) / (m.trail.length + 1))));
       } else if (m.kind === "splash") {
         const p = m.t / m.life;
-        put(m.x, m.y, m.z, red, m.size * (1 + 3 * p), 1 - p);
+        put(L, m.x, m.y, m.z, m.size * (1 + 1.5 * p) * (1 - p));
       }
     }
-    for (const a of [pos, col, size, alpha]) a.needsUpdate = true;
-    this.points.geometry.setDrawRange(0, n);
+    N.mesh.count = nn;
+    L.mesh.count = nl;
+    N.mesh.instanceMatrix.needsUpdate = true;
+    L.mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // ------------------------------------------------------------ soil tint
+
+  // Water from the bottom up (wf = soil_water_frac, 0..1 of the soil layers): wet cubes shift to dark cyan with a
+  // faint glow; the top wet layer (the water line) glows a little more, which is all the bloom picks up. Leaching
+  // warms the bottom rows red (splash pulse and the week's share of the worst week).
+  tintSoil(wf, red) {
+    if (Math.abs(wf - this.tint.wf) < 0.002 && Math.abs(red - this.tint.red) < 0.004) return;
+    this.tint.wf = wf;
+    this.tint.red = red;
+    const layers = this.ny - 1, level = wf * layers, low = Math.max(1, 0.35 * layers);
+    const { color, glow } = this.soil, c = new THREE.Color();
+    this.soilCells.forEach((s, i) => {
+      const t = clamp(level - s.b, 0, 1);
+      const line = t * (1 - clamp(level - s.b - 1, 0, 1));
+      const w = 0.12 * t + 0.26 * line;
+      const r = red * Math.max(0, 1 - s.b / low);
+      c.copy(s.base).lerp(this.wet, 0.7 * t);
+      color.setXYZ(i, c.r, c.g, c.b);
+      glow.setXYZ(i, this.cyan.r * w + this.red.r * r, this.cyan.g * w + this.red.g * r, this.cyan.b * w + this.red.b * r);
+    });
+    color.needsUpdate = true;
+    glow.needsUpdate = true;
   }
 
   // ------------------------------------------------------------ frame
@@ -515,7 +516,7 @@ export class Diorama {
   update(dt) {
     this.since += dt;
     const step = (s) => (this.reduce ? s.snap() : s.step(dt));
-    const arr = this.state.array;
+    const arr = this.state.array, S = this.slots.length;
     this.plants.forEach((p, i) => {
       if (this.since >= p.lag || this.reduce) {
         p.grow.target = this.target.grow;
@@ -523,20 +524,17 @@ export class Diorama {
         p.tassel.target = this.target.tassel;
       }
       step(p.grow); step(p.leaves); step(p.tassel);
-      const g = Math.max(0, p.grow.x);
-      arr[i * 3] = g;
-      arr[i * 3 + 1] = clamp(p.leaves.x, 0, LEAVES);
-      arr[i * 3 + 2] = clamp(p.tassel.x, 0, 1);
+      const g = Math.max(0, p.grow.x), lv = clamp(p.leaves.x, 0, LEAVES), ts = clamp(p.tassel.x, 0, 1.2);
+      for (let s = 0, k = i * S * 3; s < S; s++, k += 3) {
+        arr[k] = g;
+        arr[k + 1] = lv;
+        arr[k + 2] = ts;
+      }
       p.h = (P.sprout + (P.maxH - P.sprout) * g) * p.seed[1];
     });
     this.state.needsUpdate = true;
 
     for (const s of [this.water, this.droop, this.lean, this.wind, this.level]) step(s);
-    const wf = clamp(this.water.x, 0, 1);
-    this.waterVol.scale.y = Math.max(0.001, wf * B.soil);
-    this.waterVol.visible = wf > 0.002;
-    this.waterTop.position.y = -B.soil + wf * B.soil;
-    this.waterTop.visible = wf > 0.002;
     const u = this.maizeMat.uniforms;
     u.uWind.value = this.reduce ? 0 : Math.max(0, this.wind.x);
     u.uLean.value = this.lean.x;
@@ -544,14 +542,12 @@ export class Diorama {
 
     this.pulse *= Math.exp(-1.4 * dt);
     this.leachGlow *= Math.exp(-0.9 * dt);
-    this.poolMat.uniforms.uLevel.value = clamp(this.level.x, 0, 1);
-    this.poolMat.uniforms.uPulse.value = this.reduce ? 0 : this.pulse;
-    this.soilMat.uniforms.uLeach.value = this.reduce ? 0 : Math.max(this.pulse * 0.6, this.leachGlow * 0.4);
+    const pulse = this.reduce ? 0 : this.pulse;
+    this.pool.mat.uniforms.uEmit.value = 0.06 + 0.8 * clamp(this.level.x, 0, 1) + 1.7 * pulse;
+    this.tintSoil(clamp(this.water.x, 0, 1), this.reduce ? 0 : Math.max(pulse * 0.6, this.leachGlow * 0.4));
     this.tickMotes(Math.min(dt, 0.05));
   }
 
-  // Lightning: brighten the hairline edges with the scene flash.
-  flash(f) {
-    for (const l of this.lines) l.mat.color.copy(l.base).lerp(WHITE, clamp(f, 0, 1) * 0.6);
-  }
+  // Lightning lights every cube through the shared uFlash uniform; nothing per field.
+  flash() {}
 }

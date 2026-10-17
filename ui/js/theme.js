@@ -51,18 +51,30 @@ export const theme = {
     leavesMax: 7,
     stroke: { stalk: 2.4, leaf: 1.8, ground: 1.4 },
   },
-  // 3D Season view (R2, season3d.js, diorama3d.js, maize3d.js), in world units. Display mappings only, not facts.
+  // 3D Season view (voxel dioramas: season3d.js, diorama3d.js, maize3d.js), in world units. Display mappings
+  // only, not facts.
   three: {
     block: { w: 5.0, d: 3.2, soil: 2.0, gap: 0.95, x: 3.5 },   // soil block size; x = |center| of each block
+    // Voxels: cell = ground / soil cube pitch (?lite=1: x sqrt(2), half the cubes); fill = cube size over pitch
+    // (tight gaps); plant = maize cube size. Matte colors; neon only on data (water, N, leaching).
+    voxel: {
+      cell: 0.16, fill: 0.9, plant: 0.075,
+      ground: { top: "#3b2614", low: "#2a1a0e" },
+      soil: { top: "#33200f", bottom: "#0d0804" },
+      wet: "#0b3a46",
+      pool: "#1a0606",
+      maize: { stalk: "#4f7d14", leaf: "#6aa514", tip: "#8cc63a", tassel: "#c9b45a", thirst: "#8a7428" },
+    },
     plants: { rows: 4, perRow: 12, maxH: 2.4, sprout: 0.1 },   // ?lite=1 keeps every other plant
     labelY: 3.3,                  // field names float here, above the tallest plant
     camera: { fov: 38, pos: [0, 2.8, 15.7], target: [0, -0.3, 0], dollyX: 2.2, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
-    bloom: { strength: 1.0, radius: 0.55, threshold: 0.0 },
+    bloom: { strength: 0.5, radius: 0.5, threshold: 0.15 },   // selective: water tint, drips, pool, lightning
     thirst: { start: 0.32, full: 0.15 },   // obs.soil_water_frac where leaves start to droop / droop fully
     stormLean: 0.55,              // bend at the plant top in a storm week (logged rain > stormMm)
     wind: 0.09, stormWind: 0.22,  // sway amplitude, calm and storm
     flashPeak: 0.55,              // lightning: kept below the leaching pulse so leaching stays the main event
+    bolt: 1.4,                    // lightning bolt line brightness at the flash peak (bloomed)
     caption: { maxChars: 110 },
     motes: { soil: 60, dose: 50, uptake: 30, leach: 150, rain: 520, cap: 1400 },
   },

@@ -172,9 +172,24 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .s3-in { position: absolute; left: 0; display: grid; justify-items: center; gap: 6px; white-space: nowrap; transform: translateX(-50%); }
 .s3-in.up { bottom: 0; }
 .s3-in.down { top: 0; }
-.s3-none { font-size: 15px; }
 .s3-name { font-size: 24px; font-weight: 600; letter-spacing: 0.01em; color: var(--text); }
 #s3-head-right .s3-name { color: var(--accent); }
+/* Field header pickers (3D overlays and the 2D heads): plain text until hovered, a small caret marks them. */
+select.cfg-pick {
+  pointer-events: auto; appearance: none; -webkit-appearance: none; background: transparent; border: 1px solid transparent;
+  padding: 2px 22px 2px 6px; font-family: inherit; font-size: inherit; font-weight: 600; color: inherit; cursor: pointer;
+  text-align: center;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 11px) 55%, calc(100% - 6px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
+  transition: border-color var(--ms) var(--ease);
+}
+select.cfg-pick:hover, select.cfg-pick:focus-visible { border-color: var(--hairline-strong); outline: none; }
+select.cfg-pick:disabled { cursor: default; background-image: none; padding-right: 6px; }
+select.cfg-pick option { background: #000; color: var(--text); font-size: 16px; }
+select.cfg-pick.s3-name { font-size: 24px; }
+.cfg-model { font-size: 14px; }
+.cfg-none { font-size: 15px; }
+.field-head h2 select.cfg-pick { text-align: left; }
 .fin-profit { display: grid; justify-items: center; animation: rise 600ms var(--ease) both; }
 .fin-profit .v { font-size: 60px; font-weight: 600; line-height: 1; }
 .fin-profit .unit { font-size: 14px; color: var(--quiet); letter-spacing: 0.06em; text-transform: uppercase; }
@@ -196,10 +211,23 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 #s3-caption .t.critic { color: var(--critic); }
 /* In 3D the Season page holds only the controls and a bare scrubber; the canvas fills the window behind. */
 .s3d #season { z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; padding-bottom: 6px; }
-.s3d #week, .s3d #fields, .s3d .speed, .s3d .keys { display: none; }
+.s3d #week, .s3d #fields, .s3d .keys { display: none; }
 .s3d #bottom { pointer-events: auto; width: min(980px, 100%); margin: 0 auto; }
 .s3d #controls { justify-content: center; }
 .s3d #timeline { height: 34px; }
+
+/* Narrator (narrator.js): a narrow column on the right edge, quiet and italic, unlike the agent caption and chat.
+   The newest line fades in; older lines dim with --age. */
+#narrator {
+  position: fixed; right: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 2; width: 260px;
+  display: grid; gap: 10px; pointer-events: none; padding-left: 12px; border-left: 1px solid var(--hairline);
+}
+.nar-label { font-size: 14px; color: var(--quiet); letter-spacing: 0.02em; }
+#nar-lines { display: grid; gap: 12px; }
+.nar-line { display: grid; gap: 2px; opacity: calc(1 - 0.17 * var(--age, 0)); transition: opacity 600ms var(--ease); }
+.nar-line.new { animation: fade 900ms var(--ease) both; }
+.nar-meta { font-size: 14px; color: var(--quiet); }
+.nar-text { font-size: 15px; line-height: 1.4; font-style: italic; color: #c6cfbd; }
 
 /* ---------------------------------------------------------------- agents page (full weekly chat) */
 #agents { overflow-y: auto; }
@@ -281,6 +309,7 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
   .field-svg .gw-line, .field-svg .gw-band, #timeline .cursor, #timeline .knob, #timeline .track-on { transition-duration: 0s !important; }
   .tally .end, .lines .why.enter .t { animation: none; }
   .dock-label, .dock-dot, .dock-icon { transition: none; }
-  #s3-caption, #stage3d canvas { transition: none; }
+  #s3-caption, #stage3d canvas, .nar-line { transition: none; }
+  .nar-line.new { animation: none; }
   .fin-profit, .fin-delta, .fin-leach { animation: none; }
 }
