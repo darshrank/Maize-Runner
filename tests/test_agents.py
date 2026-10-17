@@ -39,6 +39,40 @@ class GuardModel(StubModel):
 
 
 class AgentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_real_run_rejects_toy_server_before_reset(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from fieldtwin_agents.cli import run
+        requests = []
+        def handler(request):
+            requests.append(request.url.path)
+            return httpx.Response(200, json={"ok": True, "simulator": "toy"})
+        env = EnvironmentClient("http://environment", transport=httpx.MockTransport(handler))
+        with tempfile.TemporaryDirectory() as tmp:
+            tasks = Path(tmp)/"dev.jsonl"
+            tasks.write_text('{"task_id":"UFGA-1990","site":"UFGA","year":1990,"split":"dev"}\n')
+            args = SimpleNamespace(tasks=str(tasks), prompt_version="v1", freeze_manifest=None,
+                stub=False, stub_env=False, env_url="http://environment", synthetic_env=False,
+                stub_model=True)
+            with patch("fieldtwin_agents.cli.EnvironmentClient", return_value=env):
+                with self.assertRaisesRegex(ValueError, "configured real simulator"):
+                    await run(args)
+        self.assertEqual(requests, ["/health"])
+
+    async def test_real_year_tasks_and_early_maturity_audit(self):
+        from fieldtwin_agents.validation import audit_run
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp)/"dev.jsonl"
+            manifest.write_text('{"task_id":"UFGA-1990","site":"UFGA","year":1990,"split":"dev"}\n')
+            task, = load_dev_tasks(manifest)
+            self.assertEqual(task.reset_body(), {"task_id":"UFGA-1990","site":"UFGA","year":1990})
+            self.assertEqual(Task("both", "UFGA", 1, year=1995).reset_body()["year"], 1995)
+            output = Path(tmp)/"run"
+            await run_batch([task], ["multi"], StubEnvironment(18), StubModel(), output)
+            self.assertEqual(audit_run(output, require_live=False)["seasons"][0]["weeks"], 18)
+            with self.assertRaises(ValueError):
+                Task("invalid", "UFGA", year=True)
+
     async def test_tool_summary_is_replaced_by_requested_critique(self):
         class SummaryModel(StubModel):
             async def complete(self, messages, tools):

@@ -20,3 +20,15 @@ results/*
 /tmp/
 /build/
 /dist/
+*.pyc
+.cache/
+logs/
+wget-log*
+# NeMo Gym: per-server venvs it creates under the search dir, and run outputs
+gym_env/responses_api_agents/
+gym_env/responses_api_models/
+gym_env/environment_servers/
+gym_env/results/
+gym_env/outputs/
+*.venv.setup.lock
+.nemo-gym-setup-complete

@@ -24,7 +24,6 @@ def audit_run(folder, *, require_live=True):
     require(not require_live or manifest["model"] == MODEL, "Expected the live Nemotron checkpoint")
     require(not require_live or not manifest.get("synthetic_model", False), "Synthetic model is not live verification")
     limits = manifest["management"]["env"]
-    weeks = limits["weeks_per_season"]
     reports, intervals = [], []
     index = json.loads((folder / "runs/index.json").read_text(encoding="utf-8"))
     for row in rows:
@@ -37,6 +36,9 @@ def audit_run(folder, *, require_live=True):
         decisions = [e for e in events if e["kind"] == "decision"]
         steps = [e for e in events if e["kind"] == "step_result"]
         finals = [e for e in events if e["kind"] == "final"]
+        require(len(finals) == 1, f"{label}: missing terminal event")
+        weeks = finals[0]["week"]
+        require(type(weeks) is int and 0 < weeks <= manifest.get("max_weeks", 60), f"{label}: invalid terminal week")
         require([e["week"] for e in decisions] == list(range(weeks)), f"{label}: missing/duplicate weekly decision")
         require([e["week"] for e in steps] == list(range(weeks)), f"{label}: missing/duplicate weekly step")
         require(len(finals) == 1 and finals[0]["week"] == weeks, f"{label}: missing terminal event")

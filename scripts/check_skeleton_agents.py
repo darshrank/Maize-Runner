@@ -52,13 +52,13 @@ def main():
                     raise RuntimeError("Toy server did not become ready")
             for policy in ("farmer", "single", "multi"):
                 subprocess.run([sys.executable, "-m", "agents.run", "--policy", policy,
-                                "--task-id", "UFGA-s3", "--split", "dev"], cwd=ROOT, env=environ,
+                                "--task-id", "UFGA-1992", "--split", "dev"], cwd=ROOT, env=environ,
                                check=True, capture_output=True, text=True, timeout=90)
             completed = subprocess.run([sys.executable, "-m", "eval.run_eval", "--split", "dev",
                 "--configs", ",".join(CONFIGS), "--limit", "3"], cwd=ROOT, env=environ,
                 check=True, capture_output=True, text=True, timeout=180)
             rows = list(csv.DictReader((ROOT / "results/eval.csv").open(newline="", encoding="utf-8")))
-            rows = [r for r in rows if r["split"] == "dev" and r["task_id"] in {"UFGA-s1", "UFGA-s2", "UFGA-s3"}
+            rows = [r for r in rows if r["split"] == "dev" and r["task_id"] in {"UFGA-1990", "UFGA-1991", "UFGA-1992"}
                     and r["config"] in CONFIGS]
             if len(rows) != 24:
                 raise RuntimeError("Expected 24 config/task rows")
@@ -69,7 +69,7 @@ def main():
                 raise RuntimeError("Missing synthetic provenance in summary")
             index = json.loads((ROOT / "runs/index.json").read_text())
             for config in CONFIGS:
-                if not {"UFGA-s1", "UFGA-s2", "UFGA-s3"} <= set(index[config]):
+                if not {"UFGA-1990", "UFGA-1991", "UFGA-1992"} <= set(index[config]):
                     raise RuntimeError(f"Missing replay index entries for {config}")
             print(json.dumps({"skeleton_http_integration": "passed", "synthetic": True,
                               "eval_rows": 24, "configs": CONFIGS, "task_split": "dev",

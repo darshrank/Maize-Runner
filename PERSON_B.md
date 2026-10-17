@@ -2,7 +2,8 @@
 
 The shared [README](README.md) is the primary run guide. The maintained
 [done/pending checklist](TASKS_PERSON_B.md) records what is complete locally and what
-still requires Brev or Person A's validated simulator. Synthetic results are software
+still requires dev evaluation. A's gym-DSSAT environment, real-year tasks and fixed
+prices are integrated from `a-env` (64b38f9). Synthetic results are software
 checks, not crop-performance evidence.
 
 ## Architecture and contracts
@@ -80,6 +81,13 @@ Set `VLLM_API_KEY` only if the server requires it; never put tokens in source or
 uv run python -m fieldtwin_agents smoke --output results/b0-smoke.json
 uv run python -m agents.run --policy multi --task-id UFGA-s3 --split dev
 ```
+
+After A's real-weather merge, use task IDs such as `UFGA-1992` and reset payloads
+with `year`. The legacy seed form remains supported for older synthetic fixtures.
+The async runner stops at `done: true`; its audit accepts crop maturity before week
+20. Real runs check `/health` against the configured simulator before starting;
+an unlabelled toy server is rejected. On this Brev host the DSSAT server binds to
+`127.0.0.1:9001`, separate from vLLM on port 8000.
 
 `smoke` requires one real automatically parsed `get_weather({})` call and checks its
 JSON arguments after checking the advertised model ID, then saves successful evidence

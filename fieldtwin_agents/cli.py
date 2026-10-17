@@ -55,6 +55,13 @@ async def run(args):
     env = StubEnvironment() if args.stub or args.stub_env else EnvironmentClient(args.env_url, synthetic=args.synthetic_env)
     model = StubModel() if args.stub_model or args.stub else VLLMClient(args.vllm_url, args.model)
     try:
+        if not env.synthetic:
+            response = await env.http.get("health")
+            response.raise_for_status()
+            env.health_snapshot = response.json()
+            from .management import environment_limits
+            if env.health_snapshot != {"ok": True, "simulator": environment_limits()["simulator"]} or env.health_snapshot["simulator"] == "toy":
+                raise ValueError("Environment health must match the configured real simulator; use --synthetic-env for toy")
         rows = await run_batch(tasks, args.configs, env, model, Path(args.output),
             concurrency=args.concurrency, n_cap=args.n_cap, schedule=load_schedule(args.farmer_schedule),
             prompt_version=args.prompt_version)

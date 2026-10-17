@@ -18,8 +18,8 @@ for _ in $(seq 60); do
 done
 curl -sf "http://localhost:$PORT/health" >/dev/null || fail "env server did not come up"
 
-uv run python -m agents.run --policy farmer --task-id UFGA-s3 || fail "agents.run farmer"
-[ -s runs/farmer/UFGA-s3.jsonl ] || fail "missing runs/farmer/UFGA-s3.jsonl"
+uv run python -m agents.run --policy farmer --task-id UFGA-1995 || fail "agents.run farmer"
+[ -s runs/farmer/UFGA-1995.jsonl ] || fail "missing runs/farmer/UFGA-1995.jsonl"
 
 uv run python -m eval.run_eval --split dev --limit 3 --configs no_n,farmer,hindsight || fail "eval.run_eval"
 [ -s results/eval.csv ] || fail "missing results/eval.csv"

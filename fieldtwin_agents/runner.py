@@ -118,7 +118,9 @@ async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwar
                 "synthetic_environment": bool(env.synthetic), "synthetic_model": bool(model.synthetic),
                 "task_ids": [t.task_id for t in tasks], "split": "dev", "concurrency": concurrency,
                 "task_specs": [t.reset_body() for t in tasks],
+                "max_weeks": kwargs.get("max_weeks", 60),
                 "model": getattr(model, "model", type(model).__name__), "environment": endpoint_identity(env),
+                "environment_health": getattr(env, "health_snapshot", None),
                 "prompt_version": version, "prompt_hashes": prompt_hashes(version),
                 "n_cap": kwargs["n_cap"], "fallback_schedule": kwargs.get("schedule"),
                 "management": management_provenance()}

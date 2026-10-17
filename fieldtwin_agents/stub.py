@@ -21,7 +21,7 @@ class StubEnvironment:
 
     async def reset(self, task):
         episode_id = str(uuid.uuid4())
-        s = {"week": 0, "seed": task.weather_seed, "water": 50., "soil_n": 20.,
+        s = {"week": 0, "seed": task.year if task.year is not None else task.weather_seed, "water": 50., "soil_n": 20.,
              "n_applied": 0., "irr_mm": 0., "n_leached": 0., "n_uptake": 0., "history": []}
         self.episodes[episode_id] = s
         await asyncio.sleep(0)

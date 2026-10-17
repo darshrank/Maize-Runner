@@ -37,18 +37,23 @@ def number(value) -> float:
 class Task:
     task_id: str
     site: str
-    weather_seed: int
+    weather_seed: int | None = None
     split: str = "dev"
+    year: int | None = None
 
     def __post_init__(self):
         safe_name(self.task_id)
         if self.split not in ("dev", "test"):
             raise ValueError("Task split must be dev or test")
-        if not self.site or isinstance(self.weather_seed, bool) or not isinstance(self.weather_seed, int):
-            raise ValueError("Task needs a site and integer weather_seed")
+        if not self.site or (self.year is None and self.weather_seed is None):
+            raise ValueError("Task needs a site and integer year or legacy weather_seed")
+        for value in (self.year, self.weather_seed):
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+                raise ValueError("year and weather_seed must be integers")
 
     def reset_body(self):
-        return {"task_id": self.task_id, "site": self.site, "weather_seed": self.weather_seed}
+        weather = {"year": self.year} if self.year is not None else {"weather_seed": self.weather_seed}
+        return {"task_id": self.task_id, "site": self.site, **weather}
 
 
 def load_dev_tasks(path: Path) -> list[Task]:

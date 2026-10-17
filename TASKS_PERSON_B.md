@@ -30,7 +30,7 @@ Last updated: 2026-10-17. This checklist distinguishes local implementation from
 
 - [x] Obtain Brev H100 80 GB access, launch the BF16 checkpoint, and record a successful real tool smoke test (B0): results/b0-host.json and results/b0-smoke.json.
 - [x] Pull the shared port-9000 toy server, 20-dev task manifest, 300 kg/ha season cap and farmer schedule from main.
-- [ ] Replace the toy simulator with Person A's validated crop simulator before claiming crop-performance results.
+- [x] Integrate Person A's gym-DSSAT simulator, real weather years and fixed prices from origin/a-env (64b38f9).
 - [ ] Run single and multi on the real simulator and validate its observation/tool payloads (B1/B2).
 - [ ] Evaluate both on all 20 dev seasons with Nemotron; inspect worst three logs, change one thing, rerun and record actual gain (B3).
 - [ ] Freeze chosen prompt hashes after real dev evidence (B4); give A the config names and inference entry point.
@@ -90,7 +90,20 @@ claim has been measured yet.
 These checks use real Nemotron inference but a synthetic crop environment. They do
 not establish real crop performance or complete B3's real-simulator improvement requirement.
 
-Next dependency: A supplies the validated crop simulator and final prices/reward.
-Then verify its real tool payloads with single/multi, run all 20 dev tasks, inspect
+A's simulator and prices are now available from a-env. Verify its real tool payloads
+with single/multi, run all 20 dev tasks, inspect
 the worst three, make one diagnosed prompt change, rerun, and freeze the chosen
 prompts. A owns the held-out test. Keep person-B local for the team's later merge.
+
+## A environment integration and real dev evaluation
+
+- [x] Fetch origin/a-env at 64b38f9; inspect A's DSSAT, NASA weather, fixed prices and NeMo Gym implementation.
+- [x] Resolve README/ignore conflicts while retaining B policies and A's simulator/prices.
+- [x] Adapt B's Task loader to real years and its auditor to terminal maturity rather than exactly 20 weeks; preserve legacy fixtures.
+- [x] Install gym-DSSAT on the existing Brev host (Ubuntu 22.04); keep vLLM running.
+- [x] Pass merged checks: 40 local tests, eight local DSSAT skips; all 15 environment contract tests pass on Brev including DSSAT. Shared toy HTTP smoke verifies all eight configs on three dev years (24 rows).
+- [x] Commit the merge into person-B; do not push or change main/a-env.
+- [ ] Complete real-model, DSSAT single/multi evaluation on all 20 dev seasons and inspect the worst three logs.
+- [ ] Make one diagnosed role-prompt change, rerun the paired dev experiment, record measured results including negative changes.
+- [ ] Select/freeze prompts from that evidence, verify ablations and give A/C reproducible handoff artifacts.
+- [ ] A runs held-out test once; B does not execute test seasons.

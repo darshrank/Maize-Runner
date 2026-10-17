@@ -20,7 +20,9 @@ from fieldtwin_agents.stub import StubModel
 
 @pytest.fixture()
 def shared_env():
-    with TestClient(create_app()) as api:
+    cfg = load_config()
+    cfg["env"]["simulator"] = "toy"
+    with TestClient(create_app(cfg)) as api:
         env = EnvClient()
         env.http.close()
         env.http = httpx.Client(base_url="http://testserver", transport=httpx.MockTransport(
