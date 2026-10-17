@@ -1,5 +1,7 @@
 # d1c_multi: five-role team + sourced agronomy
 
+Full architecture (flow, agents, guards, measured cost): [ARCHITECTURE.md](ARCHITECTURE.md).
+
 **Same flow and code as `d1_multi`** (Weather + Crop in parallel -> Planner -> Critic -> revise once -> Coordinator).
 What changed: every role now gets the sourced agronomy (`agents_a/common/agronomy.md`: UF/IFAS corn N rate and
 splitting, seasonal and peak water use), and the role prompts follow it:
