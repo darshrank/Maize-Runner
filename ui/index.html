@@ -3,119 +3,97 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FieldTwin Replay</title>
-  <link rel="stylesheet" href="tokens.css">
+  <title>FieldTwin</title>
   <link rel="stylesheet" href="style.css">
-  <!-- three.js 0.160.0 is vendored in ui/vendor/ so replay works offline (no CDN). -->
+  <!-- three.js 0.160.0 and fonts are vendored (ui/vendor/README.md): replay makes no CDN calls. -->
   <script type="importmap">
     {
       "imports": {
-        "three": "./vendor/three-0.160.0/build/three.module.js",
-        "three/addons/": "./vendor/three-0.160.0/examples/jsm/"
+        "three": "./vendor/three/build/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
       }
     }
   </script>
 </head>
 <body>
-  <!-- Header: season, split, FAKE, compare picker -->
-  <header id="topbar">
-    <div class="brand">FieldTwin</div>
-    <span class="sub">season replay</span>
-    <label class="pick"><span>Season</span><select id="task-picker" aria-label="Season"></select></label>
-    <span class="tag split" id="split-tag" hidden></span>
-    <span class="fake-badge" id="fake-tag" hidden title="A fake log is shown (UI testing only)">FAKE</span>
-    <div class="spacer"></div>
-    <label class="pick" id="ft-pick" hidden><span>Compare</span><select id="ft-picker" aria-label="Run compared with farmer practice"></select></label>
+  <!-- Full-bleed 3D scene; everything else floats over it. -->
+  <div id="stage"></div>
+  <div id="vignette"></div>
+
+  <header id="bar">
+    <div class="brand"><i class="mark"></i><span>FieldTwin</span></div>
+    <nav id="tabs">
+      <button data-view="season" class="on"><span class="key">1</span>Season</button>
+      <button data-view="results"><span class="key">2</span>Results</button>
+      <button data-view="improve"><span class="key">3</span>Improve</button>
+      <button data-view="serving"><span class="key">4</span>Serving</button>
+      <button data-view="how"><span class="key">5</span>How it works</button>
+    </nav>
+    <label class="pick"><span class="label">Season</span><select id="task" aria-label="Season"></select></label>
+    <span id="split" class="badge" hidden></span>
+    <span id="fake" class="badge fake" hidden title="FAKE data from ui/fake/ (UI testing only)">FAKE</span>
+    <div class="grow"></div>
+    <div id="chips"></div>
   </header>
 
-  <!-- 1. Top strip: FieldTwin vs farmer, same season, cumulative to the current week -->
-  <section id="strip">
-    <div class="strip-head">
-      <span class="who ft"><i class="sw ft"></i><span id="ft-name">n/a</span></span>
-      <span class="vs">vs</span>
-      <span class="who farmer"><i class="sw farmer"></i><span id="farmer-name">n/a</span></span>
-      <span class="spacer"></span>
-      <span id="strip-caption"></span>
-    </div>
-    <div class="metrics">
-      <div class="metric" data-m="n" data-better="-1">
-        <div class="m-k">N applied <span class="unit">kg/ha</span></div>
-        <div class="m-pair"><span class="v m-ft">n/a</span><span class="v m-farmer">n/a</span></div>
-        <div class="m-delta"><span class="k">Δ</span><span class="v">n/a</span></div>
+  <main id="season" class="view">
+    <!-- Top left: which field, which week. -->
+    <section id="field-hud" class="hud">
+      <div id="field-pick" class="seg" role="group" aria-label="Field"></div>
+      <div class="week">
+        <span class="label">Week</span>
+        <span id="week-num" class="hero mono">00</span>
+        <span id="week-of" class="sub mono"></span>
       </div>
-      <div class="metric" data-m="leach" data-better="-1">
-        <div class="m-k">N leached <span class="unit">kg/ha</span></div>
-        <div class="m-pair"><span class="v m-ft">n/a</span><span class="v m-farmer">n/a</span></div>
-        <div class="m-delta"><span class="k">Δ</span><span class="v">n/a</span></div>
-      </div>
-      <div class="metric" data-m="grain" data-better="1">
-        <div class="m-k">Yield <span class="unit">kg/ha</span></div>
-        <div class="m-pair"><span class="v m-ft">n/a</span><span class="v m-farmer">n/a</span></div>
-        <div class="m-delta"><span class="k">Δ</span><span class="v">n/a</span></div>
-      </div>
-      <div class="metric" data-m="profit" data-better="1">
-        <div class="m-k">Profit <span class="unit">USD/ha</span></div>
-        <div class="m-pair"><span class="v m-ft">n/a</span><span class="v m-farmer">n/a</span></div>
-        <div class="m-delta"><span class="k">Δ</span><span class="v">n/a</span></div>
-      </div>
-      <div class="metric fallbacks" data-m="fallback">
-        <div class="m-k">Fallback weeks <span class="unit">of 20</span></div>
-        <div class="m-pair"><span class="v m-ft">n/a</span><span class="v m-farmer">n/a</span></div>
-        <div class="m-delta"><span class="k">Objection weeks</span><span class="v" id="objection-count">n/a</span></div>
-      </div>
-    </div>
-  </section>
-
-  <main id="center">
-    <!-- 2. Scene area: FieldTwin and farmer blocks side by side (3D upgrade in S2 unit 2) -->
-    <section id="scene" class="panel">
-      <div class="block" id="block-ft" data-side="ft">
-        <div class="block-label"><i class="sw ft"></i><span class="name">n/a</span></div>
-        <div class="field-canvas"></div>
-        <div class="readout"></div>
-      </div>
-      <div class="block" id="block-farmer" data-side="farmer">
-        <div class="block-label"><i class="sw farmer"></i><span class="name">n/a</span></div>
-        <div class="field-canvas"></div>
-        <div class="readout"></div>
-      </div>
+      <dl class="readout">
+        <dt class="label">Stage</dt><dd id="stage-v" class="mono">n/a</dd>
+        <dt class="label">Soil water</dt><dd id="water-v" class="mono water">n/a</dd>
+        <dt class="label">Biomass</dt><dd id="biomass-v" class="mono">n/a</dd>
+        <dt class="label">Rain this week</dt><dd id="rain-v" class="mono rain">n/a</dd>
+      </dl>
+      <ul class="legend">
+        <li><i class="sw canopy"></i>Canopy height: biomass</li>
+        <li><i class="sw water"></i>Soil glow: soil water fraction, filled bottom up</li>
+        <li><i class="sw leach"></i>Floor tint: N leached to groundwater, season to date</li>
+      </ul>
     </section>
 
-    <!-- 3. Agent messages for the selected week -->
-    <aside id="agents" class="panel">
-      <div class="panel-head">
-        <span class="title">Agents</span>
-        <span id="agents-week"></span>
-      </div>
-      <div id="feed"></div>
-      <div id="farmer-line"></div>
-      <!-- 5. Raw events, collapsed by default -->
-      <button id="raw-toggle" aria-expanded="false" aria-controls="raw-body">Raw events</button>
-    </aside>
+    <div id="storm" class="storm" hidden><span class="label">Storm</span><span id="storm-v" class="mono"></span></div>
 
-    <div id="raw-body" hidden>
-      <div class="raw-col"><div class="raw-head" id="raw-head-ft"></div><div class="raw-list" id="raw-ft"></div></div>
-      <div class="raw-col"><div class="raw-head" id="raw-head-farmer"></div><div class="raw-list" id="raw-farmer"></div></div>
-    </div>
+    <!-- Right: this week's decision (full agent chat is unit 3). -->
+    <aside id="decision" class="hud card"></aside>
+
+    <!-- Bottom: counters, controls, timeline. -->
+    <section id="bottom">
+      <div id="counters">
+        <div class="counter-head"><span class="label" id="counters-for">n/a</span><span id="src" class="badge" hidden></span></div>
+        <div class="counter" data-k="nApplied"><span class="label">N applied</span><span class="v mono n">n/a</span><span class="unit">kg/ha</span></div>
+        <div class="counter" data-k="nLeached"><span class="label">N leached</span><span class="v mono leach">n/a</span><span class="unit">kg/ha</span></div>
+        <div class="counter" data-k="irr"><span class="label">Irrigation</span><span class="v mono water">n/a</span><span class="unit">mm</span></div>
+        <div class="counter" data-k="grain"><span class="label">Grain</span><span class="v mono">n/a</span><span class="unit">kg/ha</span></div>
+        <div class="counter" data-k="profit"><span class="label">Profit</span><span class="v mono">n/a</span><span class="unit">$/ha</span></div>
+        <div class="counter" data-k="reward"><span class="label">Reward</span><span class="v mono">n/a</span><span class="unit">$/ha</span></div>
+      </div>
+      <div id="controls">
+        <button id="play" class="btn" aria-label="Play">Play</button>
+        <button id="prev" class="btn" aria-label="Previous week">&lsaquo;</button>
+        <button id="next" class="btn" aria-label="Next week">&rsaquo;</button>
+        <div class="seg speed" role="group" aria-label="Speed">
+          <button data-speed="0.5">0.5x</button><button data-speed="1" class="on">1x</button><button data-speed="2">2x</button><button data-speed="4">4x</button>
+        </div>
+        <button id="reset" class="btn" aria-label="Reset to week 0">Reset</button>
+        <span class="keys label">Space play · arrows step · R reset · drag to orbit · double click resets view</span>
+      </div>
+      <svg id="timeline" role="img" aria-label="Season timeline"></svg>
+    </section>
   </main>
 
-  <!-- 4. Timeline: 20 weeks + harvest, rain bars, objection / fallback markers -->
-  <footer id="timeline" class="panel">
-    <div class="transport">
-      <button id="prev-btn" aria-label="Previous week" title="Previous week (←)">◀</button>
-      <button id="play-btn" aria-label="Play" title="Play / pause (space)">Play</button>
-      <button id="next-btn" aria-label="Next week" title="Next week (→)">▶</button>
-      <div class="speed" role="group" aria-label="Speed">
-        <button data-speed="1" class="on">1x</button>
-        <button data-speed="2">2x</button>
-        <button data-speed="4">4x</button>
-      </div>
-      <span id="week-label"></span>
-    </div>
-    <div id="ticks"></div>
-    <div id="scrub-legend"></div>
-  </footer>
+  <main id="placeholder" class="view" hidden>
+    <div class="placeholder"><span class="label" id="placeholder-title"></span><span class="quiet" id="placeholder-text"></span></div>
+  </main>
 
-  <script type="module" src="app.js"></script>
+  <div id="notice" class="quiet" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

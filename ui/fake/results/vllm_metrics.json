@@ -1,0 +1,30 @@
+{
+ "vllm_version": "FAKE",
+ "model": "FAKE placeholder model",
+ "measured_at": "2026-10-17T12:00:00+00:00",
+ "rows": [
+  {
+   "parallel": 1,
+   "seasons_per_hour": 13.6,
+   "p50_ms": 397,
+   "p99_ms": 1060,
+   "prefix_cache_hit_rate": 0.62
+  },
+  {
+   "parallel": 8,
+   "seasons_per_hour": 91.4,
+   "p50_ms": 584,
+   "p99_ms": 1899,
+   "prefix_cache_hit_rate": 0.81
+  },
+  {
+   "parallel": 32,
+   "seasons_per_hour": 217.3,
+   "p50_ms": 1254,
+   "p99_ms": 3228,
+   "prefix_cache_hit_rate": 0.88
+  }
+ ],
+ "fake": true,
+ "note": "FAKE placeholder data from lanec.scripts.fake_logs --ui, for UI work only. Not a result."
+}
