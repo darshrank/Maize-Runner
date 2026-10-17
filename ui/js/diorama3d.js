@@ -569,4 +569,8 @@ export class Diorama {
     this.drawWater(clamp(this.water.x, 0, 1));
     this.tickMotes(Math.min(dt, 0.05));
   }
+
+  // Lightning lights the cube shaders through the shared uFlash uniform and the glass through the scene lights
+  // (season3d.js); nothing per field.
+  flash() {}
 }
