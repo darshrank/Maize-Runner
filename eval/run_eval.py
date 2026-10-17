@@ -60,11 +60,11 @@ def mean_ci(values: list[float]) -> tuple[float, float]:
     return float(a.mean()), float(1.96 * a.std(ddof=1) / math.sqrt(len(a)))
 
 
-def summary_table(split: str, rows: list[dict]) -> str:
+def summary_table(split: str, rows: list[dict], farmer_practice: str = "farmer") -> str:
     configs = sorted({r["config"] for r in rows}, key=lambda c: (c == "hindsight", c))
     means = {c: {m: mean_ci([float(r[m]) for r in rows if r["config"] == c]) for m in SUMMARY_METRICS}
              for c in configs}
-    farmer, ceiling = means.get("farmer"), means.get("hindsight")
+    farmer, ceiling = means.get(farmer_practice), means.get("hindsight")
 
     lines = [f"## Split: {split}", "",
              "| config | n | " + " | ".join(SUMMARY_METRICS) + " | gap closed | leaching vs farmer |",
@@ -79,16 +79,18 @@ def summary_table(split: str, rows: list[dict]) -> str:
         leach = "n/a"
         if farmer and farmer["n_leached"][0] > 0:
             leach = f"{100 * (means[c]['n_leached'][0] - farmer['n_leached'][0]) / farmer['n_leached'][0]:+.0f}%"
-        lines.append(f"| {LABELS.get(c, c)} | {n} | " + " | ".join(cells) + f" | {gap} | {leach} |")
+        label = LABELS.get(c, c) + (" (farmer practice)" if c == farmer_practice else "")
+        lines.append(f"| {label} | {n} | " + " | ".join(cells) + f" | {gap} | {leach} |")
     return "\n".join(lines)
 
 
-def write_summary(path: Path, rows: list[dict]) -> None:
+def write_summary(path: Path, rows: list[dict], farmer_practice: str = "farmer") -> None:
     parts = ["# FieldTwin eval summary", "",
-             "Mean ± 95% CI (normal approx). gap closed = (reward - farmer) / (hindsight - farmer). "
+             f"Mean ± 95% CI (normal approx). Farmer practice = `{farmer_practice}` (config.yaml eval.farmer_practice). "
+             "gap closed = (reward - farmer practice) / (hindsight - farmer practice). "
              "Hindsight knows the future: it is an unreachable ceiling.", ""]
     for split in sorted({r["split"] for r in rows}):
-        parts += [summary_table(split, [r for r in rows if r["split"] == split]), ""]
+        parts += [summary_table(split, [r for r in rows if r["split"] == split], farmer_practice), ""]
     path.write_text("\n".join(parts))
 
 
@@ -115,7 +117,7 @@ def main() -> None:
                   f"grain {row['grain_kg_ha']:8.1f}  leached {row['n_leached']:6.1f}")
 
     rows = write_csv(RESULTS / "eval.csv", new_rows)
-    write_summary(RESULTS / "summary.md", rows)
+    write_summary(RESULTS / "summary.md", rows, cfg["eval"].get("farmer_practice", "farmer"))
     print((RESULTS / "summary.md").read_text())
 
 
