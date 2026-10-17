@@ -43,6 +43,9 @@ the completed v3 multi run already had 240 objections in 377 weeks.
 
 ## First things to read
 
+System flow and HLD: [ARCHITECTURE.md](ARCHITECTURE.md) distinguishes implemented
+message routing, model/cache sharing and the proposed verified-facts/final-check layer.
+
 1. This file and [TASKS_PERSON_B.md](TASKS_PERSON_B.md): current state and next work.
 2. [README.md](README.md): A's real environment, task years, prices and contracts.
 3. [PERSON_B.md](PERSON_B.md): B architecture, serving and experiment commands.

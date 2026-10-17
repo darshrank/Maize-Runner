@@ -23,6 +23,7 @@ The user authorized pushing person-B with the handoff; main/a-env stay unchanged
 - [x] B3 iteration: change only coordinator.txt in v3, run all 40 paired seasons, audit all results, and record actual positive dev reward deltas in results/b3-iterations.md.
 - [x] Back up both complete real-run archives, the farmer dev CSV, manifests, audits, diagnostics and current status in the repository.
 - [x] Create handoff.md with evidence, diagnosis, current services, commands and next tasks.
+- [x] Document current weekly flow, high-level architecture, communication/cache boundaries and proposed improvements in ARCHITECTURE.md.
 
 ## Completed real dev results
 
