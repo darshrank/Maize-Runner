@@ -6,7 +6,9 @@ snapshots described runs that have since finished.
 
 ## User request and working agreement
 
-- Work on **`person-B`** (case matters) in `https://github.com/darshrank/NightShift`.
+- Work on **`person-B`** (case matters) in `https://github.com/darshrank/FieldTwin`.
+  GitHub reports that the former `darshrank/NightShift` URL has moved here; the
+  local Windows workspace is still named NightShift.
 - Implement Person B's FieldTwin tasks; maintain a clear done/pending checklist.
 - A's `a-env` branch was merged into this branch. Continue from the merged code.
 - The user explicitly authorized pushing `person-B` and requested this handoff.
