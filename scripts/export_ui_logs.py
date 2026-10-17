@@ -60,18 +60,18 @@ def main(argv=None):
             raw = src.read_bytes()
             events = [transform(json.loads(line), splits) for line in raw.decode("utf-8").splitlines() if line.strip()]
             dest = out / config / f"{task_id}.jsonl"
-            dest.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events), encoding="utf-8")
+            dest.write_bytes("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events).encode("utf-8"))
             index[config].append(task_id)
             sources[f"{config}/{task_id}"] = {"source_sha256": hashlib.sha256(raw).hexdigest(),
                                               "export_sha256": hashlib.sha256(dest.read_bytes()).hexdigest()}
-    (out / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    (out / "index.json").write_bytes((json.dumps(index, indent=2) + "\n").encode("utf-8"))
     manifest = {"exported_at": datetime.now(timezone.utc).isoformat(), "source_run": str(run),
                 "derived": True, "configs": args.configs, "logs": sources,
                 "transformations": ["critic verdict: add text and boolean objection beside raw content",
                                     "tool_call args: JSON string to object; args_raw kept if not an object",
                                     "reset task: add split from dev task file"],
                 "note": "Display copy for the UI. Audits and receipts refer to the source logs."}
-    (out / "export-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (out / "export-manifest.json").write_bytes((json.dumps(manifest, indent=2) + "\n").encode("utf-8"))
     print(json.dumps({"configs": {k: len(v) for k, v in index.items()}, "output": str(out)}))
 
 
