@@ -45,16 +45,31 @@ interactive runner and isolated experiment CLI reject held-out tasks. A can eval
 the same registered policies using the shared `eval.run_eval --split test` workflow;
 B does not run test.
 
-## GPU serving (pending execution)
+## GPU serving (B0 verified)
+
+B0 passed on 2026-10-17 using the Hyperstack `fieldtwin-b0` H100 PCIe instance.
+[Host evidence](results/b0-host.json) records the actual image digest, model snapshot,
+GPU, launch arguments, mounts and local-only port binding; [smoke evidence](results/b0-smoke.json)
+records the live advertised model and valid parsed `get_weather({})` call.
+The current local endpoint is `http://127.0.0.1:8000/v1` through the SSH tunnel.
 
 On a Brev Linux H100 80 GB host with Docker and NVIDIA Container Toolkit, first run
 `bash scripts/check_b0_host.sh` to inspect GPU memory, Docker, disk, active GPU
-processes and port 8000. Then run `bash scripts/serve_vllm.sh`. It pins vLLM `v0.27.1`, the BF16 30B Nemotron 3.5
+processes and port 8000. Then run `bash scripts/serve_vllm.sh`. It pins the official
+`v0.27.1-cu129` image, the BF16 30B Nemotron 3.5
 Lightning checkpoint, 64 concurrent sequences, prefix caching, `qwen3_coder` tool
 parser and `nemotron_v3` reasoning parser. The recipe follows the
 [NVIDIA BF16 model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16#vllm)
 (verified 2026-10-17). A100 compatibility and throughput still need host validation.
 The 16K context setting leaves room for batching. No second LLM or LLM judge is used.
+The Hyperstack host has NVIDIA driver 570.195.03, so the launch script enables vLLM's
+documented CUDA compatibility libraries. `VLLM_IMAGE` can override the image variant.
+Set `HF_HOME=/ephemeral/fieldtwin/huggingface` and
+`VLLM_CACHE_DIR=/ephemeral/fieldtwin/vllm-cache` on this host to use the large data disk;
+the OS disk is only 100 GB. `VLLM_DETACH=1` starts a detached container named
+`fieldtwin-vllm`; inspect it with `docker logs fieldtwin-vllm` and
+`docker inspect fieldtwin-vllm`. The default foreground mode removes the container
+on exit; detached mode retains it for diagnosis.
 
 The service binds to localhost; use `ssh -L 8000:127.0.0.1:8000 <brev-host>` from the
 local machine. Export `VLLM_BASE_URL` and optionally `VLLM_MODEL` for the checkpoint's
@@ -68,8 +83,9 @@ uv run python -m agents.run --policy multi --task-id UFGA-s3 --split dev
 
 `smoke` requires one real automatically parsed `get_weather({})` call and checks its
 JSON arguments after checking the advertised model ID, then saves successful evidence
-when `--output` is supplied. Existing evidence files are not overwritten. Actual GPU
-serving has not been verified locally. No OpenAI API key
+when `--output` is supplied. Existing evidence files are not overwritten; choose a
+new output filename when repeating verification. GPU serving is verified; crop-policy
+quality and throughput still require dev evaluation. No OpenAI API key
 or OpenAI service is used. `FIELDTWIN_MODEL_BACKEND=stub` explicitly selects a
 deterministic synthetic model for shared policies; the default is `vllm`.
 

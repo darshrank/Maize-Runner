@@ -3,6 +3,7 @@
   "branch": "person-B",
   "integrated_main_commit": "79b4306",
   "synthetic": true,
+  "status": "Historical skeleton integration validation before live B0; subsequent B0 evidence is in b0-host.json and b0-smoke.json",
   "checks": {
     "dependency_lock": "uv sync --frozen and uv lock --check passed; main lock unchanged",
     "pytest": {"command": "python -m uv run --frozen pytest -q", "passed": 30},
@@ -35,7 +36,7 @@
     "Explicit local stub backend; vLLM remains the default",
     "B interactive/dev commands reject held-out tasks; A retains the shared test evaluator"
   ],
-  "pending": [
+  "pending_at_validation_time": [
     "Brev BF16 serving and a live tool-call smoke test",
     "Person A's validated crop simulator",
     "Actual Nemotron dev evaluation and a diagnosed measured gain",

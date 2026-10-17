@@ -11,7 +11,7 @@ Last updated: 2026-10-17. This checklist distinguishes local implementation from
 
 ## Local implementation done
 
-- [x] B0: Pinned GPU launch recipe and runnable live tool-call smoke-test command (actual GPU test pending below).
+- [x] B0: Pinned GPU launch recipe and successful live Nemotron tool-call smoke test on the Brev H100.
 - [x] B1: Single-agent season, bounded tool execution, log validation.
 - [x] B2: Five-agent loop, one critic revision, action guards, visible fallback, eight parallel seasons.
 - [x] B3: Dev-only runner, worst-three diagnostics and paired iteration recording (real gain pending below).
@@ -28,7 +28,7 @@ Last updated: 2026-10-17. This checklist distinguishes local implementation from
 
 ## Pending external dependencies / real milestones
 
-- [ ] Obtain Brev H100/A100 80 GB access and launch the BF16 checkpoint; record successful tool smoke test (B0).
+- [x] Obtain Brev H100 80 GB access, launch the BF16 checkpoint, and record a successful real tool smoke test (B0): results/b0-host.json and results/b0-smoke.json.
 - [x] Pull the shared port-9000 toy server, 20-dev task manifest, 300 kg/ha season cap and farmer schedule from main.
 - [ ] Replace the toy simulator with Person A's validated crop simulator before claiming crop-performance results.
 - [ ] Run single and multi on the real simulator and validate its observation/tool payloads (B1/B2).
@@ -50,14 +50,27 @@ Last updated: 2026-10-17. This checklist distinguishes local implementation from
 - [x] Fix Windows UTF-8 summary output found by the HTTP smoke check; refresh C's synthetic replay fixture.
 - [x] Update README/PERSON_B.md, save results/person-b-integration.json and commit the merge and integration.
 
-No crop-performance, live-GPU, or bounty milestone is complete based on a synthetic run.
+B0 is verified on a live GPU. Crop-performance and remaining milestones are still pending;
+synthetic runs support only software verification.
 
 ## B0 deployment session
 
 - [x] Inspect local access: SSH is installed; alias `dev` exists. No Brev CLI, Docker, NVIDIA runtime or VLLM endpoint is configured locally.
 - [x] Prepare a read-only GPU/Docker/disk/port preflight and a smoke command that checks model discovery and saves successful verification evidence.
 - [x] Pass 32 automated tests, including successful smoke evidence capture and rejection of a mismatched served model before inference. These are mocked checks, not live B0 verification.
-- [x] Identify the deployment path: user's teammate will create a Brev instance and provide access. The existing `dev` SSH alias is not the selected target.
-- [ ] Receive the Brev SSH connection details and configure access locally; waiting on the teammate's instance. Private keys/tokens stay outside the repository and chat.
-- [ ] Run host preflight, launch vLLM with the pinned serving flags, and establish the local tunnel.
-- [ ] Run the live smoke command; save its output and host configuration evidence before marking B0 complete.
+- [x] Select one Hyperstack H100 80 GB instance with 180 GB system RAM and included 850 GB SSD at the screenshot's quoted $3/hour; no stop/start support.
+- [x] Receive the instance name and connection instructions: `fieldtwin-b0`, accessed through the Brev CLI. The existing `dev` SSH alias is not the selected target.
+- [x] Confirm local Ubuntu WSL 2 is installed and install the official Brev CLI (v0.6.337) under `/home/anand/.local/bin/brev`.
+- [x] Validate Bash syntax of both host-preflight and serving scripts using WSL.
+- [x] Complete Brev account login and refresh SSH configuration. Private keys/tokens stay outside the repository and chat.
+- [x] Connect to `fieldtwin-b0`: verify idle H100 PCIe (81,559 MiB), Docker 29.1.3, NVIDIA driver 570.195.03, free port 8000 and the large `/ephemeral` disk.
+- [x] Select official vLLM v0.27.1 CUDA 12.9 image with documented compatibility mode for the host driver; place model/compile caches on `/ephemeral`.
+- [x] Pull the official serving image and download the public BF16 model weights; snapshot a9904d24bcc1d289a1950fa9d2b978c47cf903b9.
+- [x] Run host preflight, launch vLLM with the pinned serving flags, and establish a dedicated local SSH tunnel at http://127.0.0.1:8000/v1.
+- [x] Verify live health HTTP 200, advertised model identity, prefix caching enabled, automatic tool calling enabled, max_num_seqs=64, and a real parsed get_weather({}) call.
+- [x] Save results/b0-host.json and results/b0-smoke.json. B0 completed 2026-10-17 at approximately 2:26 PM America/New_York.
+
+The cloud instance/container remains running for subsequent dev work. The selected
+provider has no stop/start; the quoted compute rate is $3/hour. Preserve code and
+results before eventually deleting the instance. No GPU cost saving or crop-quality
+claim has been measured yet.

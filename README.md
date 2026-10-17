@@ -2,8 +2,8 @@
 
 FieldTwin is a multi-agent crop advisor for one maize field over one season. Each week it decides
 nitrogen (kg/ha) and irrigation (mm), scored on profit minus a nitrate leaching penalty.
-The shared simulator is currently a **toy model**. Single-agent and five-agent Nemotron policies are integrated;
-real GPU serving and crop-performance validation remain pending.
+The shared simulator is currently a **toy model**. Single-agent and five-agent Nemotron policies are integrated.
+BF16 Nemotron serving and a live tool call are verified on the Brev H100; crop-performance validation remains pending.
 
 ## Commands
 
@@ -84,3 +84,4 @@ tools while retaining the action submission channel. Tool submission never steps
 
 See [PERSON_B.md](PERSON_B.md) for serving and dev experiments, and
 [TASKS_PERSON_B.md](TASKS_PERSON_B.md) for completed work and remaining real milestones.
+Live B0 evidence: [host configuration](results/b0-host.json) and [parsed tool-call smoke test](results/b0-smoke.json).

@@ -13,6 +13,8 @@ results/*
 !results/iterations.md
 !results/local-validation.json
 !results/person-b-integration.json
+!results/b0-host.json
+!results/b0-smoke.json
 /tmp/
 /build/
 /dist/
