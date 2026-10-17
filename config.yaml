@@ -31,7 +31,8 @@ reward:
   #   (2008 USD/kg N): drinking-water nitrate 0.54 + taste/odor 0.14 + colon-cancer risk 1.76 = 2.44.
   leach_penalty_usd_per_kg: 2.44
 eval:
-  configs: [no_n, farmer, hindsight, single, multi, multi_no_critic, multi_no_weather, multi_no_tools]
+  configs: [no_n, farmer, farmer_ufga, hindsight, single, multi, multi_no_critic, multi_no_weather, multi_no_tools]
+  farmer_practice: farmer_ufga   # better farmer baseline on dev (A2: mean reward 1117 vs 1024 for the 60/60/40 split)
   parallel: 8
 agents:
   base_url_env: VLLM_BASE_URL

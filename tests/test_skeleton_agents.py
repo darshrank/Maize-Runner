@@ -140,6 +140,23 @@ def test_prompt_drift_rejected(monkeypatch, tmp_path):
         Single(cfg)
 
 
+def test_summary_keeps_provenance_and_selected_farmer_reference(tmp_path):
+    rows = []
+    for config, reward, leach in [("farmer", 100, 10), ("farmer_ufga", 120, 20),
+                                   ("single", 140, 30), ("hindsight", 160, 40)]:
+        rows.append({"config": config, "split": "dev", "reward": reward,
+                     "profit_usd_ha": reward, "grain_kg_ha": 1000,
+                     "n_applied": 100, "n_leached": leach})
+    path = tmp_path / "summary.md"
+    write_summary(path, rows, "Synthetic integration check.", farmer_practice="farmer_ufga")
+    summary = path.read_text(encoding="utf-8")
+    assert "Synthetic integration check." in summary
+    assert "farmer_ufga (farmer practice)" in summary
+    # Selected farmer: (140-120)/(160-120) = .50; leaching: (30-20)/20 = +50%.
+    single_row = next(line for line in summary.splitlines() if line.startswith("| single |"))
+    assert single_row.endswith("| 0.50 | +50% |")
+
+
 def test_interactive_test_run_rejected_before_network(monkeypatch):
     monkeypatch.setattr("sys.argv", ["agents.run", "--policy", "single", "--task-id", "UFGA-s101", "--split", "test"])
     with patch("agents.run.run_one") as run:

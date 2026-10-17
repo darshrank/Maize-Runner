@@ -4,6 +4,10 @@ Last updated: October 17, 2026, approximately 3:20 PM America/New_York.
 Branch: `person-B`. Read [handoff.md](handoff.md) first in a new session.
 Latest follow-ups: critic diagnostics and researched architecture review; full new
 season experiments remain paused at the user's request.
+Latest integration: A2 at `a866f06`; see [NEXT_STEPS.md](NEXT_STEPS.md).
+Selected farmer practice is now `farmer_ufga` (1116.72 dev reward); fallback
+remains original farmer. Merge verification: 42 passed, eight DSSAT skips,
+existing TestClient deprecation warning.
 This current checklist supersedes the earlier in-progress snapshots in chat/docs.
 The user authorized pushing person-B with the handoff; main/a-env stay unchanged.
 
@@ -26,6 +30,7 @@ The user authorized pushing person-B with the handoff; main/a-env stay unchanged
 - [x] Document current weekly flow, high-level architecture, communication/cache boundaries and proposed improvements in ARCHITECTURE.md.
 - [x] Research architecture failure modes using primary sources; record component rationale, mitigation and retention checks in ARCHITECTURE_REVIEW.md. Correct the HLD's 20-week control-horizon description. No new runtime change or experiment.
 - [x] Read-only audit all 80 archived seasons: 16 reach decision week 20, all at R6 before day 140; no evidence of forced horizon truncation in these logs. Final/weekly leaching and gas agree within 0.03 kg/ha. Record full audit in results/architecture-horizon-audit.json.
+- [x] Integrate A2's frozen baselines, farmer_ufga reference and 56-candidate hindsight. Resolve config/report conflicts preserving B policies and provenance. Check original farmer matches all 20 archived dev rows; save results/a2-integration-dev.json.
 
 ## Completed real dev results
 
@@ -34,7 +39,8 @@ Reward is simulated profit minus nitrate-leaching penalty, not a real farm resul
 
 | Policy | Mean reward USD/ha | N kg/ha | N leached kg/ha | Water mm | Fallbacks |
 |---|---:|---:|---:|---:|---:|
-| Farmer | 1024.05 | 160.00 | 16.34 | 111.25 | 0 |
+| Original farmer | 1024.05 | 160.00 | 16.34 | 111.25 | 0 |
+| Selected farmer practice: farmer_ufga | 1116.72 | 116.00 | 20.43 | 264.00 | 0 |
 | Single v1 | 343.00 | 296.75 | 26.91 | 46.13 | 0 |
 | Multi v1 | 600.88 | 298.00 | 26.86 | 96.60 | 0 |
 | Single v3 | 593.24 | 249.95 | 81.82 | 456.25 | 1 |
@@ -44,9 +50,12 @@ Paired mean reward gains: single +250.234 (+73%), multi +277.158 (+46%).
 One stochastic rollout per year/version: dev improvement does not establish
 independent generalization or an inference-cost advantage. v3 still trails farmer
 and has excessive water/leaching. It is not selected as final.
+Against A2's selected farmer practice, multi v3 is 238.68 USD/ha (21.37%) lower.
 
 ## Pending, in priority order
 
+- [ ] Follow NEXT_STEPS.md: facts/final checks, durable catalogue, fresh diagnostics, matched-budget dev ablations versus frozen farmer_ufga. Baselines need no rerun.
+- [ ] Instrument configurable thinking diagnostics with inference settings, token/latency usage and finish reasons. Smoke-test parser/tools and final-output headroom; keep thinking off by default until evidence supports promotion.
 - [ ] Reconcile final-versus-weekly N uptake definitions/timing with A (differences up to 10.39 kg/ha in v1, 6.23 in v3). Add explicit end-reason/tail metadata in a separately versioned environment change; uptake is not a direct reward term. Preserve historical results.
 - [ ] Specify typed weekly facts, provenance/uncertainty, immutable proposal/review IDs, final-action checks and bounded recovery. Compare a lean planner with the five-role arm using the same evidence/checks.
 - [ ] Add durable per-season result receipts and catalogue/user-run wrapper; verify crash recovery without replaying uncertain steps. Review shared parallel malformed-response counters. Record tokens, latency and allocated compute cost.

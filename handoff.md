@@ -4,6 +4,28 @@ Last checked: **October 17, 2026, 3:20 PM America/New_York**.
 This is the current checkpoint; earlier chat status messages and intermediate
 snapshots described runs that have since finished.
 
+### Latest: A2 integration and thinking plan (same day)
+
+Integrated A's origin/a-env at `a866f06` (two new commits). Read
+[NEXT_STEPS.md](NEXT_STEPS.md) for the revised plan and thinking explanation.
+A2 baseline outputs are frozen in results_baseline/. Selected farmer practice is
+farmer_ufga: dev reward 1116.7175 versus original farmer 1024.0455. Multi v3 is
+878.0415, now 21.37% below the selected reference. Hindsight selects among 56
+candidates (including both farmers), not every possible adaptive policy.
+
+Only dev baseline rows were analyzed. Original farmer matches all 20 archived dev
+rows on eight outcome fields; details/hashes: results/a2-integration-dev.json.
+Config/report conflicts preserve all B policies, A's selection, provenance labels
+and UTF-8. Regression verification: 42 passed, eight DSSAT skips, existing warning.
+Fallback remains original farmer. Incoming commits do not change simulator,
+prices/reward/caps or resolve N uptake definitions. No new rollout, test evaluation
+or deployment to the copied Brev snapshot occurred.
+
+Thinking remains off (enable_thinking=False, max_tokens=2048); serving already has
+nemotron_v3 extraction. Future diagnostics need separate versioning, bounded
+reasoning/final-output headroom and token/finish-reason/latency records. Facts and
+checks come first; do not blindly toggle every role or call this training.
+
 ### Later architecture research review (same day)
 
 Read [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) for source-backed failure

@@ -6,6 +6,12 @@ behavior, deploy code, launch experiments or train weights.
 
 ## Decision
 
+After A2 integration (`a866f06`), selected farmer practice is `farmer_ufga` at
+1116.72 dev reward. The 1024.05 farmer below is the historical comparator;
+multi v3 is 21.37% below the newly selected reference. See
+[NEXT_STEPS.md](NEXT_STEPS.md) for updated priorities and thinking-mode design.
+No runtime mode was changed.
+
 The plan is good enough to continue as a controlled experiment. We have not yet
 shown that five LLM roles are necessary, that the critic improves decisions, or
 that our system beats farmer. Keep the five-role research arm, but compare it with
