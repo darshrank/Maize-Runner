@@ -1,12 +1,13 @@
-// FieldTwin replay UI ("mission control"). Reads runs/index.json and runs/<config>/<task>.jsonl
-// (frozen log format, SKELETON_SPEC.md section 8) and replays two runs side by side:
-// left = farmer practice, right = FieldTwin (best available run), plus the impact of right minus left.
+// FieldTwin replay UI ("ops console"). Reads runs/index.json and runs/<config>/<task>.jsonl
+// (frozen log format, SKELETON_SPEC.md section 8) and replays two runs of the same season:
+// ft = FieldTwin (best available run, switchable), farmer = farmer practice baseline.
 //
 // Week semantics: everything uses the line-level week. Position k in 0..19 shows week k's
 // decision and its outcome (state at the end of week k). k = 20 is harvest (the final line).
 //
-// Every number on screen is read from the logs. Small functions on purpose so the look can be
-// restyled without touching data code.
+// Every number on screen is read from the logs; a missing field shows "n/a". Colors come from
+// tokens.css (the 3D scene reads them with getComputedStyle). Small functions on purpose so the
+// look can be restyled without touching data code.
 
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
@@ -14,18 +15,19 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 const RUNS = "../runs";
 const WEEKS = 20;
 const GRID = 12;
-const BEST_ORDER = ["multi", "single", "hindsight"];   // "best available" for the right field
-const STORM_MM = 60;                                    // weekly rain shown as a storm week
+const BEST_ORDER = ["multi", "single", "hindsight"];   // "best available" for the FieldTwin side
 const TWEEN_MS = 250;
 const MINUS = "−";
+const NA = "n/a";
+const SIDES = ["ft", "farmer"];
 const AGENT_ORDER = ["weather", "crop", "planner", "critic", "coordinator"];
 const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator" };
 const CONFIG_LABELS = { farmer: "Farmer practice", hindsight: "grid hindsight", no_n: "No nitrogen", multi: "FieldTwin", fake_multi: "FieldTwin" };
-const AGENT_COLORS = { coordinator: "#76b900" };       // raw events: others use the muted default
+const AGENT_TOKENS = { coordinator: "--ft" };          // raw events: others use the muted default
 
 const state = {
   index: {}, task: null, week: 0, playing: false, speed: 1, rawOpen: false,
-  configs: { left: null, right: null }, runs: { left: null, right: null }, fields: {},
+  configs: { ft: null, farmer: null }, runs: { ft: null, farmer: null }, fields: {},
 };
 const $ = (id) => document.getElementById(id);
 
@@ -64,7 +66,7 @@ function buildRun(config, events) {
     w.fallback = w.events.some((e) => e.kind === "fallback");
     if (w.step) lastObs = w.step.obs;
     w.obs = w.step ? w.step.obs : lastObs;        // harvest keeps the last observed state
-    leachedCum += w.step ? w.step.weekly.n_leached : 0;
+    leachedCum += w.step && w.step.weekly ? w.step.weekly.n_leached : 0;
     w.leachedCum = leachedCum;
   });
   const run = { config, weeks, final, finalWeek, split };
@@ -115,14 +117,51 @@ function fallbackWeekCount(run) {
   return run.weeks.filter((w) => w.fallback).length;
 }
 
+function objectionWeekCount(run) {
+  return run.weeks.filter((w) => w.objection).length;
+}
+
 function harvested(run) {
   return !!(run && run.final && run.finalWeek !== null && state.week >= run.finalWeek);
 }
 
-// ---------------------------------------------------------------- 3D field
+function has(v) {
+  return v !== undefined && v !== null && !Number.isNaN(Number(v));
+}
 
-const WATER_COLOR = new THREE.Color("#c6ef8a");   // core glow = soil water
-const N_COLOR = new THREE.Color("#22d3ee");       // cyan is reserved for nitrogen
+// Cumulative values through the current week; the final line is authoritative at harvest.
+function cumApplied(run) {
+  if (!run) return null;
+  if (harvested(run) && has(run.final.n_applied)) return run.final.n_applied;
+  const obs = run.weeks[state.week].obs;
+  return obs && has(obs.n_applied_total) ? obs.n_applied_total : null;
+}
+
+function cumLeached(run) {
+  if (!run) return null;
+  if (harvested(run) && has(run.final.n_leached)) return run.final.n_leached;
+  const w = run.weeks[state.week];
+  return w.obs ? w.leachedCum : null;
+}
+
+// Yield and profit exist only in the final line.
+function finalValue(run, key) {
+  return harvested(run) && has(run.final[key]) ? run.final[key] : null;
+}
+
+// ---------------------------------------------------------------- 3D field (upgraded in S2 unit 2)
+
+const COLORS = {};
+
+function token(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function initColors() {
+  const map = { soil: "--scene-soil", glass: "--scene-glass", core: "--scene-core", water: "--scene-water",
+    nitrogen: "--nitrogen", nitrate: "--scene-nitrate", light: "--scene-light" };
+  for (const [k, name] of Object.entries(map)) COLORS[k] = new THREE.Color(token(name) || 0x808080);
+}
 
 class Field {
   constructor(container) {
@@ -139,8 +178,8 @@ class Field {
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     this.camera.position.set(0, 13, 21);
     this.camera.lookAt(0, -1.2, 0);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.3));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+    this.scene.add(new THREE.AmbientLight(COLORS.light, 0.3));
+    const sun = new THREE.DirectionalLight(COLORS.light, 1.2);
     sun.position.set(5, 10, 7);
     this.scene.add(sun);
 
@@ -158,7 +197,7 @@ class Field {
   buildSoil() {
     const soil = new THREE.Mesh(
       new THREE.BoxGeometry(GRID + 0.6, 0.15, GRID + 0.6),
-      new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 0.9, transparent: true, opacity: 0.85 }),
+      new THREE.MeshStandardMaterial({ color: COLORS.soil, roughness: 0.9, transparent: true, opacity: 0.85 }),
     );
     soil.position.y = -0.08;
     this.scene.add(soil);
@@ -169,7 +208,7 @@ class Field {
     const shellGeo = new THREE.BoxGeometry(0.82, 1, 0.82).translate(0, 0.5, 0);
     const coreGeo = new THREE.BoxGeometry(0.42, 1, 0.42).translate(0, 0.5, 0);
     const glass = new THREE.MeshPhysicalMaterial({
-      color: 0x8fa6bf, metalness: 0, roughness: 0.15, transmission: 0.2, thickness: 0.3,
+      color: COLORS.glass, metalness: 0, roughness: 0.15, transmission: 0.2, thickness: 0.3,
       ior: 1.4, transparent: true, opacity: 0.22, clearcoat: 1, envMapIntensity: 0.5, depthWrite: false,
     });
     this.cubes = [];
@@ -178,7 +217,7 @@ class Field {
         const x = i - (GRID - 1) / 2, z = j - (GRID - 1) / 2;
         const shell = new THREE.Mesh(shellGeo, glass);
         const core = new THREE.Mesh(coreGeo, new THREE.MeshStandardMaterial({
-          color: 0x050505, emissive: WATER_COLOR.clone(), emissiveIntensity: 0.5,
+          color: COLORS.core, emissive: COLORS.water.clone(), emissiveIntensity: 0.5,
         }));
         shell.position.set(x, 0, z);
         core.position.set(x, 0.02, z);
@@ -189,7 +228,7 @@ class Field {
     }
   }
 
-  // Red leaching particles dripping below the field.
+  // Nitrate (leached N) particles dripping below the field.
   buildDrips() {
     this.maxDrips = 300;
     const pos = new Float32Array(this.maxDrips * 3);
@@ -198,7 +237,7 @@ class Field {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     geo.setDrawRange(0, 0);
-    this.drips = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xff4d4d, size: 0.28 }));
+    this.drips = new THREE.Points(geo, new THREE.PointsMaterial({ color: COLORS.nitrate, size: 0.28 }));
     this.scene.add(this.drips);
   }
 
@@ -212,11 +251,11 @@ class Field {
   // Set targets from one week of a run (or null = no run for this task).
   setWeek(weekRec) {
     const obs = weekRec && weekRec.obs;
-    this.target.water = obs ? obs.soil_water_frac : 0.5;
-    this.target.height = obs ? 0.3 + Math.min(obs.biomass_kg_ha / 20000, 1.4) * 1.6 : 0.3;
-    const n = weekRec && weekRec.decision ? weekRec.decision.n_kg_ha : 0;
+    this.target.water = obs && has(obs.soil_water_frac) ? obs.soil_water_frac : 0.5;
+    this.target.height = obs && has(obs.biomass_kg_ha) ? 0.3 + Math.min(obs.biomass_kg_ha / 20000, 1.4) * 1.6 : 0.3;
+    const n = weekRec && weekRec.decision && has(weekRec.decision.n_kg_ha) ? weekRec.decision.n_kg_ha : 0;
     this.target.nStrength = Math.min(n / 80, 1.5);
-    this.target.leach = weekRec && weekRec.step ? weekRec.step.weekly.n_leached : 0;
+    this.target.leach = weekRec && weekRec.step && weekRec.step.weekly ? weekRec.step.weekly.n_leached || 0 : 0;
     this.pulseT = 0;   // restart the N pulse wave
   }
 
@@ -231,7 +270,7 @@ class Field {
   }
 
   updateCubes() {
-    // Pulse: a cyan wave that sweeps across the columns, repeating every 2.5 s.
+    // Pulse: a nitrogen wave that sweeps across the columns, repeating every 2.5 s.
     const front = ((this.pulseT % 2.5) / 1.6) * (GRID + 6) - 3;
     for (const c of this.cubes) {
       const h = this.cur.height * c.jitter;
@@ -239,7 +278,7 @@ class Field {
       c.core.scale.y = h * 0.9;
       const wave = this.target.nStrength * Math.exp(-((c.col - front) ** 2) / 2.5);
       const m = c.core.material;
-      m.emissive.copy(WATER_COLOR).lerp(N_COLOR, Math.min(3 * wave, 1));
+      m.emissive.copy(COLORS.water).lerp(COLORS.nitrogen, Math.min(3 * wave, 1));
       m.emissiveIntensity = 0.03 + 1.6 * this.cur.water ** 2 + 0.8 * wave;   // brightness = soil water
     }
   }
@@ -272,16 +311,19 @@ function pseudoRandom(seed) {
 // ---------------------------------------------------------------- formatting
 
 function fmt(v, digits = 0) {
-  return v === undefined || v === null ? "—" : Number(v).toLocaleString(undefined, { maximumFractionDigits: digits });
+  return has(v) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: digits }) : NA;
 }
 
 function fmtFixed(v, digits) {
   return Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-function fmtSigned(v, digits, prefix = "") {
-  const sign = v > 0 ? "+" : v < 0 ? MINUS : "";
-  return `${sign}${prefix}${fmtFixed(v, digits)}`;
+function fmtNum(digits, prefix = "") {
+  return (v) => `${v < 0 ? MINUS : ""}${prefix}${fmtFixed(v, digits)}`;
+}
+
+function fmtSigned(digits, prefix = "") {
+  return (v) => `${v > 0 ? "+" : v < 0 ? MINUS : ""}${prefix}${fmtFixed(v, digits)}`;
 }
 
 function escapeHtml(s) {
@@ -305,9 +347,9 @@ function weekText(k) {
 }
 
 // Tween a number in place over TWEEN_MS; value null shows `text` muted (e.g. "at harvest").
-function setNumber(el, value, format, text = "—") {
+function setNumber(el, value, format, text = NA) {
   cancelAnimationFrame(el._raf);
-  if (value === null || value === undefined || Number.isNaN(value)) {
+  if (!has(value)) {
     el._v = undefined;
     el.textContent = text;
     el.classList.add("pending");
@@ -325,154 +367,153 @@ function setNumber(el, value, format, text = "—") {
   step(t0);
 }
 
-// ---------------------------------------------------------------- impact bar
+// ---------------------------------------------------------------- 1. top strip
 
-// green when the right run is better, red when worse; `better` = +1 if higher is better, -1 if lower.
-function setTone(card, delta, better) {
-  const good = delta !== null && delta * better > 1e-9;
-  const bad = delta !== null && delta * better < -1e-9;
-  card.classList.toggle("good", good);
-  card.classList.toggle("bad", bad);
+function renderStrip() {
+  const F = state.runs.ft, B = state.runs.farmer;
+  const comparable = F && B && F.config !== B.config;
+  $("ft-name").innerHTML = F ? configNameHtml(F.config) : NA;
+  $("farmer-name").innerHTML = B ? configNameHtml(B.config) : NA;
+  $("strip-caption").textContent = !comparable ? "needs two different runs for this season"
+    : state.week >= WEEKS ? "full season" : `cumulative through week ${state.week}`;
+
+  // [FieldTwin value, farmer value, format, delta format, text while pending]
+  const metrics = {
+    n: [cumApplied(F), cumApplied(B), fmtNum(0), fmtSigned(0), NA],
+    leach: [cumLeached(F), cumLeached(B), fmtNum(1), fmtSigned(1), NA],
+    grain: [finalValue(F, "grain_kg_ha"), finalValue(B, "grain_kg_ha"), fmtNum(0), fmtSigned(0), "at harvest"],
+    profit: [finalValue(F, "profit_usd_ha"), finalValue(B, "profit_usd_ha"), fmtNum(0, "$"), fmtSigned(0, "$"), "at harvest"],
+  };
+  for (const [m, [a, b, format, dFormat, pending]] of Object.entries(metrics)) {
+    const card = document.querySelector(`.metric[data-m="${m}"]`);
+    setNumber(card.querySelector(".m-ft"), a, format, F ? pending : NA);
+    setNumber(card.querySelector(".m-farmer"), b, format, B ? pending : NA);
+    const d = comparable && has(a) && has(b) ? a - b : null;
+    const dEl = card.querySelector(".m-delta .v");
+    setNumber(dEl, d, dFormat, comparable ? pending : NA);
+    dEl.classList.toggle("better", d !== null && d * +card.dataset.better > 1e-9);   // FieldTwin better
+  }
+
+  // Fallback weeks: season totals, never hidden.
+  const card = document.querySelector('.metric[data-m="fallback"]');
+  const fF = F ? fallbackWeekCount(F) : null, fB = B ? fallbackWeekCount(B) : null;
+  setNumber(card.querySelector(".m-ft"), fF, fmtNum(0));
+  setNumber(card.querySelector(".m-farmer"), fB, fmtNum(0));
+  card.querySelector(".m-ft").classList.toggle("warn", fF > 0);
+  const obj = F && F.agents ? objectionWeekCount(F) : null;
+  setNumber($("objection-count"), obj, fmtNum(0));
+  $("objection-count").classList.toggle("warn", obj > 0);
 }
 
-function renderImpact() {
-  const L = state.runs.left, R = state.runs.right;
-  const cards = { leach: $("impact-leach"), n: $("impact-n"), profit: $("impact-profit") };
-  const ready = L && R && L !== R && L.config !== R.config;
-  $("impact-caption").innerHTML = ready
-    ? `${configNameHtml(R.config)} minus ${configNameHtml(L.config)} · ${state.week >= WEEKS ? "full season" : `through week ${state.week}`}`
-    : "Needs two different runs for this season";
-  const lw = ready ? L.weeks[state.week] : null, rw = ready ? R.weeks[state.week] : null;
+// ---------------------------------------------------------------- 2. scene area labels and readouts
 
-  const kept = ready ? lw.leachedCum - rw.leachedCum : null;              // farmer leached minus FieldTwin leached
-  setNumber(cards.leach.querySelector(".v"), kept, (v) => (v < 0 ? MINUS : "") + fmtFixed(v, 1));
-  setTone(cards.leach, kept, +1);
-
-  const nL = lw && lw.obs ? lw.obs.n_applied_total : null, nR = rw && rw.obs ? rw.obs.n_applied_total : null;
-  const dn = nL !== null && nR !== null ? nR - nL : null;
-  setNumber(cards.n.querySelector(".v"), dn, (v) => fmtSigned(v, 0));
-  setTone(cards.n, dn, -1);
-
-  const dp = ready && harvested(L) && harvested(R) ? R.final.profit_usd_ha - L.final.profit_usd_ha : null;
-  setNumber(cards.profit.querySelector(".v"), dp, (v) => fmtSigned(v, 0, "$"), ready ? "at harvest" : "—");
-  setTone(cards.profit, dp, +1);
-}
-
-// ---------------------------------------------------------------- fields and counters
-
-function renderCounters(side) {
-  const panel = $(`field-${side}`);
+function renderBlock(side) {
+  const block = $(`block-${side}`);
   const run = state.runs[side];
+  block.querySelector(".name").innerHTML = run ? configNameHtml(run.config) : "No run";
   const w = run ? run.weeks[state.week] : null;
   const obs = (w && w.obs) || {};
-  const done = harvested(run);
-  const v = (k) => panel.querySelector(`.v[data-k="${k}"]`);
-  setNumber(v("n"), run ? obs.n_applied_total : null, (x) => `${fmt(x)} kg/ha`);
-  setNumber(v("leach"), w ? w.leachedCum : null, (x) => `${fmtFixed(x, 1)} kg/ha`);
-  setNumber(v("grain"), done ? run.final.grain_kg_ha : null, (x) => `${fmt(x)} kg/ha`, run ? "at harvest" : "—");
-  setNumber(v("profit"), done ? run.final.profit_usd_ha : null, (x) => `${x < 0 ? MINUS : ""}$${fmt(Math.abs(x))}/ha`, run ? "at harvest" : "—");
+  const weekly = (w && w.step && w.step.weekly) || {};
+  const cell = (k, v, cls = "") => `<div class="cell"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
+  const unit = (v, digits, u) => (has(v) ? `${fmt(v, digits)} ${u}` : NA);
+  block.querySelector(".readout").innerHTML = cell("Stage", obs.stage ? escapeHtml(obs.stage) : NA)
+    + cell("Soil water (profile)", has(obs.soil_water_frac) ? fmtFixed(obs.soil_water_frac, 3) : NA)
+    + cell("Soil N", unit(obs.soil_n_kg_ha, 1, "kg/ha"), "n")
+    + cell("Biomass", unit(obs.biomass_kg_ha, 0, "kg/ha"))
+    + cell("Rain this week", unit(weekly.rain_mm, 1, "mm"))
+    + cell("N leached this week", unit(weekly.n_leached, 1, "kg/ha"), "n");
 }
 
-// Right field title: the picker doubles as the label (no repeated name), plain label if only one choice.
-function renderRightPicker() {
-  const sel = $("right-picker");
-  const options = configsFor(state.task).filter((c) => c !== state.configs.left);
-  sel.innerHTML = options.map((c) => `<option value="${escapeHtml(c)}" ${c === state.configs.right ? "selected" : ""}>`
-    + `${escapeHtml(configLabel(c))}${isFake(c) ? " [FAKE]" : ""}</option>`).join("");
-  sel.hidden = options.length < 2;
-}
-
-// Field titles from the loaded configs; with a visible right picker, the label only carries the FAKE badge.
-function renderFieldLabels() {
-  for (const side of ["left", "right"]) {
-    const run = state.runs[side];
-    const label = $(`field-${side}`).querySelector(".field-label");
-    if (!run) label.textContent = "No run";
-    else if (side === "right" && !$("right-picker").hidden) label.innerHTML = fakeBadge(run.config).trim();
-    else label.innerHTML = configNameHtml(run.config);
-  }
-}
-
-function renderHeaderTags() {
-  const runs = [state.runs.left, state.runs.right].filter(Boolean);
-  const splits = [...new Set(runs.map((r) => r.split).filter(Boolean))];
-  $("split-tag").textContent = splits.join(" / ");
-  $("split-tag").hidden = !splits.length;
-  $("fake-tag").hidden = !runs.some((r) => isFake(r.config));
-}
-
-// ---------------------------------------------------------------- agent feed
+// ---------------------------------------------------------------- 3. agent panel
 
 function messageText(d) {
   return d && (d.text || d.content);
 }
 
 function chipsHtml(names, extra = "") {
+  if (!names.length && !extra) return "";
   return `<span class="chips">${extra}${names.map((n) => `<span class="chip">${escapeHtml(n)}</span>`).join("")}</span>`;
 }
 
-function decisionSummary(d) {
-  return `<span class="n">N ${fmt(d.n_kg_ha, 1)} kg/ha</span> · irrigation ${fmt(d.irr_mm, 1)} mm`;
-}
-
-// One line per agent: message text, tool names as chips, objection / fallback markers.
-function agentBubbleHtml(agent, events) {
+// One row per agent: message text, tool names as chips, objection / fallback markers.
+function agentRowHtml(agent, events) {
   const mine = events.filter((e) => e.agent === agent);
-  if (!mine.length) return "";
   const texts = mine.filter((e) => e.kind === "message").map((e) => messageText(e.data)).filter(Boolean);
   const fallbacks = mine.filter((e) => e.kind === "fallback").map((e) => messageText(e.data) || JSON.stringify(e.data));
   const tools = mine.filter((e) => e.kind === "tool_call").map((e) => e.data && e.data.name).filter(Boolean);
   const objection = mine.some(isObjection);
   const text = [...texts, ...fallbacks].join(" · ");
-  const marks = (objection ? `<span class="chip objection">Objection</span>` : "")
-    + (fallbacks.length ? `<span class="chip fallback">Fallback</span>` : "");
-  const cls = ["bubble", objection ? "objection" : "", fallbacks.length ? "fallback" : ""].join(" ");
-  return `<div class="${cls}" title="${escapeHtml(text)}"><span class="who">${AGENT_NAMES[agent]}</span>`
-    + `<span class="text">${escapeHtml(text)}</span>${chipsHtml(tools, marks)}</div>`;
+  const marks = (objection ? `<span class="chip warn">Objection</span>` : "")
+    + (fallbacks.length ? `<span class="chip warn solid">Fallback</span>` : "");
+  const cls = ["msg", objection ? "objection" : "", fallbacks.length ? "fallback" : "", text ? "" : "empty"].join(" ");
+  return `<div class="${cls}" data-agent="${agent}"><span class="who">${AGENT_NAMES[agent]}</span><div class="body">`
+    + `<span class="text" title="${escapeHtml(text)}">${text ? escapeHtml(text) : "No message this week"}</span>`
+    + `${chipsHtml(tools, marks)}</div></div>`;
 }
 
-// Coordinator: final bubble with the (deduped) decision and its reason.
-function coordinatorBubbleHtml(w) {
-  const mine = w.events.filter((e) => e.agent === "coordinator");
-  if (!mine.length && !w.decision) return "";
+function valHtml(k, v, u, cls = "") {
+  return `<div class="val"><span class="k">${k}</span><span class="v ${cls}">${v}</span><span class="u">${u}</span></div>`;
+}
+
+// Decision card ("stamp"): N, irrigation, reason, plus fallback and coordinator notes.
+function stampHtml(w, who, mine) {
   const fallbacks = mine.filter((e) => e.kind === "fallback").map((e) => messageText(e.data) || JSON.stringify(e.data));
   const tools = mine.filter((e) => e.kind === "tool_call").map((e) => e.data && e.data.name).filter(Boolean);
-  const notes = [...mine.filter((e) => e.kind === "message").map((e) => messageText(e.data)), ...fallbacks].filter(Boolean);
-  const marks = fallbacks.length ? `<span class="chip fallback">Fallback</span>` : "";
+  const notes = mine.filter((e) => e.kind === "message").map((e) => messageText(e.data)).filter(Boolean);
+  const marks = fallbacks.length ? `<span class="chip warn solid">Fallback</span>` : "";
   const d = w.decision;
-  return `<div class="bubble coordinator ${fallbacks.length ? "fallback" : ""}" title="${escapeHtml(notes.join(" · "))}">`
-    + `<div class="row"><span class="who">Coordinator</span>`
-    + `<span class="decision">${d ? decisionSummary(d) : "no decision"}</span>${chipsHtml(tools, marks)}</div>`
-    + (d && d.reason ? `<div class="reason">${escapeHtml(d.reason)}</div>` : "") + `</div>`;
+  return `<div class="stamp ${fallbacks.length ? "fallback" : ""}">`
+    + `<div class="stamp-head"><span class="who">${who}</span><span class="stamp-tag">Decision · ${weekText(state.week)}</span>`
+    + `${chipsHtml(tools, marks)}</div>`
+    + (d ? `<div class="vals">${valHtml("N", fmt(d.n_kg_ha, 1), "kg/ha", "n")}${valHtml("Irrigation", fmt(d.irr_mm, 1), "mm")}</div>`
+      : `<div class="note">No decision this week</div>`)
+    + (d && d.reason ? `<div class="reason">${escapeHtml(d.reason)}</div>` : "")
+    + fallbacks.map((t) => `<div class="note warn">${escapeHtml(t)}</div>`).join("")
+    + notes.map((t) => `<div class="note">${escapeHtml(t)}</div>`).join("")
+    + `</div>`;
+}
+
+function harvestHtml(run) {
+  const f = run.final || {};
+  return `<div class="stamp"><div class="stamp-head"><span class="who">Harvest</span><span class="stamp-tag">final line</span></div>`
+    + `<div class="vals">${valHtml("Yield", fmt(f.grain_kg_ha), "kg/ha")}${valHtml("Profit", has(f.profit_usd_ha) ? fmtNum(0, "$")(f.profit_usd_ha) : NA, "USD/ha")}</div>`
+    + `</div>`;
 }
 
 function feedHtml(run) {
-  if (!run) return `<div class="bubble muted">No run for this season</div>`;
+  if (!run) return `<div class="feed-empty">No run for this season</div>`;
+  if (state.week >= WEEKS) return harvestHtml(run);
   const w = run.weeks[state.week];
-  if (!run.agents) {
-    const d = w.decision;
-    return `<div class="bubble baseline"><span class="text">Baseline policy, no agents${d ? ` · ${decisionSummary(d)}` : ""}</span></div>`;
-  }
-  const html = AGENT_ORDER.filter((a) => a !== "coordinator").map((a) => agentBubbleHtml(a, w.events)).join("")
-    + coordinatorBubbleHtml(w);
-  return html || `<div class="bubble muted">${state.week >= WEEKS ? "Season complete" : "No agent activity this week"}</div>`;
+  if (!run.agents) return `<div class="feed-empty">Baseline policy, no agents</div>` + stampHtml(w, "Policy", []);
+  return AGENT_ORDER.filter((a) => a !== "coordinator").map((a) => agentRowHtml(a, w.events)).join("")
+    + stampHtml(w, "Coordinator", w.events.filter((e) => e.agent === "coordinator"));
+}
+
+// Farmer side: its policy decision in one line.
+function farmerLineHtml(run) {
+  const who = `<span class="who">${run ? configNameHtml(run.config) : "Farmer practice"}</span>`;
+  if (!run) return `${who}<span class="text">No run for this season</span>`;
+  if (state.week >= WEEKS) return `${who}<span class="text">Harvest: yield and profit in the top strip</span>`;
+  const d = run.weeks[state.week].decision;
+  const text = d ? `N <span class="v n">${fmt(d.n_kg_ha, 1)}</span> kg/ha · irrigation <span class="v">${fmt(d.irr_mm, 1)}</span> mm`
+    + (d.reason ? ` · ${escapeHtml(d.reason)}` : "") : "No decision this week";
+  return `${who}<span class="text" title="${d && d.reason ? escapeHtml(d.reason) : ""}">${text}</span>`;
 }
 
 function renderAgents() {
-  for (const side of ["left", "right"]) {
-    const col = $(`feed-${side}`);
-    col.innerHTML = feedHtml(state.runs[side]);
-    col.classList.remove("enter");
-    void col.offsetWidth;   // restart the enter transition
-    col.classList.add("enter");
-  }
+  const feed = $("feed");
+  feed.innerHTML = feedHtml(state.runs.ft);
+  feed.classList.remove("enter");
+  void feed.offsetWidth;   // restart the enter transition
+  feed.classList.add("enter");
+  $("farmer-line").innerHTML = farmerLineHtml(state.runs.farmer);
 }
 
-// ---------------------------------------------------------------- raw events
+// ---------------------------------------------------------------- 5. raw events
 
 function bubble(agent, cls, body) {
-  const color = AGENT_COLORS[agent] || "";
-  return `<div class="raw ${cls}" ${color ? `style="--agent:${color}"` : ""}><div class="who">${escapeHtml(agent)} · ${cls}</div>${body}</div>`;
+  const color = AGENT_TOKENS[agent];
+  return `<div class="raw ${cls}" ${color ? `style="--agent:var(${color})"` : ""}><div class="who">${escapeHtml(agent)} · ${cls}</div>${body}</div>`;
 }
 
 function json(data) {
@@ -481,7 +522,7 @@ function json(data) {
 
 // One raw block per log event; tool calls collapsed.
 function eventHtml(e) {
-  const d = e.data;
+  const d = e.data || {};
   switch (e.kind) {
     case "tool_call":
       return bubble(e.agent, "tool", `<details><summary>call ${escapeHtml(d.name)}</summary>${json(d.args || {})}</details>`);
@@ -489,9 +530,9 @@ function eventHtml(e) {
       return bubble(e.agent, "tool", `<details><summary>${escapeHtml(d.name)} result</summary>${json(d.result)}</details>`);
     case "decision":
       return bubble(e.agent, "decision",
-        `<div>N ${fmt(d.n_kg_ha, 1)} kg/ha · irrigation ${fmt(d.irr_mm, 1)} mm</div><div class="reason">${escapeHtml(d.reason)}</div>`);
+        `<div>N ${fmt(d.n_kg_ha, 1)} kg/ha · irrigation ${fmt(d.irr_mm, 1)} mm</div><div class="reason">${escapeHtml(d.reason || "")}</div>`);
     case "step_result": {
-      const wk = d.weekly;
+      const wk = d.weekly || {};
       const clamp = d.clamped ? " · <b>clamped</b>" : "";
       return bubble(e.agent, "step",
         `rain ${fmt(wk.rain_mm)} mm · N uptake ${fmt(wk.n_uptake, 1)} · leached ${fmt(wk.n_leached, 1)} kg/ha${clamp}`);
@@ -501,7 +542,7 @@ function eventHtml(e) {
     case "fallback":
       return bubble(e.agent, "fallback", json(d));
     default: {   // message
-      if (d && d.reset) return bubble(e.agent, "message", `season reset: ${escapeHtml(d.task ? d.task.task_id : "")}`);
+      if (d.reset) return bubble(e.agent, "message", `season reset: ${escapeHtml(d.task ? d.task.task_id : "")}`);
       const text = messageText(d);
       return bubble(e.agent, "message", text ? escapeHtml(text) : json(d));
     }
@@ -510,9 +551,10 @@ function eventHtml(e) {
 
 function renderLog() {
   if (!state.rawOpen) return;
-  for (const side of ["left", "right"]) {
+  for (const side of SIDES) {
     const run = state.runs[side];
     const events = run ? run.weeks[state.week].events : [];
+    $(`raw-head-${side}`).innerHTML = `${run ? configNameHtml(run.config) : "No run"} · ${weekText(state.week)}`;
     $(`raw-${side}`).innerHTML = events.length ? events.map(eventHtml).join("") : `<div class="raw">No events.</div>`;
   }
 }
@@ -524,36 +566,39 @@ function toggleRaw() {
   renderLog();
 }
 
-// ---------------------------------------------------------------- timeline scrubber
+// ---------------------------------------------------------------- 4. timeline
 
 // Build the ticks once per loaded pair; setWeek only toggles classes (so transitions run).
-function renderWeather() {
-  const runs = [state.runs.left, state.runs.right].filter(Boolean);
+function renderTimeline() {
+  const runs = [state.runs.ft, state.runs.farmer].filter(Boolean);
   const rainAt = (k) => {
-    const r = runs.find((x) => x.weeks[k].step);
+    const r = runs.find((x) => x.weeks[k].step && x.weeks[k].step.weekly && has(x.weeks[k].step.weekly.rain_mm));
     return r ? r.weeks[k].step.weekly.rain_mm : null;
   };
   const rain = Array.from({ length: WEEKS }, (_, k) => rainAt(k));
   const max = Math.max(1e-9, ...rain.filter((v) => v !== null));
   const ticks = rain.map((mm, k) => {
     const obj = runs.some((r) => r.weeks[k].objection), fb = runs.some((r) => r.weeks[k].fallback);
-    const tip = [`Week ${k}`, mm !== null ? `rain ${fmt(mm)} mm` : "", obj ? "objection" : "", fb ? "fallback" : ""].filter(Boolean).join(" · ");
-    return `<button class="tick ${mm !== null && mm >= STORM_MM ? "storm" : ""}" data-week="${k}" title="${tip}">`
-      + `<span class="dots">${obj ? `<i class="dot objection"></i>` : ""}${fb ? `<i class="dot fallback"></i>` : ""}</span>`
-      + `<span class="rain" style="height:${mm !== null ? (28 * mm) / max : 0}px"></span>`
+    const tip = [`Week ${k}`, `rain ${mm !== null ? `${fmt(mm, 1)} mm` : NA}`, obj ? "objection" : "", fb ? "fallback" : ""].filter(Boolean).join(" · ");
+    return `<button class="tick" data-week="${k}" title="${tip}">`
+      + `<span class="marks">${obj ? `<i class="mark objection"></i>` : ""}${fb ? `<i class="mark fallback"></i>` : ""}</span>`
+      + `<span class="rain" style="height:${mm !== null ? (32 * mm) / max : 0}px"></span>`
       + `<span class="base"></span><span class="lbl">${k}</span></button>`;
   }).join("");
   $("ticks").innerHTML = ticks + `<button class="tick harvest" data-week="${WEEKS}" title="Harvest">`
     + `<span class="base"></span><span class="lbl">Harvest</span></button>`;
 
-  const objections = runs.reduce((s, r) => s + r.weeks.filter((w) => w.objection).length, 0);
+  const objections = runs.reduce((s, r) => s + objectionWeekCount(r), 0);
   const fallbacks = runs.reduce((s, r) => s + fallbackWeekCount(r), 0);
-  $("scrub-legend").innerHTML = `<span><i class="dot objection"></i>Objection weeks ${objections}</span>`
-    + `<span><i class="dot fallback"></i>Fallback weeks ${fallbacks}</span>`;
+  const maxText = rain.some((v) => v !== null) ? `${fmt(max, 1)} mm` : NA;
+  $("scrub-legend").innerHTML = `<span><i class="mark objection"></i>objection weeks ${objections}</span>`
+    + `<span><i class="mark fallback"></i>fallback weeks ${fallbacks}</span>`
+    + `<span><i class="rain-key"></i>weekly rain, max ${maxText}</span>`;
 }
 
-function updateScrubber() {
+function updateTimeline() {
   $("week-label").textContent = weekText(state.week);
+  $("agents-week").textContent = weekText(state.week);
   $("ticks").querySelectorAll(".tick").forEach((t) => {
     const k = +t.dataset.week;
     t.classList.toggle("past", k < state.week);
@@ -563,39 +608,52 @@ function updateScrubber() {
 
 // ---------------------------------------------------------------- controls
 
-function fillSelect(sel, values, selected) {
-  sel.innerHTML = values.map((v) => `<option value="${escapeHtml(v)}" ${v === selected ? "selected" : ""}>${escapeHtml(v)}</option>`).join("");
+function fillSelect(sel, values, selected, label = (v) => v) {
+  sel.innerHTML = values.map((v) => `<option value="${escapeHtml(v)}" ${v === selected ? "selected" : ""}>${escapeHtml(label(v))}</option>`).join("");
+}
+
+// FieldTwin-side picker: every run of this season except the farmer baseline.
+function renderFtPicker() {
+  const options = configsFor(state.task).filter((c) => c !== state.configs.farmer);
+  fillSelect($("ft-picker"), options, state.configs.ft, (c) => `${configLabel(c)}${isFake(c) ? " [FAKE]" : ""}`);
+  $("ft-pick").hidden = options.length < 2;
+}
+
+function renderHeaderTags() {
+  const runs = [state.runs.ft, state.runs.farmer].filter(Boolean);
+  const splits = [...new Set(runs.map((r) => r.split).filter(Boolean))];
+  $("split-tag").textContent = splits.join(" / ");
+  $("split-tag").hidden = !splits.length;
+  $("fake-tag").hidden = !runs.some((r) => isFake(r.config));
 }
 
 function setWeek(k) {
   state.week = Math.max(0, Math.min(WEEKS, k));
-  for (const side of ["left", "right"]) {
+  for (const side of SIDES) {
     state.fields[side].setWeek(state.runs[side] ? state.runs[side].weeks[state.week] : null);
-    renderCounters(side);
+    renderBlock(side);
   }
-  renderImpact();
+  renderStrip();
   renderAgents();
-  updateScrubber();
+  updateTimeline();
   renderLog();
 }
 
 async function selectTask(task) {
   state.task = task;
   const configs = configsFor(task);
-  if (!configs.includes(state.configs.left)) {
-    state.configs.left = configs.includes("farmer") ? "farmer" : firstReal(configs) || configs[0];
+  if (!configs.includes(state.configs.farmer)) {
+    state.configs.farmer = configs.includes("farmer") ? "farmer" : firstReal(configs) || configs[0];
   }
-  state.configs.right = bestConfig(task, state.configs.left);
-  renderRightPicker();
+  state.configs.ft = bestConfig(task, state.configs.farmer);
+  renderFtPicker();
   await loadSides();
 }
 
 async function loadSides() {
-  [state.runs.left, state.runs.right] = await Promise.all(
-    ["left", "right"].map((s) => loadRun(state.configs[s], state.task)));
+  [state.runs.ft, state.runs.farmer] = await Promise.all(SIDES.map((s) => loadRun(state.configs[s], state.task)));
   renderHeaderTags();
-  renderFieldLabels();
-  renderWeather();
+  renderTimeline();
   setWeek(state.week);
 }
 
@@ -613,16 +671,23 @@ function setSpeed(speed) {
 
 function bindControls() {
   $("task-picker").onchange = (e) => selectTask(e.target.value);
-  $("right-picker").onchange = (e) => { state.configs.right = e.target.value; loadSides(); };
+  $("ft-picker").onchange = (e) => { state.configs.ft = e.target.value; loadSides(); };
   $("play-btn").onclick = togglePlay;
+  $("prev-btn").onclick = () => setWeek(state.week - 1);
+  $("next-btn").onclick = () => setWeek(state.week + 1);
   document.querySelectorAll(".speed button").forEach((b) => (b.onclick = () => setSpeed(+b.dataset.speed)));
   $("ticks").onclick = (e) => { const t = e.target.closest(".tick"); if (t) setWeek(+t.dataset.week); };
   $("raw-toggle").onclick = toggleRaw;
+  // Keys: space play/pause, arrows step. Ignored while a select has focus.
   document.addEventListener("keydown", (e) => {
-    if (e.target.closest("select")) return;
-    if (e.key === " ") { e.preventDefault(); togglePlay(); }
-    if (e.key === "ArrowRight") setWeek(state.week + 1);
-    if (e.key === "ArrowLeft") setWeek(state.week - 1);
+    if (e.target.closest("select, input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === " ") {
+      e.preventDefault();
+      if (document.activeElement instanceof HTMLButtonElement) document.activeElement.blur();   // no double toggle on keyup
+      if (!e.repeat) togglePlay();
+    }
+    if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }
   });
 }
 
@@ -640,23 +705,22 @@ function startLoop() {
         if (state.week >= WEEKS) togglePlay(); else setWeek(state.week + 1);
       }
     }
-    state.fields.left.animate(dt);
-    state.fields.right.animate(dt);
+    for (const side of SIDES) state.fields[side].animate(dt);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 }
 
 async function main() {
-  state.fields.left = new Field($("field-left").querySelector(".field-canvas"));
-  state.fields.right = new Field($("field-right").querySelector(".field-canvas"));
+  initColors();
+  for (const side of SIDES) state.fields[side] = new Field($(`block-${side}`).querySelector(".field-canvas"));
   bindControls();
   startLoop();
-  updateScrubber();
+  updateTimeline();
   try {
     state.index = await loadIndex();
   } catch (err) {
-    $("feed-left").innerHTML = `<div class="bubble muted">${escapeHtml(err.message)}</div>`;
+    $("feed").innerHTML = `<div class="feed-empty">${escapeHtml(err.message)}</div>`;
     return;
   }
   const tasks = allTasks(state.index);

@@ -1,0 +1,72 @@
+/* FieldTwin design tokens. Every color, type size, space and radius used by ui/ lives here;
+   style.css and app.js (3D scene colors, via getComputedStyle) only reference these names.
+   Color roles: --ft = FieldTwin only, --farmer = farmer practice only, --warn = Critic objections,
+   fallbacks and the FAKE badge only, --nitrogen = nitrogen only. */
+:root {
+  /* surfaces */
+  --bg: #050606;
+  --panel: #0a0c0c;
+  --panel-2: #0f1212;
+  --line: #1c2121;
+  --line-strong: #2b3232;
+  --hover: rgba(255, 255, 255, 0.04);
+
+  /* text */
+  --text: #e4e7e5;
+  --muted: #868d89;
+  --faint: #4f5652;
+  --on-accent: #000;
+
+  /* roles */
+  --ft: #76b900;
+  --ft-dim: rgba(118, 185, 0, 0.10);
+  --ft-line: rgba(118, 185, 0, 0.45);
+  --farmer: #9aa19d;
+  --farmer-dim: rgba(154, 161, 157, 0.08);
+  --farmer-line: rgba(154, 161, 157, 0.35);
+  --warn: #ffb000;
+  --warn-dim: rgba(255, 176, 0, 0.10);
+  --warn-line: rgba(255, 176, 0, 0.55);
+  --nitrogen: #22d3ee;
+  --rain: #3f4852;
+  --rain-hi: #8a95a0;
+  --overlay: rgba(5, 6, 6, 0.96);
+
+  /* 3D scene (read by app.js) */
+  --scene-soil: #1a1208;
+  --scene-glass: #8fa6bf;
+  --scene-core: #050505;
+  --scene-water: #c6ef8a;
+  --scene-nitrate: #0e9fb5;
+  --scene-light: #ffffff;
+
+  /* type */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-s: 12px;
+  --fs-m: 13px;
+  --fs-l: 16px;
+  --fs-xl: 22px;
+  --fs-hero: 40px;
+  --lh: 1.4;
+  --track: 0.08em;
+
+  /* space */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+
+  /* radius and lines */
+  --r-s: 2px;
+  --r-m: 4px;
+  --r-l: 6px;
+  --bw: 1px;
+
+  /* motion */
+  --ease: 250ms ease;
+}
