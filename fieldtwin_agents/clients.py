@@ -55,14 +55,30 @@ class EnvironmentClient:
         await self.http.aclose()
 
 
+def inference_settings(enable_thinking=False, max_tokens=None):
+    """Thinking output counts against max_tokens, so thinking runs need a declared larger cap."""
+    settings = json.loads(json.dumps(INFERENCE_SETTINGS))
+    settings["chat_template_kwargs"]["enable_thinking"] = bool(enable_thinking)
+    if max_tokens is not None:
+        if int(max_tokens) <= 0:
+            raise ValueError("max_tokens must be positive")
+        settings["max_tokens"] = int(max_tokens)
+    return settings
+
+
 class VLLMClient:
     synthetic = False
     inference_settings = INFERENCE_SETTINGS
 
-    def __init__(self, base_url, model=MODEL, *, transport=None):
+    def __init__(self, base_url, model=MODEL, *, transport=None, settings=None):
+        if settings is not None:
+            self.inference_settings = settings
         self.model = model
         key = os.environ.get("VLLM_API_KEY")
-        self.http = httpx.AsyncClient(base_url=base_url.rstrip("/") + "/", timeout=180,
+        thinking = self.inference_settings["chat_template_kwargs"]["enable_thinking"]
+        # max_tokens bounds healthy generation; the timeout only catches hung connections.
+        self.request_timeout_s = 1800 if thinking else 180
+        self.http = httpx.AsyncClient(base_url=base_url.rstrip("/") + "/", timeout=self.request_timeout_s,
                                       headers={"Authorization": f"Bearer {key}"} if key else {},
                                       transport=transport)
 
@@ -76,9 +92,15 @@ class VLLMClient:
             envelope = r.json()
             choice = envelope["choices"][0]
             message = choice["message"]
-            return {**message, "_telemetry": {"usage": envelope.get("usage"),
-                    "finish_reason": choice.get("finish_reason"), "response_model": envelope.get("model"),
-                    "system_fingerprint": envelope.get("system_fingerprint")}} if isinstance(message, dict) else {"content": ""}
+            if not isinstance(message, dict):
+                return {"content": ""}
+            reasoning = message.get("reasoning") or message.get("reasoning_content")
+            telemetry = {"usage": envelope.get("usage"), "finish_reason": choice.get("finish_reason"),
+                         "response_model": envelope.get("model"), "system_fingerprint": envelope.get("system_fingerprint")}
+            if reasoning:
+                telemetry["reasoning"] = reasoning
+            # Reasoning is recorded for audit only; it is never sent onward as evidence.
+            return {k: v for k, v in message.items() if k not in ("reasoning", "reasoning_content")} | {"_telemetry": telemetry}
         except (ValueError, KeyError, IndexError, TypeError):
             # Route malformed API envelopes through the same two-attempt policy guard.
             return {"content": ""}

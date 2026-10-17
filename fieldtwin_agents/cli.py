@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .clients import MODEL, EnvironmentClient, VLLMClient
+from .clients import MODEL, EnvironmentClient, VLLMClient, inference_settings
 from .agents import PROMPT_VERSIONS
 from .contracts import CONFIGS, load_dev_tasks
 from .evaluation import analyze, record_iteration
@@ -54,7 +54,11 @@ async def run(args):
     if not (args.stub or args.stub_env) and not args.env_url:
         raise ValueError("Real runs require --env-url (Person A); use --stub for local fixtures")
     env = StubEnvironment() if args.stub or args.stub_env else EnvironmentClient(args.env_url, synthetic=args.synthetic_env)
-    model = StubModel() if args.stub_model or args.stub else VLLMClient(args.vllm_url, args.model)
+    thinking, max_tokens = getattr(args, "enable_thinking", False), getattr(args, "max_tokens", None)
+    if thinking and args.experiment_kind not in ("thinking_mode", "runtime"):
+        raise ValueError("Thinking runs must be labelled thinking_mode or runtime, never prompt_only")
+    model = StubModel() if args.stub_model or args.stub else VLLMClient(
+        args.vllm_url, args.model, settings=inference_settings(thinking, max_tokens))
     try:
         if not env.synthetic:
             response = await env.http.get("health")
@@ -91,6 +95,8 @@ def main(argv=None):
     r.add_argument("--freeze-manifest")
     r.add_argument("--experiment-kind", choices=("runtime", "prompt_only", "thinking_mode", "synthetic_plumbing"),
                    default="runtime", help="Record the experiment category; comparisons also check actual hashes/settings")
+    r.add_argument("--enable-thinking", action="store_true", help="Nemotron reasoning phase for every role (default off)")
+    r.add_argument("--max-tokens", type=int, help="Per-call output cap including reasoning (default 2048)")
     s = sub.add_parser("smoke", help="Actual vLLM automatic tool-call smoke test")
     s.add_argument("--output", help="Save successful live verification evidence to a new JSON file")
     for cmd in (r, s):

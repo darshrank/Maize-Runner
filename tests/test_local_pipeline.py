@@ -6,7 +6,7 @@ from dataclasses import FrozenInstanceError
 import httpx
 import pytest
 
-from fieldtwin_agents.clients import VLLMClient
+from fieldtwin_agents.clients import VLLMClient, inference_settings
 from fieldtwin_agents.contracts import Action, Task
 from fieldtwin_agents.evidence import Proposal, Review, WeekEvidence, check_proposal, verify_final
 from fieldtwin_agents.evaluation import record_iteration
@@ -264,6 +264,29 @@ def test_vllm_telemetry_is_returned_per_response_and_thinking_stays_off():
         finally:
             await client.close()
     asyncio.run(run())
+
+
+def test_thinking_settings_record_reasoning_without_forwarding_it():
+    def handler(request):
+        payload = json.loads(request.content)
+        assert payload["chat_template_kwargs"]["enable_thinking"] is True
+        assert payload["max_tokens"] == 8192
+        return httpx.Response(200, json={"usage": {"prompt_tokens": 9, "completion_tokens": 700, "total_tokens": 709},
+            "choices": [{"finish_reason": "stop", "message": {"content": '{"accept":true,"objection":""}',
+                                                               "reasoning": "130 + 30 = 160 <= 300"}}]})
+
+    async def run():
+        client = VLLMClient("http://model/v1", transport=httpx.MockTransport(handler),
+                            settings=inference_settings(True, 8192))
+        try:
+            assert client.request_timeout_s == 1800
+            msg = await client.complete([], [])
+            assert "reasoning" not in msg and msg["_telemetry"]["reasoning"] == "130 + 30 = 160 <= 300"
+        finally:
+            await client.close()
+    asyncio.run(run())
+    assert inference_settings()["chat_template_kwargs"]["enable_thinking"] is False
+    assert inference_settings()["max_tokens"] == 2048
 
 
 ACCOUNTING = {"season_cap_kg_ha": 300.0, "applied_n_kg_ha": 170.0,
