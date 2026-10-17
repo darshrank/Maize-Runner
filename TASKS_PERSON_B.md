@@ -60,6 +60,15 @@ independent generalization or an inference-cost advantage. v3 still trails farme
 and has excessive water/leaching. It is not selected as final.
 Against A2's selected farmer practice, multi v3 is 238.68 USD/ha (21.37%) lower.
 
+## Live protocol-3 runtime experiment (October 17)
+
+See results/runtime-p3-v1-dev.md.
+
+- [x] Deploy afffb23 to a fresh isolated Brev checkout; verify services, model identity, context limit and served env code.
+- [x] Live smoke (one failure recorded, 9/10 diagnostic) and UFGA-1990 pilot audited, inspected and archived.
+- [ ] Full v1 single + multi on all 20 dev years: running since 20:50:16Z. Audit, farmer_ufga comparison, backup pending.
+- [ ] Separate agent-fix experiment after the baseline, on the same dev years.
+
 ## Pending, in priority order
 
 - [ ] Follow NEXT_STEPS.md: fresh live diagnostics/context sizing, remote artifact attestation/cost measurement, then matched-budget dev ablations versus frozen farmer_ufga. Baselines need no rerun.

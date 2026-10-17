@@ -33,7 +33,33 @@ experiments remain paused while the local foundation is prepared. Thinking stays
 off; shared prompt default stays v1; v3/v4/v5 are not final selections. N uptake
 reconciliation with A remains pending but does not block local foundation work.
 
-### Latest: local protocol-3 implementation
+### Latest: Brev deployment, live pilot and full dev run (in progress)
+
+Full record: [results/runtime-p3-v1-dev.md](results/runtime-p3-v1-dev.md).
+Runtime experiment only (protocol 3, v1 prompts, thinking off); no training,
+no held-out years, no simulator/price/reward/cap change.
+
+- [x] Verified person-B = origin/person-B at afffb23; A's a-env unchanged at a866f06.
+- [x] Inspected Brev before acting: services healthy, exact model, 16384 context.
+  A foreign SSH-tunnelled client was already running 9-11 vLLM requests (origin
+  unidentified, user's Brev cert); latency telemetry is confounded by it.
+- [x] Deployed afffb23 to fresh checkout `/ephemeral/fieldtwin/person-b-20261017T203747Z`
+  (path also in `/ephemeral/fieldtwin/person-b-latest.txt`); 39 tests passed; served
+  env code/tasks byte-identical; attestation recorded.
+- [x] CLI smoke failed once (malformed `{"": "{}"}` args); diagnostic 9/10 valid.
+- [x] Pilot UFGA-1990 audited: single 453.56, multi 749.68 vs farmer_ufga 1296.33.
+  Records consistent, no fallbacks, headroom >= 6,890 tokens, one critic `length`
+  truncation recovered by re-prompt. Budget-arithmetic and dry-soil errors persist.
+- [ ] Full run `results/runtime-p3-v1-dev-20261017T205016Z` (PID 52681, started
+  20:50:16Z, 40 seasons, concurrency 8): monitor, audit all seasons, compare with
+  matched farmer_ufga dev rows (RUN_ON_BREV.md section 7), back up archive locally.
+- [ ] Then a separate, labelled agent-fix experiment on the same dev years
+  (budget statements, critic arithmetic, dry-soil irrigation, critic verbosity).
+
+Read-only helper: `scripts/inspect_live_run.py RUN_DIR --weeks` (copy on Brev at
+`/ephemeral/fieldtwin/tools/`, outside the checkout).
+
+### Earlier: local protocol-3 implementation
 
 - [x] Verify `person-B` at 300cbe8 against freshly fetched origin; no incoming B/A
   updates. Only user-owned fieldtwin.pdf and friction-log.txt were untracked at start.

@@ -26,6 +26,8 @@ results/*
 !results/critic-review-logs.zip
 !results/local-milestone-summary.json
 !results/local-milestone-logs.zip
+!results/runtime-p3-v1-dev.md
+!results/runtime-p3-pilot-20261017T203747Z.tar.gz
 /tmp/
 /build/
 /dist/
