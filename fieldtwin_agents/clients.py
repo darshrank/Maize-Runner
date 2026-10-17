@@ -9,6 +9,8 @@ import httpx
 from .contracts import TOOLS
 
 MODEL = "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
+INFERENCE_SETTINGS = {"temperature": 1.0, "top_p": 0.95, "max_tokens": 2048,
+                      "chat_template_kwargs": {"enable_thinking": False, "force_nonempty_content": True}}
 
 
 @lru_cache(maxsize=1)
@@ -55,6 +57,7 @@ class EnvironmentClient:
 
 class VLLMClient:
     synthetic = False
+    inference_settings = INFERENCE_SETTINGS
 
     def __init__(self, base_url, model=MODEL, *, transport=None):
         self.model = model
@@ -64,16 +67,18 @@ class VLLMClient:
                                       transport=transport)
 
     async def complete(self, messages, tools):
-        payload = {"model": self.model, "messages": messages, "temperature": 1.0,
-                   "top_p": 0.95, "max_tokens": 2048,
-                   "chat_template_kwargs": {"enable_thinking": False, "force_nonempty_content": True}}
+        payload = {"model": self.model, "messages": messages, **self.inference_settings}
         if tools:
             payload.update(tools=[tool_schema(t) for t in tools], tool_choice="auto")
         r = await self.http.post("chat/completions", json=payload)
         r.raise_for_status()
         try:
-            message = r.json()["choices"][0]["message"]
-            return message if isinstance(message, dict) else {"content": ""}
+            envelope = r.json()
+            choice = envelope["choices"][0]
+            message = choice["message"]
+            return {**message, "_telemetry": {"usage": envelope.get("usage"),
+                    "finish_reason": choice.get("finish_reason"), "response_model": envelope.get("model"),
+                    "system_fingerprint": envelope.get("system_fingerprint")}} if isinstance(message, dict) else {"content": ""}
         except (ValueError, KeyError, IndexError, TypeError):
             # Route malformed API envelopes through the same two-attempt policy guard.
             return {"content": ""}

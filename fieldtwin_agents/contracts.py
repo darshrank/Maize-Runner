@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -62,11 +63,18 @@ def load_dev_tasks(path: Path) -> list[Task]:
     if any(not isinstance(row, dict) or row.get("split") != "dev" for row in data):
         raise ValueError("Each task must explicitly declare split=dev")
     tasks = [Task(**row) for row in data]
+    for task in tasks:
+        require_dev_task(task)
     if not tasks or any(t.split != "dev" for t in tasks):
         raise ValueError("Person B runs dev tasks only; test evaluation belongs to Person A")
     if len({t.task_id for t in tasks}) != len(tasks):
         raise ValueError("Duplicate task IDs")
     return tasks
+
+
+def require_dev_task(task):
+    if task.split != "dev" or (task.year is not None and not 1990 <= task.year <= 2009):
+        raise ValueError("Person B runs dev years 1990-2009 only")
 
 
 @dataclass(frozen=True)
@@ -106,6 +114,8 @@ class EventLog:
                  "agent": agent, "kind": kind, "data": data}
         self.file.write(json.dumps(event, allow_nan=False) + "\n")
         self.file.flush()
+        if kind in ("decision", "step_result", "final") or "final_verification" in data:
+            os.fsync(self.file.fileno())
 
     def close(self):
         self.file.close()

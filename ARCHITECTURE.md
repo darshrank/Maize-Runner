@@ -1,12 +1,15 @@
 # FieldTwin: flowchart and high-level design
 
-Implementation inspected at `d7c5cad` on `person-B`. The diagrams distinguish the
-current implementation from the proposed next architecture. No new experiment or
-runtime behavior is introduced by this document. See
+Historical diagrams below were inspected at `d7c5cad` on `person-B`. **Current
+local protocol-3 update:** typed/raw evidence, immutable proposal/review identities,
+exact numeric post-guard verification, native durable receipts/catalogue and
+per-call telemetry are now implemented; see [LOCAL_MILESTONE.md](LOCAL_MILESTONE.md).
+These runtime changes have only local synthetic validation and are not deployed
+to Brev. Larger semantic-review/lean-arm/thinking proposals remain pending. See
 [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) for the researched failure modes,
 component retention criteria and proposed lean comparison arm.
 
-## 1. Current weekly decision flow
+## 1. Historical protocol-2 weekly decision flow
 
 This is the full `multi` policy. Weather and Crop run concurrently; later roles
 receive the preceding outputs through the Python orchestrator.
@@ -52,7 +55,7 @@ flowchart TD
   The final coordinator action gets code checks for limits, but no independent
   semantic review. The coordinator can introduce an error after the critic.
 
-## 2. Current high-level architecture
+## 2. Historical deployed high-level architecture
 
 The completed B dev experiments ran the Python application, simulator and model
 server on the same Brev host. The Windows/WSL machine was used to develop, launch,
@@ -107,7 +110,7 @@ A's `gym_env/` is an additional existing NeMo Gym adapter to the environment API
 It is a separate rollout path, not the five-role orchestrator used in B's completed
 experiments. An evaluation environment does not itself update model weights.
 
-## 3. Communication and isolation
+## 3. Historical protocol-2 communication and isolation
 
 Each role invocation has its own system prompt, message list and allowed tools.
 Its conversation continues inside its bounded tool loop, then returns a result to

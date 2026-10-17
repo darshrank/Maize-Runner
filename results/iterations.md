@@ -91,3 +91,37 @@ Live Nemotron, ten constructed synthetic proposals (seven defective, three expec
 v4 caught errors but rejected everything. v5 reduced this bias but remains unreliable on expected-acceptable plans; neither is promoted. Both change only critic.txt relative to v3. These are development diagnostics; v5 was revised after inspecting v4 results on the same cases. See critic-review-summary.json and critic-review-logs.zip for complete decisions, inputs, prompt hashes and source hashes.
 
 Next: structured verifiable facts and final coordinator decision verification. The present critic reviews only the planner; it cannot catch new errors introduced by the coordinator. Full new season experiments remain paused.
+
+## Local runtime foundation (2026-10-17, protocol 3)
+
+This changes runtime/context/recording, not prompt files or thinking settings.
+Typed facts/raw evidence, exact budget/reference calculations, frozen proposal and
+review identities, exact post-guard numeric verification, native durable season
+receipts, offline catalogue and response telemetry are implemented. Parallel role
+malformed counters are now isolated. Prompt-only comparison rejects changed
+runtime/data hashes or inference settings. Thinking remains off, default v1.
+
+All named experiments are retained in `local-milestone-logs.zip`, with source
+hashes/catalogues/receipts and details in `local-milestone-summary.json`:
+
+| Attempt | Scope | Successful short fixtures | Expected failures | Interpretation |
+|---|---|---:|---:|---|
+| local-milestone-dev-001 | All five configs, years 1990/2009, two synthetic weeks | 10 | 1 | First local implementation; existing regression tests passed |
+| local-milestone-final-001 | Same fixtures, compact contexts/cancellation checks | 10 | 1 | Audit and offline catalogue rebuild passed |
+| local-milestone-final-002 | Same fixtures, final comparison-confound checks | 10 | 1 | Audit and offline catalogue rebuild passed |
+
+Each failure is deliberately injected after the synthetic environment applies a
+step. It remains failed/uncertain in its receipt and is never retried. These are
+negative/recovery fixtures, not successful crop seasons. First implementation
+duplicated daily facts in contexts; final compact model views retain current
+scalars and exact reported-period rain totals, with complete raw/daily evidence
+persisted in logs. Live token/context sizing remains pending.
+
+Final local suite: **60 passed, eight DSSAT skips**, existing Starlette/httpx
+warning. Focused tests cover threshold equality/reversal, stale IDs, changed final
+actions, evidence withholding, receipt survival before batch completion, cancelled
+batch recovery, uncertain-step non-retry and prompt/runtime/inference separation.
+No unexpected test failures occurred. No live model inference, new DSSAT rollout,
+held-out evaluation, deployment or training ran. No reward/resource/cost gain is
+measured. Numeric verification does not certify agronomic claims or replace a
+semantic review of the coordinator. GPU cost and missing token usage remain null.

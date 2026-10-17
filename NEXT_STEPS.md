@@ -1,5 +1,13 @@
 # Next steps after A2 integration
 
+Current update, October 17: the local protocol-3 foundation is implemented; see
+[LOCAL_MILESTONE.md](LOCAL_MILESTONE.md) and the latest section of handoff.md.
+Typed facts, immutable proposal/review IDs, exact numeric final-action verification,
+native per-season receipts, telemetry and the synthetic user-run wrapper are done
+locally. Live semantic reliability/context sizing, remote artifact attestation,
+thinking comparisons and season experiments remain pending. No real new seasons,
+training, inference-setting change or Brev deployment occurred.
+
 October 17, 2026. A's `a-env` at `a866f06` is integrated into `person-B`.
 This integrates code/results and updates the plan; it does not deploy to Brev,
 enable thinking, launch experiments or train weights.
@@ -70,14 +78,15 @@ tool behavior and latency, with enough total output allowance.
 
 ## Ordered pending work
 
-1. Specify and locally build typed field facts with sources, units, uncertainty,
-   immutable proposal/review IDs and verification of the exact final action. Farmer
-   rules are references, not universal requirements. Preserve evidence withholding
-   in no-weather/no-tools ablations.
-2. Add durable season receipts and one catalogue/user-run wrapper: record reference
-   baseline and fallback separately, source/model/data versions, inference settings,
-   prompts, tokens, finish reasons, errors and cost. Prompt-only comparisons must
-   not silently accept code or inference-setting changes.
+1. Locally complete: typed facts/raw evidence, units/uncertainty/episode/week,
+   immutable proposal/review IDs, exact post-guard verification and ablation
+   withholding. Next validate live context size and fresh semantic cases; numeric
+   verification does not certify agronomic reasoning or coordinator semantics.
+2. Locally complete in the native runner: durable per-season receipts, offline
+   catalogue and user-run wrapper; local source/data/prompt/inference provenance
+   and per-call telemetry. Next attest remote artifacts and measure allocated
+   GPU cost; current receipts leave unavailable usage/cost null. The shared sync
+   logger is still buffered. Prompt-only checks reject runtime/inference changes.
 3. Reconcile N uptake definitions/timing with A; no incoming fix addresses the
    archive finding. This does not block local foundations. A2 is now complete;
    final held-out evaluation follows B's freeze.

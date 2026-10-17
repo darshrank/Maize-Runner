@@ -24,6 +24,8 @@ results/*
 !results/b3-iterations.md
 !results/critic-review-summary.json
 !results/critic-review-logs.zip
+!results/local-milestone-summary.json
+!results/local-milestone-logs.zip
 /tmp/
 /build/
 /dist/

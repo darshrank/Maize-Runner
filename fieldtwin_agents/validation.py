@@ -11,6 +11,7 @@ from pathlib import Path
 from .clients import MODEL
 from .contracts import Action, FINAL_FIELDS, ROLE_TOOLS, number
 from .evaluation import read_run
+from .evidence import identity
 
 
 def require(condition, message):
@@ -38,6 +39,25 @@ def audit_run(folder, *, require_live=True):
         finals = [e for e in events if e["kind"] == "final"]
         require(len(finals) == 1, f"{label}: missing terminal event")
         weeks = finals[0]["week"]
+        if manifest.get("agent_protocol_version", 1) >= 3:
+            proposals, reviews = {}, {}
+            for event in events:
+                for key, kind, store, id_key in (("proposal_record", "proposal", proposals, "proposal_id"),
+                                                  ("review_record", "review", reviews, "review_id")):
+                    if key not in event["data"]:
+                        continue
+                    record = event["data"][key]
+                    payload = {k: v for k, v in record.items() if k != id_key}
+                    require(record[id_key] == identity(kind, payload), f"{label}: mutated {kind} identity")
+                    if kind == "review":
+                        require(record["proposal_id"] in proposals, f"{label}: review references absent proposal")
+                        require(proposals[record["proposal_id"]]["week"] == event["week"],
+                                f"{label}: stale review week")
+                    else:
+                        require(record["week"] == event["week"], f"{label}: stale proposal week")
+                        require(record["parent_id"] is None or record["parent_id"] in proposals,
+                                f"{label}: missing proposal parent")
+                    store[record[id_key]] = record
         require(type(weeks) is int and 0 < weeks <= manifest.get("max_weeks", 60), f"{label}: invalid terminal week")
         require([e["week"] for e in decisions] == list(range(weeks)), f"{label}: missing/duplicate weekly decision")
         require([e["week"] for e in steps] == list(range(weeks)), f"{label}: missing/duplicate weekly step")
@@ -46,6 +66,44 @@ def audit_run(folder, *, require_live=True):
         for d, step in zip(decisions, steps):
             require(set(d["data"]) == {"n_kg_ha", "irr_mm", "reason"}, f"{label}: decision contract mismatch")
             action = Action.parse(d["data"])
+            if manifest.get("agent_protocol_version", 1) >= 3:
+                verifications = [e for e in events if e["week"] == d["week"]
+                                 and "final_verification" in e["data"]]
+                require(len(verifications) == 1, f"{label}: missing/duplicate final verification")
+                verification = verifications[0]["data"]["final_verification"]
+                payload = {k: v for k, v in verification.items() if k != "verification_id"}
+                require(verification["verification_id"] == identity("verification", payload),
+                        f"{label}: mutated final verification")
+                require(verification["final_action"] == d["data"], f"{label}: exact final action mismatch")
+                require(events.index(verifications[0]) < events.index(d) < events.index(step),
+                        f"{label}: verification must precede the decision and step")
+                source = verification["source_proposal"]
+                source_payload = {k: v for k, v in source.items() if k != "proposal_id"}
+                require(source["proposal_id"] == identity("proposal", source_payload),
+                        f"{label}: mutated source proposal")
+                require(source["stage"] == "fallback" or proposals.get(source["proposal_id"]) == source,
+                        f"{label}: unrecorded final proposal")
+                reviewed = verification["reviewed_proposal_id"]
+                require(reviewed is None or any(r["proposal_id"] == reviewed for r in reviews.values()),
+                        f"{label}: unrecorded review binding")
+                reset = next(e["data"]["reset"] for e in events if "reset" in e["data"])
+                require(source["week"] == d["week"] and source["episode_id"] == reset["episode_id"]
+                        and verification["episode_id"] == reset["episode_id"]
+                        and verification["week"] == d["week"], f"{label}: stale episode/week identity")
+                require(abs(verification["remaining_n_before_kg_ha"] - (manifest["n_cap"] - applied)) < 1e-8,
+                        f"{label}: final verification budget mismatch")
+                if "field_facts" in verifications[0]["data"]:
+                    snapshot = verifications[0]["data"]["field_facts"]
+                    for fact in snapshot["facts"]:
+                        fact_payload = {k: v for k, v in fact.items() if k != "fact_id"}
+                        require(fact["fact_id"] == identity("fact", fact_payload), f"{label}: mutated fact")
+                        require(fact["episode_id"] == source["episode_id"] and fact["week"] == source["week"],
+                                f"{label}: stale field fact")
+                    sources = snapshot["raw_evidence"]
+                    require(config != "multi_no_weather" or "get_weather" not in sources,
+                            f"{label}: withheld weather leaked through facts")
+                    require(config != "multi_no_tools" or set(sources) <= {"observation", "runner"},
+                            f"{label}: withheld tools leaked through facts")
             guarded = action.guarded(manifest["n_cap"] - applied,
                                      limits["max_n_kg_ha_per_week"], limits["max_irr_mm_per_week"])
             require(action == guarded, f"{label}: action exceeds a code guard")

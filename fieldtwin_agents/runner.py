@@ -11,7 +11,9 @@ from urllib.parse import urlsplit
 import httpx
 
 from .agents import AGENT_PROTOCOL_VERSION, AgentTeam, PolicyFailure, PROMPT_ROOT, PROMPT_VERSIONS
-from .contracts import Action, CONFIGS, CSV_FIELDS, FINAL_FIELDS, EventLog, number, safe_name
+from .contracts import Action, CONFIGS, CSV_FIELDS, FINAL_FIELDS, EventLog, number, safe_name, require_dev_task
+from .evidence import FACTS_VERSION, Proposal, verify_final
+from .experiments import atomic_json, catalogue, now, season_telemetry, sha256, source_provenance
 
 
 def prompt_hashes(version):
@@ -45,8 +47,9 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=None,
                      schedule=None, prompt_version="v1", max_weeks=60):
     if config not in CONFIGS:
         raise ValueError("Unknown config")
-    if task.split != "dev":
-        raise ValueError("Person B never runs test tasks")
+    require_dev_task(task)
+    if not env.synthetic and task.year is None:
+        raise ValueError("Real environment runs require explicit dev years, not legacy seeds")
     from .management import environment_limits, farmer_fallback
     limits = environment_limits()
     n_cap = limits["max_n_kg_ha_per_season"] if n_cap is None else n_cap
@@ -67,8 +70,13 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=None,
                  "synthetic": bool(env.synthetic or model.synthetic), "prompt_version": prompt_version,
                  "prompt_hashes": prompt_hashes(prompt_version), "n_cap": n_cap})
         for _ in range(max_weeks):
+            source = None
             try:
-                action = await agent.decide(obs, episode_id, week, n_cap - applied, log)
+                action = await agent.decide(obs, episode_id, week, n_cap - applied, log, accounting={
+                    "season_cap_kg_ha": n_cap, "applied_n_kg_ha": applied,
+                    "max_n_kg_ha_per_week": limits["max_n_kg_ha_per_week"],
+                    "max_irr_mm_per_week": limits["max_irr_mm_per_week"]})
+                source = agent.final_proposal
             except (PolicyFailure, httpx.HTTPError) as exc:
                 fallbacks += 1
                 action = farmer_fallback(week, obs, schedule)
@@ -77,6 +85,12 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=None,
             guarded = action.guarded(n_cap - applied, limits["max_n_kg_ha_per_week"], limits["max_irr_mm_per_week"])
             if action != guarded:
                 log.emit(week, "coordinator", "message", {"guarded": True, "proposed": action.as_dict()})
+            source = source or Proposal(episode_id, week, "fallback", action)
+            verification = verify_final(source, guarded, n_cap - applied,
+                limits["max_n_kg_ha_per_week"], limits["max_irr_mm_per_week"],
+                reviewed_id=agent.reviewed_proposal_id)
+            log.emit(week, "coordinator", "message", {"final_verification": verification,
+                     "field_facts": agent.evidence.snapshot()})
             log.emit(week, "coordinator", "decision", guarded.as_dict())
             # Environment errors propagate. Retrying a timed-out step could double apply N.
             step = await env.step(episode_id, guarded)
@@ -98,10 +112,17 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=None,
         log.close()
 
 
-async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwargs):
+async def run_batch(tasks, configs, env, model, output, *, concurrency=8,
+                    experiment_kind="runtime", **kwargs):
     tasks, configs = list(tasks), list(configs)
     if not tasks or any(t.split != "dev" for t in tasks):
         raise ValueError("Dev-only nonempty tasks required")
+    for task in tasks:
+        require_dev_task(task)
+        if not env.synthetic and task.year is None:
+            raise ValueError("Real environment runs require explicit dev years")
+    if experiment_kind not in ("runtime", "prompt_only", "thinking_mode", "synthetic_plumbing"):
+        raise ValueError("Unknown experiment kind")
     if not configs or any(c not in CONFIGS for c in configs) or len(set(configs)) != len(configs):
         raise ValueError("Unique valid configs required")
     if len({t.task_id for t in tasks}) != len(tasks) or concurrency <= 0:
@@ -114,6 +135,10 @@ async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwar
         kwargs["n_cap"] = environment_limits()["max_n_kg_ha_per_season"]
     version = kwargs.get("prompt_version", "v1")
     metadata = {"synthetic": bool(env.synthetic or model.synthetic), "configs": configs,
+                "created_at": now(), "experiment_kind": experiment_kind,
+                "facts_version": FACTS_VERSION, "source": source_provenance(tasks),
+                "inference_settings": getattr(model, "inference_settings", {"synthetic": bool(model.synthetic)}),
+                "selected_reference": "farmer_ufga", "fallback_policy": "original_farmer" if kwargs.get("schedule") is None else "custom_schedule",
                 "agent_protocol_version": AGENT_PROTOCOL_VERSION,
                 "synthetic_environment": bool(env.synthetic), "synthetic_model": bool(model.synthetic),
                 "task_ids": [t.task_id for t in tasks], "split": "dev", "concurrency": concurrency,
@@ -124,11 +149,28 @@ async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwar
                 "prompt_version": version, "prompt_hashes": prompt_hashes(version),
                 "n_cap": kwargs["n_cap"], "fallback_schedule": kwargs.get("schedule"),
                 "management": management_provenance()}
-    (output / "manifest.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    dev_reference = Path(__file__).resolve().parent.parent / "results/a2-integration-dev.json"
+    metadata["reference_provenance"] = {"path": "results/a2-integration-dev.json",
+                                        "sha256": sha256(dev_reference) if dev_reference.exists() else None}
+    atomic_json(output / "manifest.json", metadata)
     semaphore = asyncio.Semaphore(concurrency)
     async def one(task, config):
         async with semaphore:
-            return await run_season(task, config, env, model, output / "runs", **kwargs)
+            receipt = output / "receipts" / config / f"{task.task_id}.json"
+            atomic_json(receipt.with_suffix(".started.json"), {"started_at": now(), "config": config,
+                        "task_id": task.task_id, "manifest_sha256": sha256(output / "manifest.json")})
+            path = output / "runs" / config / f"{task.task_id}.jsonl"
+            try:
+                row = await run_season(task, config, env, model, output / "runs", **kwargs)
+            except BaseException as exc:
+                atomic_json(receipt, {"status": "failed" if isinstance(exc, Exception) else "interrupted",
+                    "finished_at": now(), "error_type": type(exc).__name__, "error": str(exc),
+                    "step_outcome_unknown": True, "log_sha256": sha256(path) if path.exists() else None,
+                    "telemetry": season_telemetry(path) if path.exists() else None})
+                raise
+            atomic_json(receipt, {"status": "completed", "finished_at": now(), "result": row,
+                "step_outcome_unknown": False, "log_sha256": sha256(path), "telemetry": season_telemetry(path)})
+            return row
     results = await asyncio.gather(*(one(t, c) for c in configs for t in tasks), return_exceptions=True)
     rows = [r for r in results if isinstance(r, dict)]
     with (output / "eval.csv").open("w", newline="", encoding="utf-8") as f:
@@ -141,5 +183,7 @@ async def run_batch(tasks, configs, env, model, output, *, concurrency=8, **kwar
     (output / "runs" / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     if errors:
         (output / "errors.json").write_text(json.dumps(errors, indent=2), encoding="utf-8")
+        catalogue(output, output / "catalogue.json")
         raise RuntimeError(f"{len(errors)} seasons failed; partial results and errors saved under {output}")
+    catalogue(output, output / "catalogue.json")
     return rows

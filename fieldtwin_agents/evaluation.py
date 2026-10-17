@@ -46,6 +46,13 @@ def record_iteration(before, after, change, output):
     new, new_rows = read_run(after)
     if old.get("agent_protocol_version", 1) != new.get("agent_protocol_version", 1):
         raise ValueError("Paired comparison requires matching agent protocol versions")
+    for key in ("facts_version", "inference_settings", "selected_reference", "fallback_policy",
+                "reference_provenance", "concurrency", "max_weeks", "environment_health"):
+        if old.get(key) != new.get(key):
+            raise ValueError(f"Prompt-only comparison requires matching {key}")
+    for key in ("runtime_sha256", "data_sha256", "python", "platform"):
+        if old.get("source", {}).get(key) != new.get("source", {}).get(key):
+            raise ValueError(f"Prompt-only comparison requires matching {key}; classify runtime/thinking changes separately")
     for key in ("synthetic", "configs", "task_ids", "n_cap", "fallback_schedule", "management"):
         if old[key] != new[key]:
             raise ValueError(f"Paired comparison requires matching {key}")

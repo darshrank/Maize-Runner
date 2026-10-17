@@ -1,9 +1,10 @@
 # Person B: current done and pending
 
-Last updated: October 17, 2026, approximately 3:20 PM America/New_York.
+Last updated: October 17, 2026 (America/New_York), local protocol-3 milestone.
 Branch: `person-B`. Read [handoff.md](handoff.md) first in a new session.
-Latest follow-ups: critic diagnostics and researched architecture review; full new
-season experiments remain paused at the user's request.
+Latest follow-up: implemented local facts/identities/final checks, native durable
+season receipts/catalogue and reproducible synthetic script. See LOCAL_MILESTONE.md.
+Full new season experiments remain paused at the user's request.
 Latest integration: A2 at `a866f06`; see [NEXT_STEPS.md](NEXT_STEPS.md).
 Selected farmer practice is now `farmer_ufga` (1116.72 dev reward); fallback
 remains original farmer. Merge verification: 42 passed, eight DSSAT skips,
@@ -12,6 +13,13 @@ This current checklist supersedes the earlier in-progress snapshots in chat/docs
 The user authorized pushing person-B with the handoff; main/a-env stay unchanged.
 
 ## Done
+
+- [x] Protocol 3: typed field facts with units/source/uncertainty/episode/week, raw evidence, exact budgets and labelled farmer comparison; preserve ablation withholding.
+- [x] Immutable proposal/revision/coordinator/review IDs; verify and audit the exact post-guard action, including coordinator changes. Agronomic semantics remain unverified.
+- [x] Native runner saves per-season success/failure receipts before batch completion; offline catalogue classifies uncertain interrupted steps without replay.
+- [x] Reproducible scripts/run_local_milestone.py runs all configs for two synthetic weeks on dev years 1990 and 2009 plus one injected post-step failure. Preserve every named run and failure.
+- [x] Add local runtime/data provenance, per-call token/finish-reason/latency telemetry and prompt-only confound checks. Isolate malformed counters per role invocation. Thinking remains off.
+- [x] Final local verification: **60 passed, eight DSSAT skips**, existing Starlette/httpx warning. All three named synthetic script runs are archived: 30 successful short fixtures and three expected post-step failures total. Archive CRC verified; no live rollout or performance claim.
 
 - [x] Create person-B and implement Person B's agents from the FieldTwin PDF.
 - [x] Integrate main's walking skeleton and later merge A's a-env at 64b38f9 (merge cd7bea5).
@@ -54,11 +62,11 @@ Against A2's selected farmer practice, multi v3 is 238.68 USD/ha (21.37%) lower.
 
 ## Pending, in priority order
 
-- [ ] Follow NEXT_STEPS.md: facts/final checks, durable catalogue, fresh diagnostics, matched-budget dev ablations versus frozen farmer_ufga. Baselines need no rerun.
+- [ ] Follow NEXT_STEPS.md: fresh live diagnostics/context sizing, remote artifact attestation/cost measurement, then matched-budget dev ablations versus frozen farmer_ufga. Baselines need no rerun.
 - [ ] Instrument configurable thinking diagnostics with inference settings, token/latency usage and finish reasons. Smoke-test parser/tools and final-output headroom; keep thinking off by default until evidence supports promotion.
 - [ ] Reconcile final-versus-weekly N uptake definitions/timing with A (differences up to 10.39 kg/ha in v1, 6.23 in v3). Add explicit end-reason/tail metadata in a separately versioned environment change; uptake is not a direct reward term. Preserve historical results.
-- [ ] Specify typed weekly facts, provenance/uncertainty, immutable proposal/review IDs, final-action checks and bounded recovery. Compare a lean planner with the five-role arm using the same evidence/checks.
-- [ ] Add durable per-season result receipts and catalogue/user-run wrapper; verify crash recovery without replaying uncertain steps. Review shared parallel malformed-response counters. Record tokens, latency and allocated compute cost.
+- [x] Implement typed weekly facts, provenance/uncertainty, immutable proposal/review IDs, exact numeric final-action checks and existing bounded recovery. Compare lean/five-role arms later.
+- [x] Add native durable season receipts/catalogue/user-run wrapper; verify receipt survival before batch end and no uncertain-step replay. Fix parallel malformed counters; record available tokens/latency with cost explicitly unmeasured.
 - [ ] Fix critic false objections using structured verifiable facts and assess how to verify the final coordinator decision. Critic wording alone remains insufficient; do not promote v4/v5 based on rejection frequency.
 - [ ] Inspect complete v3 worst-three role/tool traces. A concrete logged error reverses the irrigation comparison: moisture 0.93 is interpreted as triggering the below-0.35 rule.
 - [ ] Design and test one targeted next change for watering-condition reliability. Clearly distinguish prompt-only changes from code/protocol changes.
@@ -98,4 +106,4 @@ visible malformed-response fallback in single. No cost-saving claim is establish
 - [x] Pass 41 local tests (eight DSSAT skips), including a diagnostic-scoring check that both always-accept and always-reject get only 50% balanced accuracy.
 - [x] Archive all review logs in results/critic-review-logs.zip and save results/critic-review-summary.json. Current shared default stays v1; neither candidate is selected for full seasons.
 - [ ] Validate future critic changes on fresh cases as well as development failures; these small constructed cases are not independent crop or general-accuracy evidence.
-- [ ] Address the flow blind spot: planner -> critic -> optional planner revision -> coordinator. There is no review of the coordinator's final action yet.
+- [x] Bind review to the original planner proposal and verify the exact final coordinator/guard action numerically. Final coordinator semantic review remains pending and explicitly unclaimed.

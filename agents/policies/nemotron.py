@@ -10,6 +10,7 @@ from agents.policies.base import Decision, Policy
 from fieldtwin_agents.agents import AGENT_PROTOCOL_VERSION, AgentTeam, PolicyFailure
 from fieldtwin_agents.clients import MODEL, VLLMClient
 from fieldtwin_agents.contracts import number
+from fieldtwin_agents.evidence import Proposal, verify_final
 from fieldtwin_agents.runner import prompt_hashes
 from fieldtwin_agents.stub import StubModel
 from fieldtwin_agents.management import farmer_fallback
@@ -79,7 +80,10 @@ class NemotronPolicy(Policy):
         model = StubModel() if self.backend == "stub" else VLLMClient(self.base_url, self.model_name)
         try:
             team = AgentTeam(CountedModel(model, log), AsyncTools(env), self.name, self.prompt_version)
-            return await team.decide(obs, episode_id, week, remaining, LogAdapter(log))
+            action = await team.decide(obs, episode_id, week, remaining, LogAdapter(log), accounting={
+                "season_cap_kg_ha": self.n_cap, "applied_n_kg_ha": self.n_cap - remaining,
+                "max_n_kg_ha_per_week": self.max_n, "max_irr_mm_per_week": self.max_irr})
+            return action, team.final_proposal, team.reviewed_proposal_id
         finally:
             await model.close()
 
@@ -94,8 +98,9 @@ class NemotronPolicy(Policy):
                 "prompt_version": self.prompt_version, "prompt_hashes": self.hashes,
                 "n_cap": self.n_cap,
             })
+        source, reviewed_id = None, None
         try:
-            action = asyncio.run(self._decide(episode_id, week, obs, env, log, remaining))
+            action, source, reviewed_id = asyncio.run(self._decide(episode_id, week, obs, env, log, remaining))
         except (PolicyFailure, httpx.HTTPError) as exc:
             # Same management as the shared farmer policy, including adaptive irrigation.
             # Current obs contains the same soil-water fraction without an extra model tool.
@@ -104,4 +109,7 @@ class NemotronPolicy(Policy):
         guarded = action.guarded(remaining, self.max_n, self.max_irr)
         if guarded != action:
             log.event(week, "coordinator", "message", {"guarded": True, "proposed": action.as_dict(), "applied": guarded.as_dict()})
+        verification = verify_final(source or Proposal(episode_id, week, "fallback", action),
+                                    guarded, remaining, self.max_n, self.max_irr, reviewed_id=reviewed_id)
+        log.event(week, "coordinator", "message", {"final_verification": verification})
         return Decision(guarded.n_kg_ha, guarded.irr_mm, guarded.reason)

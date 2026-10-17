@@ -1,35 +1,68 @@
 # FieldTwin / Person B session handoff
 
-Handoff updated: **October 17, 2026, 4:14 PM America/New_York**.
-Branch: **person-B**. Latest implementation/integration commit: **ce84ffe**
-(merges A2 from **a866f06**). This document supersedes earlier progress snapshots;
-cloud service health was not rechecked during this documentation update.
+Handoff updated: **October 17, 2026** (America/New_York).
+Branch: **person-B**. Continued from verified checkpoint **300cbe8**, with A2
+already merged from **a866f06**. The implementation commit containing this update
+adds the local protocol-3 foundation below. This document supersedes earlier
+progress snapshots; cloud services were not contacted or deployed to this session.
 
 ## Start here in the next session
 
-The next milestone is a **tested local decision pipeline and reproducible
-experiment script**. Facts/final-action checks, durable season receipts/catalogue,
-the unified user-run wrapper and configurable thinking diagnostics are still
-pending; the architecture review describes proposals, not implemented features.
+The **local decision pipeline and reproducible script are implemented**, with
+the scope/limits in [LOCAL_MILESTONE.md](LOCAL_MILESTONE.md). Configurable thinking,
+live role validation and full-season comparisons remain pending. The architecture
+review's larger research proposals are not implemented by this milestone.
 Read [NEXT_STEPS.md](NEXT_STEPS.md) before changing behavior.
 
-1. Build typed facts with units, source/uncertainty and episode/week identity;
-   preserve raw evidence and exact budget/threshold calculations.
-2. Give proposals/critiques immutable IDs and verify the exact final action,
-   including coordinator changes. Farmer rules remain references, not universal
-   agronomic constraints. Keep recovery bounded and visible.
-3. Persist each completed season immediately; add a catalogue and user-run script
-   recording versions, settings, failures, token usage, latency and results.
-4. Run fresh diagnostics before seasons. Compare critic thinking off/on only after
+1. Run/inspect the local script and protocol-3 facts, identities, exact final-action
+   records and durable native-runner receipts. Do not equate numeric verification
+   with semantic review or agronomic correctness.
+2. Run fresh diagnostics and measure context/output headroom before seasons.
+   Compare critic thinking off/on only after
    instrumentation and parser/output-budget checks; consider planner afterward.
-5. When seasons resume, compare a lean planner with staged multi-agent additions
+3. Attest remote model/simulator versions and allocated cost before live work.
+   Local code/data hashes do not attest the remote copied snapshot.
+4. When seasons resume, compare a lean planner with staged multi-agent additions
    using identical evidence/checks and declared compute budgets. Reuse A's frozen
    dev baselines; selected farmer practice is farmer_ufga (1116.72 USD/ha).
 
-No new seasons, training or deployment followed the integration. Full-season
+No new real seasons, live inference, training or deployment followed integration. Full-season
 experiments remain paused while the local foundation is prepared. Thinking stays
 off; shared prompt default stays v1; v3/v4/v5 are not final selections. N uptake
 reconciliation with A remains pending but does not block local foundation work.
+
+### Latest: local protocol-3 implementation
+
+- [x] Verify `person-B` at 300cbe8 against freshly fetched origin; no incoming B/A
+  updates. Only user-owned fieldtwin.pdf and friction-log.txt were untracked at start.
+- [x] Typed facts with raw evidence, units, provenance, uncertainty, episode/week,
+  exact N arithmetic and labelled literal farmer comparison; no-tools/no-weather
+  withholding and parallel specialist isolation preserved.
+- [x] Frozen proposal/revision/coordinator and review IDs with parent/binding
+  links. Runtime verifies the exact post-guard action before `/step`; audit checks
+  hashes, episode/week, ordering and decision equality. Free-text reasons and
+  final agronomic semantics are not certified; critic still reviews planner only.
+- [x] Native batch per-season started/terminal receipts, successful and failed
+  outcomes, offline catalogue/recovery inspection and local provenance. Per-call
+  tokens/finish reasons/latency are captured when supplied; GPU cost remains null.
+- [x] Reproducible user command: `uv run python scripts/run_local_milestone.py
+  --output runs/local-milestone-001` (one line). Two synthetic weeks, ten short
+  fixtures, one preserved injected post-step failure; no network/GPU/DSSAT.
+- [x] Isolate parallel roles' malformed-response counters. Prompt-only comparison
+  now rejects runtime/data/inference confounds; prompt files are unchanged.
+- [ ] Fresh live diagnostics, context-size checks, thinking comparison, semantic
+  review effectiveness, full dev comparisons and final freeze remain pending.
+
+See results/local-milestone-summary.json and results/local-milestone-logs.zip for
+all named synthetic runs and expected failures. Final local verification:
+**60 passed, eight DSSAT skips**, existing Starlette/httpx warning; final wrapper
+and offline rebuild pass. All three named runs total 30 successful two-week synthetic
+fixtures and three expected failures. Archive CRC verified. Older architecture and experiment
+sections below describe historical checkpoints. Shared synchronous Policy uses
+facts/IDs/verification but still has its existing buffered logger; durable
+receipts belong to native `run_batch`. No simulator-contract change was made;
+N-uptake/end-reason coordination with A is still pending. Git push is not Brev
+deployment. No remote service-health claim is made.
 
 ### Latest: A2 integration and thinking plan (same day)
 
@@ -348,7 +381,8 @@ Host facts:
 ## Code map and contracts worth preserving
 
 - `agents/policies/nemotron.py`: synchronous shared Policy adapter and call counts.
-- `fieldtwin_agents/agents.py`: role orchestration; protocol **2**; supported prompt
+- `fieldtwin_agents/agents.py`: role orchestration; local protocol **3** (archived
+  real runs used **2**); supported prompt
   versions v1/v2/v3 plus unpromoted critic candidates v4/v5; strict outputs,
   permissions, six-turn bound, one revision.
 - `fieldtwin_agents/clients.py`: vLLM and env HTTP. Never retry `/step` automatically.
@@ -371,7 +405,7 @@ Current limits: N 120 kg/ha/week, irrigation 50 mm/week, N 300 kg/ha/season.
 Farmer/fallback: N 60/60/40 at weeks 0/5/9; 25 mm if soil moisture <0.35.
 Current tasks: dev UFGA 1990-2009 (20); held-out 2010-2024 (15), A only.
 
-Latest local verification at ce84ffe: **42 tests passed**, eight DSSAT tests
+Historical merge verification at ce84ffe: **42 tests passed**, eight DSSAT tests
 skipped on Windows, existing TestClient deprecation warning. This includes a merge
 regression checking selected farmer-reference arithmetic and provenance together.
 No new model/DSSAT rollout was needed for integration. Earlier remote verification:

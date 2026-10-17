@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from .contracts import Action, ROLE_TOOLS
+from .evidence import Proposal, Review, WeekEvidence
 
 PROMPT_ROOT = Path(__file__).parent / "prompts"
-AGENT_PROTOCOL_VERSION = 2
+AGENT_PROTOCOL_VERSION = 3
 PROMPT_VERSIONS = ("v1", "v2", "v3", "v4", "v5")
 
 
@@ -44,6 +46,15 @@ class AgentTeam:
         return tools
 
     async def ask(self, role, context, episode_id, week, log, state, output="message"):
+        evidence = getattr(self, "evidence", None)
+        evidence_sources = None
+        if evidence is not None:
+            # Freeze this invocation's starting sources. Parallel specialists cannot
+            # accidentally see a peer's newly completed reads due to scheduling.
+            evidence_sources = set(evidence.snapshot()["raw_evidence"]) | set(self.tools_for(role))
+            if role in ("weather", "crop"):
+                evidence_sources = {"observation", "runner", *self.tools_for(role)}
+            context = {**context, "field_facts": evidence.model_snapshot(evidence_sources)}
         tools = self.tools_for(role)
         # submit_decision is an output channel, not a read tool or environment step.
         model_tools = (*tools, "submit_decision") if output == "action" else tools
@@ -68,7 +79,16 @@ class AgentTeam:
                 request_tools = ()
                 messages.append({"role": "user", "content": "The tool budget is exhausted. Finish now using existing evidence. " + output_guide.replace(", or call submit_decision", "")})
             self.llm_calls += 1
-            msg = await self.model.complete(messages, request_tools)
+            started = time.perf_counter()
+            try:
+                msg = await self.model.complete(messages, request_tools)
+            except Exception as exc:
+                log.emit(week, role, "message", {"inference": {"latency_s": time.perf_counter() - started,
+                         "error_type": type(exc).__name__, "error": str(exc)}})
+                raise
+            log.emit(week, role, "message", {"inference": {
+                "latency_s": time.perf_counter() - started,
+                **(msg.get("_telemetry", {}) if isinstance(msg, dict) else {})}})
             if not isinstance(msg, dict):
                 raise PolicyFailure("model message is not an object")
             calls = msg.get("tool_calls")
@@ -111,7 +131,14 @@ class AgentTeam:
                     result = await self.env.tool(name, episode_id)
                     read.add(name)
                     log.emit(week, role, "tool_result", {"name": name, "result": result})
-                    messages.append({"role": "tool", "tool_call_id": call_id, "content": json.dumps(result, allow_nan=False)})
+                    if evidence is not None:
+                        try:
+                            evidence.add(name, result)
+                        except ValueError as exc:
+                            raise PolicyFailure(f"Invalid weekly evidence: {exc}") from exc
+                    content = result if evidence is None else {"raw_result": result,
+                        "field_facts": evidence.model_snapshot({name})}
+                    messages.append({"role": "tool", "tool_call_id": call_id, "content": json.dumps(content, allow_nan=False)})
                 messages.append({"role": "user", "content": "Use the tool results to complete this role; do not merely summarize the tools. " + output_guide})
                 continue
             try:
@@ -142,26 +169,51 @@ class AgentTeam:
             return answer
         raise PolicyFailure(f"{role} exceeded six model turns")
 
-    async def decide(self, obs, episode_id, week, remaining_n, log):
-        context = {"week": week, "obs": obs, "remaining_n_kg_ha": remaining_n}
-        state = WeekState()
+    async def decide(self, obs, episode_id, week, remaining_n, log, *, accounting=None):
+        self.evidence = WeekEvidence(episode_id, week, obs, remaining_n, accounting)
+        self.final_proposal = None
+        self.reviewed_proposal_id = None
+        context = {"episode_id": episode_id, "week": week, "obs": obs, "remaining_n_kg_ha": remaining_n}
+
+        async def ask(role, output="message"):
+            # Malformed-response streaks belong to a role invocation, never parallel peers.
+            return await self.ask(role, context, episode_id, week, log, WeekState(), output)
+
+        def record(action, stage, parent_id=None):
+            proposal = Proposal(episode_id, week, stage, action, parent_id)
+            log.emit(week, stage.split(":")[0], "message", {"proposal_record": proposal.as_dict()})
+            return proposal
+
         if self.config == "single":
-            return await self.ask("coordinator", context, episode_id, week, log, state, "action")
+            action = await ask("coordinator", "action")
+            self.final_proposal = record(action, "coordinator")
+            return action
         roles = ["crop"] if self.config == "multi_no_weather" else ["weather", "crop"]
         # Wait for both even if one fails: no orphan calls writing into next week's log.
-        reports = await asyncio.gather(*(self.ask(r, context, episode_id, week, log, state) for r in roles),
+        reports = await asyncio.gather(*(ask(r) for r in roles),
                                        return_exceptions=True)
         for result in reports:
             if isinstance(result, BaseException):
                 raise result
         context["reports"] = dict(zip(roles, reports))
-        proposal = await self.ask("planner", context, episode_id, week, log, state, "action")
+        proposal = await ask("planner", "action")
+        record_proposal = record(proposal, "planner")
         context["proposal"] = proposal.as_dict()
+        context["proposal_record"] = record_proposal.as_dict()
         if self.config != "multi_no_critic":
-            critique = await self.ask("critic", context, episode_id, week, log, state, "critique")
+            critique = await ask("critic", "critique")
+            review = Review(record_proposal.as_dict()["proposal_id"], critique["accept"], critique["objection"])
+            log.emit(week, "critic", "message", {"review_record": review.as_dict()})
+            context["review_record"] = review.as_dict()
+            self.reviewed_proposal_id = review.proposal_id
             context["critique"] = critique
             if not critique["accept"]:
-                proposal = await self.ask("planner", context, episode_id, week, log, state, "action")
+                proposal = await ask("planner", "action")
+                record_proposal = record(proposal, "planner:revision", record_proposal.as_dict()["proposal_id"])
                 context["proposal"] = proposal.as_dict()
+                context["proposal_record"] = record_proposal.as_dict()
                 context["revision_used"] = True
-        return await self.ask("coordinator", context, episode_id, week, log, state, "action")
+        context["current_proposal_has_review"] = self.reviewed_proposal_id == record_proposal.as_dict()["proposal_id"]
+        action = await ask("coordinator", "action")
+        self.final_proposal = record(action, "coordinator", record_proposal.as_dict()["proposal_id"])
+        return action

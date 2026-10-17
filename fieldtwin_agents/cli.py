@@ -65,7 +65,7 @@ async def run(args):
                 raise ValueError("Environment health must match the configured real simulator; use --synthetic-env for toy")
         rows = await run_batch(tasks, args.configs, env, model, Path(args.output),
             concurrency=args.concurrency, n_cap=args.n_cap, schedule=load_schedule(args.farmer_schedule),
-            prompt_version=args.prompt_version)
+            prompt_version=args.prompt_version, experiment_kind=args.experiment_kind)
         print(json.dumps({"seasons_completed": len(rows), "synthetic": bool(env.synthetic or model.synthetic), "output": args.output}))
     finally:
         await env.close()
@@ -89,6 +89,8 @@ def main(argv=None):
     r.add_argument("--farmer-schedule", help="JSON map of week to n_kg_ha and irr_mm; default is provisional")
     r.add_argument("--prompt-version", choices=PROMPT_VERSIONS, default="v1")
     r.add_argument("--freeze-manifest")
+    r.add_argument("--experiment-kind", choices=("runtime", "prompt_only", "thinking_mode", "synthetic_plumbing"),
+                   default="runtime", help="Record the experiment category; comparisons also check actual hashes/settings")
     s = sub.add_parser("smoke", help="Actual vLLM automatic tool-call smoke test")
     s.add_argument("--output", help="Save successful live verification evidence to a new JSON file")
     for cmd in (r, s):
