@@ -1,8 +1,35 @@
 # FieldTwin / Person B session handoff
 
-Last checked: **October 17, 2026, 3:20 PM America/New_York**.
-This is the current checkpoint; earlier chat status messages and intermediate
-snapshots described runs that have since finished.
+Handoff updated: **October 17, 2026, 4:14 PM America/New_York**.
+Branch: **person-B**. Latest implementation/integration commit: **ce84ffe**
+(merges A2 from **a866f06**). This document supersedes earlier progress snapshots;
+cloud service health was not rechecked during this documentation update.
+
+## Start here in the next session
+
+The next milestone is a **tested local decision pipeline and reproducible
+experiment script**. Facts/final-action checks, durable season receipts/catalogue,
+the unified user-run wrapper and configurable thinking diagnostics are still
+pending; the architecture review describes proposals, not implemented features.
+Read [NEXT_STEPS.md](NEXT_STEPS.md) before changing behavior.
+
+1. Build typed facts with units, source/uncertainty and episode/week identity;
+   preserve raw evidence and exact budget/threshold calculations.
+2. Give proposals/critiques immutable IDs and verify the exact final action,
+   including coordinator changes. Farmer rules remain references, not universal
+   agronomic constraints. Keep recovery bounded and visible.
+3. Persist each completed season immediately; add a catalogue and user-run script
+   recording versions, settings, failures, token usage, latency and results.
+4. Run fresh diagnostics before seasons. Compare critic thinking off/on only after
+   instrumentation and parser/output-budget checks; consider planner afterward.
+5. When seasons resume, compare a lean planner with staged multi-agent additions
+   using identical evidence/checks and declared compute budgets. Reuse A's frozen
+   dev baselines; selected farmer practice is farmer_ufga (1116.72 USD/ha).
+
+No new seasons, training or deployment followed the integration. Full-season
+experiments remain paused while the local foundation is prepared. Thinking stays
+off; shared prompt default stays v1; v3/v4/v5 are not final selections. N uptake
+reconciliation with A remains pending but does not block local foundation work.
 
 ### Latest: A2 integration and thinking plan (same day)
 
@@ -62,7 +89,8 @@ v4: 14/14 and 0/6; v5: 14/14 and 2/6. v4 was an overly rejecting failure; v5 is
 still unreliable and unpromoted. See `results/critic-review-summary.json`,
 `results/critic-review-logs.zip`, and the diagnostic entry in `results/iterations.md`.
 These development cases were inspected during revision; they are not independent
-accuracy or crop-performance evidence. All 41 local tests pass (eight DSSAT skips).
+accuracy or crop-performance evidence. At that checkpoint, 41 local tests passed;
+after A2 integration, the latest total is 42 (eight DSSAT skips).
 
 Important flow limitation: the critic reviews the planner before the coordinator,
 so it cannot catch a new mistake introduced in the coordinator's final action.
@@ -94,7 +122,9 @@ message routing, model/cache sharing and the proposed verified-facts/final-check
 1. This file and [TASKS_PERSON_B.md](TASKS_PERSON_B.md): current state and next work.
 2. [README.md](README.md): A's real environment, task years, prices and contracts.
 3. [PERSON_B.md](PERSON_B.md): B architecture, serving and experiment commands.
-4. [Latest machine-readable status](results/status-person-b.json).
+4. [Historical experiment status](results/status-person-b.json): completed-season
+   checkpoint, not the latest integration/plan. Read NEXT_STEPS.md and
+   [A2 dev comparison](results/a2-integration-dev.json) for the current reference.
 5. [Paired iteration record](results/b3-iterations.md) and the two archived runs.
 
 Some older passages in PERSON_B.md describe the experiment as in progress. The
@@ -106,13 +136,15 @@ the current real-year contract.
 
 **No experiment is currently queued/running.** The background continuation job
 finished with `phase: candidate_complete_selection_pending` at 3:19:40 PM New York.
-The GPU model server and DSSAT HTTP server remain running.
+The GPU model server and DSSAT HTTP server were last left running; recheck health
+before using them. No remote process/health check was made for this handoff edit.
 
 - B0: real H100/vLLM deployment and parsed tool-call smoke complete.
 - B1/B2: single, five-agent loop, one critic revision, guards, visible fallback,
   logging and eight concurrent seasons implemented and verified.
 - A integration: gym-DSSAT, NASA POWER real weather, real-year dev tasks, fixed
-  prices/reward, and NeMo Gym wrapper are merged.
+  prices/reward, and NeMo Gym wrapper are merged. A2 is now complete and merged:
+  frozen baselines, farmer_ufga selection and 56-candidate hindsight.
 - Baseline `v1`: single + multi, 20 dev years each; all 40 seasons audited.
 - Candidate `v3`: same 40 task/config pairs; all 40 seasons audited and compared.
 - B3: a diagnosed one-role prompt change produced positive mean dev reward deltas.
@@ -123,6 +155,10 @@ The GPU model server and DSSAT HTTP server remain running.
 
 Useful commits before this handoff:
 
+- `ce84ffe`: latest A2 merge, report/config compatibility, dev baseline comparison,
+  regression test and revised next steps/thinking plan.
+- `7a3569d`: research-backed architecture review and read-only 80-season audit.
+- `d7c5cad`: critic candidates and recorded live role diagnostics.
 - `912847c`: live-model B1/B2 toy verification and protocol reliability fix.
 - `cd7bea5`: merge of B and A (`64b38f9` from `origin/a-env`).
 - `4151bf6`: v3 candidate and automatic paired experiment script.
@@ -136,7 +172,8 @@ profit minus the nitrate-leaching penalty; it is not measured farm profit.
 
 | Policy | Mean reward, USD/ha | Grain, kg/ha | N applied, kg/ha | N leached, kg/ha | Irrigation, mm | Model calls, all 20 seasons | Fallbacks |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Farmer rule | 1024.05 | 7214.37 | 160.00 | 16.34 | 111.25 | 0 | 0 |
+| Original farmer rule | 1024.05 | 7214.37 | 160.00 | 16.34 | 111.25 | 0 | 0 |
+| Selected farmer practice: farmer_ufga | 1116.72 | 7814.90 | 116.00 | 20.43 | 264.00 | 0 | 0 |
 | Single v1 | 343.00 | 4804.81 | 296.75 | 26.91 | 46.13 | 1065 | 0 |
 | Multi v1 | 600.88 | 6298.88 | 298.00 | 26.86 | 96.60 | 3625 | 0 |
 | Single v3 | 593.24 | 7593.61 | 249.95 | 81.82 | 456.25 | 746 | 1 |
@@ -147,9 +184,11 @@ Single improved in 13/20 years, multi in 14/20. These are one stochastic rollout
 per policy/year/version; they do not isolate model sampling variation. There is
 no independent held-out result and no inference-cost-saving claim.
 
-Multi v3 is still about 14% below farmer reward, with 87.5% more nitrogen,
-approximately 4.6 times the nitrate leaching and 3.7 times the irrigation. Higher
-yield alone is not sufficient to call it a successful crop advisor.
+Multi v3 is **21.37% below selected farmer practice** (238.68 USD/ha lower),
+using about 2.59 times the nitrogen, 3.67 times the nitrate leaching and 1.55 times
+the irrigation. The earlier 14% reward gap refers to original farmer only. Higher
+yield alone is not sufficient to call it a successful crop advisor. Current
+fallback is still original farmer; benchmark selection did not change recovery.
 
 ### Diagnosed failures
 
@@ -168,7 +207,8 @@ yield alone is not sufficient to call it a successful crop advisor.
    decisions and 282/377 multi decisions. These counts flag a pattern; they do
    not establish that every such action was agronomically wrong.
 4. Nitrogen spending remains excessive. The 300 kg season cap is a ceiling, not
-   an application target. Farmer uses 160 kg with better net reward.
+   an application target. Original farmer uses 160 kg; selected farmer_ufga uses
+   116 kg, both with better net reward.
 
 Worst v3 single years: UFGA-2004 (-325.08), UFGA-1991 (-265.34), UFGA-2008 (-64.69).
 Worst v3 multi: UFGA-2005 (-24.24), UFGA-1998 (120.39), UFGA-2009 (240.37).
@@ -176,26 +216,29 @@ The next session should inspect their full role/tool traces, not only finals.
 
 ## Prioritized pending work
 
-1. Review the completed v3 worst-three traces and the exact irrigation comparison
-   errors. Preserve these completed experiments; do not rerun into their folders.
-2. Design one targeted next experiment. Options to assess include explicit
-   wet/dry examples in the coordinator prompt, or a computed eligibility fact from
-   code. A runtime/guard change must be labelled separately from a prompt-only
-   change and use a new protocol version if behavior changes. Do not claim a
-   one-prompt experiment while also changing code, caps, prices or reward.
-3. Address nitrogen efficiency in a separate diagnosed experiment if needed.
-   Keep A's prices, reward and management caps fixed.
-4. Evaluate complete paired dev sets; report reward, yield, water, N, leaching,
-   model-call counts and visible fallbacks. Do not compare different partial sets.
-5. Choose prompts from evidence, create the final freeze manifest, and update
-   `config.yaml` prompt_version and freeze_manifest together. Current v1/v3
-   manifests are provisional/candidate snapshots, not a final selection.
-6. Verify `multi_no_critic`, `multi_no_weather`, `multi_no_tools` with the chosen
-   real-model setup. They are registered and software-tested; DSSAT/live-model
-   ablation evaluation has not been performed yet. Give A/C config names,
-   reproducible entry points, CSVs and representative DSSAT replays.
-7. A owns A2's broader baseline work and A4's held-out test. B ran the farmer on
-   dev only to make the current comparisons. Do not execute test seasons.
+1. Implement the local facts/final-check foundation described at the top, informed
+   by full v3 worst-case traces. Prefer general evidence handling over increasingly
+   specific prompt patches. Preserve completed experiment directories.
+2. Add durable season results, catalogue/user-run wrapper and inference telemetry.
+   Review shared parallel malformed-response counters. Record all failures and
+   negative changes; a code/context/guard change is not a prompt-only iteration.
+3. Reconcile final-versus-weekly N uptake definitions/timing with A. Keep simulator,
+   prices, reward and caps fixed during comparisons; separately version any fix.
+4. Verify fresh valid/invalid diagnostic cases, then test critic thinking off/on
+   with the same evidence/prompts and predeclared budgets. Track false objections
+   as well as missed errors, final JSON validity, tokens, latency and finish reasons.
+   Check tool/parser compatibility and reserve final-output headroom. Thinking
+   remains disabled until a version is deliberately selected from evidence.
+5. Resume full dev seasons only after focused checks. Compare the lean baseline
+   and staged role additions, including the registered ablations, on matched
+   tasks/evidence/checks/budgets. Reuse frozen farmer_ufga rows by task ID; retain
+   original farmer for context. Address nitrogen efficiency in a separate diagnosed
+   change. Include reward, yield, N, water, leaching, cost and visible fallbacks.
+6. Choose code/facts/prompts/inference settings from complete evidence, freeze
+   together, and update config.yaml prompt_version/freeze_manifest consistently.
+   Hand A/C reproducible configs, CSVs and representative DSSAT replays.
+7. A2 is completed. A owns A4's held-out evaluation after B freezes. B uses only
+   UFGA dev years 1990-2009 and must not run/tune agents on 2010-2024.
 
 Fine-tuning/RL discussion: role names currently share one model and different
 prompts; weights never update during evaluation. First establish reliable behavior
@@ -205,6 +248,17 @@ training simply because the user asked a conceptual question about it.
 
 ## Artifacts available after cloning
 
+- `NEXT_STEPS.md`: current staged plan and thinking-mode experiment design.
+- `ARCHITECTURE.md`, `ARCHITECTURE_REVIEW.md`: implemented/proposed flow and
+  researched component rationale, failure modes and retention checks.
+- `results_baseline/`: A2's immutable farmer/farmer_ufga/no_n/hindsight outputs.
+  B's comparisons use dev rows only; do not regenerate these baselines.
+- `results/a2-integration-dev.json`: selected reference, archive compatibility,
+  dev comparison and source hash.
+- `results/architecture-horizon-audit.json`: all 80 archived seasons, horizon and
+  final/weekly accounting review, including unresolved N uptake discrepancy.
+- `results/critic-review-summary.json`, `results/critic-review-logs.zip`: all 60
+  focused reviews, including failed critic candidates; no candidate promoted.
 - `results/dssat-dev-v1-logs.zip`: all baseline logs, manifest, eval.csv, audit,
   diagnostics; also `dssat-farmer-dev.csv`.
 - `results/dssat-dev-v3-logs.zip`: all candidate logs, manifest, eval.csv, audit,
@@ -287,8 +341,9 @@ Host facts:
 - Local port 9000 may still serve an older toy process. Do not use it for real
   evaluation without checking health/config. Run experiments on Brev to avoid
   tunnel variability; local URLs require deliberate SSH forwarding.
-- GPU and HTTP services remain running and incurring the quoted compute charge.
-  Back up any new outputs before eventual instance deletion.
+- GPU and HTTP services were last left running; if still active, the quoted
+  compute charge continues. Recheck health/state before resuming and back up new
+  outputs before eventual instance deletion.
 
 ## Code map and contracts worth preserving
 
@@ -316,12 +371,15 @@ Current limits: N 120 kg/ha/week, irrigation 50 mm/week, N 300 kg/ha/season.
 Farmer/fallback: N 60/60/40 at weeks 0/5/9; 25 mm if soil moisture <0.35.
 Current tasks: dev UFGA 1990-2009 (20); held-out 2010-2024 (15), A only.
 
-Last verification: 40 local tests passed, eight DSSAT tests skipped on Windows;
+Latest local verification at ce84ffe: **42 tests passed**, eight DSSAT tests
+skipped on Windows, existing TestClient deprecation warning. This includes a merge
+regression checking selected farmer-reference arithmetic and provenance together.
+No new model/DSSAT rollout was needed for integration. Earlier remote verification:
 all 15 environment contract tests passed on Brev including real DSSAT, using a
 dev year. Shared toy HTTP smoke passed all eight configs x three dev years (24
-rows). Candidate version support also passed 40 synthetic CLI seasons. Existing
-Starlette/httpx TestClient deprecation warning remains. No implementation changes
-were made after these except handoff/status/artifact documentation.
+rows). Candidate version support also passed 40 synthetic CLI seasons. Subsequent
+local checks cover the critic follow-up and A2 integration above; neither update
+was deployed to the cloud snapshot.
 
 The prior toy parallel check had two model connection-disconnect fallbacks. Their
 root cause was not proven. The colocated real runs observed no HTTP fallbacks;
