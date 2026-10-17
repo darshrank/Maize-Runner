@@ -13,7 +13,7 @@ minus a nitrate-leaching penalty. The crop is simulated by **gym-DSSAT** (the DS
 | Weather | **real**: NASA POWER daily data, UFGA 1990-2024 (`data/`, see `data/README.md`) | A |
 | Prices and reward | **real**, each value cited in `config.yaml` | A |
 | Env server (HTTP, port 9000) | **real**, frozen contract below | A |
-| Baselines | `no_n`, `farmer` (60/60/40 kg N split + rule irrigation), `hindsight` (grid-search ceiling). Full 35-season run pending (A2) | A |
+| Baselines | **done** for all 35 seasons, frozen in `results_baseline/`: `no_n`, `farmer` (60/60/40 split), `farmer_ufga` (UF experiment schedule = farmer practice), `hindsight` (ceiling) | A |
 | NeMo Gym environment | **real**: `gym_env/` (tasks, tools, verifier = final reward), see `gym_env/README.md` | A |
 | Agents | stub: `agents/policies/nemotron_stub.py` | **B** |
 | UI | working replay viewer (`ui/`), to be restyled | C |
@@ -87,8 +87,16 @@ A task is a real (site, year): `tasks/dev.jsonl` = UFGA 1990-2009 (20 seasons), 
 | irrigation | $0.565 per mm per ha | USDA NASS 2023 Irrigation and Water Management Survey, Florida pumping energy ($5.81/acre-inch) |
 | leaching penalty | $2.44 per kg N leached | Sobota et al. 2015 (Environ. Res. Lett. 10:025006), Table 1, groundwater damage costs (2008 USD) |
 
-Preliminary baselines on gym-DSSAT, first 3 dev years (UFGA 1990-1992), mean reward: no_n 173, farmer 1,160,
-hindsight (unreachable ceiling) 1,314. The full 35-season baselines come with A2.
+Baselines on gym-DSSAT, mean reward (USD/ha), frozen in `results_baseline/`:
+
+| config | dev (20 seasons) | test (15 seasons) |
+|---|---|---|
+| `no_n` | 153 | 199 |
+| `farmer` (60/60/40 kg N split + 25 mm when dry) | 1,024 | 1,096 |
+| `farmer_ufga` = **farmer practice** (UF 1982 experiment schedule: 116 kg N, 264 mm) | 1,117 | 1,074 |
+| `hindsight` (best of 56 fixed plans with the weather known; unreachable ceiling) | 1,283 | 1,265 |
+
+Farmer practice is set in `config.yaml` (`eval.farmer_practice`); it was chosen on dev only.
 
 ## For person B: building the agents
 
@@ -115,7 +123,8 @@ hindsight (unreachable ceiling) 1,314. The full 35-season baselines come with A2
    `multi_no_weather`, `multi_no_tools`.
 5. **Run it**: one season with `uv run python -m agents.run --policy single --task-id UFGA-1995`, then
    `uv run python -m eval.run_eval --split dev --configs farmer,single --limit 5`. `results/summary.md` reports
-   reward with 95% CI, **gap closed** = (reward - farmer) / (hindsight - farmer), and leaching vs farmer.
+   reward with 95% CI, **gap closed** = (reward - farmer practice) / (hindsight - farmer practice), and leaching vs
+   farmer practice. Baseline rows to compare against are in `results_baseline/eval.csv` (no need to rerun them).
    Eval runs `eval.parallel` seasons at once (8): each is one DSSAT process plus your model calls.
 6. **Optional: score through NeMo Gym** with the real model instead of the dummy policy: `gym_env/README.md`
    (`--model-type vllm_model --model-url <vLLM>`).
@@ -154,13 +163,14 @@ Kinds: `tool_call`, `tool_result`, `message`, `decision` (`{n_kg_ha, irr_mm, rea
 - `eval/`: `hindsight.py` (grid-search ceiling), `run_eval.py` (`results/eval.csv` + `results/summary.md`).
 - `gym_env/`: NeMo Gym environment, see `gym_env/README.md`.
 - `ui/`: static Three.js replay of two runs side by side.
+- `results_baseline/`: frozen baseline results and season logs (A2).
 - `tasks/`: dev/test seasons. `data/`: NASA POWER weather (`scripts/fetch_power.py` regenerates it; see `data/README.md`).
 - `scripts/`: `smoke.sh`, `install_gym_dssat.sh`, `fetch_power.py`, `validate_dssat_years.py` (checks DSSAT plays the right year).
 
 ## Who owns what
 
-- **A** (simulator, eval): done: gym-DSSAT, real weather, prices, NeMo Gym. Next: A2 baselines on all 35 seasons
-  (plus gym-DSSAT's shipped schedule as a second farmer baseline), then A4 final test run.
+- **A** (simulator, eval): done: gym-DSSAT, real weather, prices, NeMo Gym, baselines (A2). Next: A4 final test run
+  once B freezes the agents.
 - **B** (agents): `single` and `multi` policies on Nemotron/vLLM, the improvement loop on `dev`, frozen prompts and ablations.
 - **C** (UI, demo): restyle `ui/`, vLLM metrics script, deck and video.
 
