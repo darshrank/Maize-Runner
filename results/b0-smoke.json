@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-10-17T18:26:06.305854+00:00",
+  "tool_call_valid": true,
+  "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+  "advertised_models": [
+    "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
+  ],
+  "endpoint": "http://127.0.0.1:8000/v1/",
+  "message": {
+    "role": "assistant",
+    "content": null,
+    "refusal": null,
+    "annotations": null,
+    "audio": null,
+    "function_call": null,
+    "tool_calls": [
+      {
+        "id": "chatcmpl-tool-bf0480733989bb40",
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "arguments": "{}"
+        }
+      }
+    ],
+    "reasoning": null
+  }
+}

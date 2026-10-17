@@ -1,0 +1,89 @@
+{
+  "checked_at": "2026-10-17T19:19:58.378907+00:00",
+  "checked_at_new_york": "2026-10-17T15:19:58.379645-04:00",
+  "scope": "DSSAT simulated dev seasons; no training or held-out evaluation performed",
+  "progress": {
+    "phase": "candidate_complete_selection_pending",
+    "updated_at": "2026-10-17T19:19:40.599802+00:00",
+    "baseline": "results/dssat-dev-v1",
+    "candidate": "results/dssat-dev-v3"
+  },
+  "runs": {
+    "dssat-dev-v1": {
+      "configs": {
+        "single": {
+          "started": 20,
+          "completed": 20,
+          "weekly_steps": 377,
+          "fallback_causes": [],
+          "means": {
+            "reward": 343.002,
+            "grain_kg_ha": 4804.805,
+            "n_applied": 296.75,
+            "n_leached": 26.9085,
+            "irr_mm": 46.13
+          }
+        },
+        "multi": {
+          "started": 20,
+          "completed": 20,
+          "weekly_steps": 377,
+          "fallback_causes": [],
+          "means": {
+            "reward": 600.8835,
+            "grain_kg_ha": 6298.88,
+            "n_applied": 298.0,
+            "n_leached": 26.8625,
+            "irr_mm": 96.595
+          }
+        }
+      },
+      "audit_present": true,
+      "csv_present": true
+    },
+    "dssat-dev-v3": {
+      "configs": {
+        "single": {
+          "started": 20,
+          "completed": 20,
+          "weekly_steps": 377,
+          "fallback_causes": [
+            "two consecutive malformed tool calls or responses"
+          ],
+          "means": {
+            "reward": 593.236,
+            "grain_kg_ha": 7593.61,
+            "n_applied": 249.95,
+            "n_leached": 81.8165,
+            "irr_mm": 456.25
+          }
+        },
+        "multi": {
+          "started": 20,
+          "completed": 20,
+          "weekly_steps": 377,
+          "fallback_causes": [],
+          "means": {
+            "reward": 878.0415,
+            "grain_kg_ha": 9272.045,
+            "n_applied": 300.0,
+            "n_leached": 74.9885,
+            "irr_mm": 407.95
+          }
+        }
+      },
+      "audit_present": true,
+      "csv_present": true
+    }
+  },
+  "farmer": {
+    "completed": 20,
+    "means": {
+      "reward": 1024.0455,
+      "grain_kg_ha": 7214.37,
+      "n_applied": 160.0,
+      "n_leached": 16.341,
+      "irr_mm": 111.25
+    }
+  }
+}

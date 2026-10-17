@@ -1,0 +1,242 @@
+{
+  "reference": "farmer_ufga frozen dev rows (results_baseline/eval.csv)",
+  "farmer_ufga": {
+    "reward": 1116.717,
+    "profit_usd_ha": 1166.555,
+    "grain_kg_ha": 7814.9,
+    "n_applied": 116.0,
+    "irr_mm": 264.0,
+    "n_leached": 20.425
+  },
+  "farmer_original": {
+    "reward": 1024.045,
+    "profit_usd_ha": 1063.918,
+    "grain_kg_ha": 7214.37,
+    "n_applied": 160.0,
+    "irr_mm": 111.25,
+    "n_leached": 16.341
+  },
+  "single": {
+    "means": {
+      "reward": 379.25,
+      "profit_usd_ha": 423.087,
+      "grain_kg_ha": 4512.17,
+      "n_applied": 251.0,
+      "irr_mm": 55.05,
+      "n_leached": 17.965
+    },
+    "mean_delta_vs_farmer_ufga": {
+      "reward": -737.467,
+      "profit_usd_ha": -743.469,
+      "grain_kg_ha": -3302.73,
+      "n_applied": 135.0,
+      "irr_mm": -208.95,
+      "n_leached": -2.46
+    },
+    "median_reward_delta": -668.545,
+    "years_beating_farmer_ufga_reward": 2,
+    "fallbacks": 0,
+    "receipt_status": {
+      "completed": 20
+    },
+    "llm_calls_csv": 1515,
+    "receipt_telemetry_calls": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0
+  },
+  "multi": {
+    "means": {
+      "reward": 646.351,
+      "profit_usd_ha": 700.543,
+      "grain_kg_ha": 6454.455,
+      "n_applied": 293.5,
+      "irr_mm": 102.58,
+      "n_leached": 22.21
+    },
+    "mean_delta_vs_farmer_ufga": {
+      "reward": -470.366,
+      "profit_usd_ha": -466.013,
+      "grain_kg_ha": -1360.445,
+      "n_applied": 177.5,
+      "irr_mm": -161.42,
+      "n_leached": 1.784
+    },
+    "median_reward_delta": -398.985,
+    "years_beating_farmer_ufga_reward": 2,
+    "fallbacks": 0,
+    "receipt_status": {
+      "completed": 20
+    },
+    "llm_calls_csv": 3724,
+    "receipt_telemetry_calls": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0
+  },
+  "per_year": {
+    "single": {
+      "UFGA-1990": {
+        "reward": -40.06,
+        "ref": 1296.33
+      },
+      "UFGA-1991": {
+        "reward": 1196.15,
+        "ref": 1103.81
+      },
+      "UFGA-1992": {
+        "reward": 232.23,
+        "ref": 959.61
+      },
+      "UFGA-1993": {
+        "reward": 735.38,
+        "ref": 1012.54
+      },
+      "UFGA-1994": {
+        "reward": 309.32,
+        "ref": 1398.32
+      },
+      "UFGA-1995": {
+        "reward": 1332.76,
+        "ref": 1180.57
+      },
+      "UFGA-1996": {
+        "reward": 573.35,
+        "ref": 1176.57
+      },
+      "UFGA-1997": {
+        "reward": 638.63,
+        "ref": 1248.34
+      },
+      "UFGA-1998": {
+        "reward": -203.28,
+        "ref": 377.37
+      },
+      "UFGA-1999": {
+        "reward": 505.23,
+        "ref": 1293.35
+      },
+      "UFGA-2000": {
+        "reward": -152.57,
+        "ref": 1182.71
+      },
+      "UFGA-2001": {
+        "reward": -260.13,
+        "ref": 1205.53
+      },
+      "UFGA-2002": {
+        "reward": -306.42,
+        "ref": 1418.47
+      },
+      "UFGA-2003": {
+        "reward": 872.69,
+        "ref": 1256.59
+      },
+      "UFGA-2004": {
+        "reward": 71.8,
+        "ref": 1025.74
+      },
+      "UFGA-2005": {
+        "reward": 548.44,
+        "ref": 885.66
+      },
+      "UFGA-2006": {
+        "reward": -147.34,
+        "ref": 1197.74
+      },
+      "UFGA-2007": {
+        "reward": 1084.1,
+        "ref": 1263.52
+      },
+      "UFGA-2008": {
+        "reward": 274.02,
+        "ref": 1097.87
+      },
+      "UFGA-2009": {
+        "reward": 320.71,
+        "ref": 753.71
+      }
+    },
+    "multi": {
+      "UFGA-1990": {
+        "reward": 359.9,
+        "ref": 1296.33
+      },
+      "UFGA-1991": {
+        "reward": 1436.18,
+        "ref": 1103.81
+      },
+      "UFGA-1992": {
+        "reward": 834.6,
+        "ref": 959.61
+      },
+      "UFGA-1993": {
+        "reward": 959.81,
+        "ref": 1012.54
+      },
+      "UFGA-1994": {
+        "reward": 813.57,
+        "ref": 1398.32
+      },
+      "UFGA-1995": {
+        "reward": 1143.55,
+        "ref": 1180.57
+      },
+      "UFGA-1996": {
+        "reward": 1544.81,
+        "ref": 1176.57
+      },
+      "UFGA-1997": {
+        "reward": 789.71,
+        "ref": 1248.34
+      },
+      "UFGA-1998": {
+        "reward": -274.45,
+        "ref": 377.37
+      },
+      "UFGA-1999": {
+        "reward": 660.25,
+        "ref": 1293.35
+      },
+      "UFGA-2000": {
+        "reward": 244.29,
+        "ref": 1182.71
+      },
+      "UFGA-2001": {
+        "reward": 999.83,
+        "ref": 1205.53
+      },
+      "UFGA-2002": {
+        "reward": 284.9,
+        "ref": 1418.47
+      },
+      "UFGA-2003": {
+        "reward": 750.48,
+        "ref": 1256.59
+      },
+      "UFGA-2004": {
+        "reward": 687.75,
+        "ref": 1025.74
+      },
+      "UFGA-2005": {
+        "reward": 689.84,
+        "ref": 885.66
+      },
+      "UFGA-2006": {
+        "reward": -204.68,
+        "ref": 1197.74
+      },
+      "UFGA-2007": {
+        "reward": 2.84,
+        "ref": 1263.52
+      },
+      "UFGA-2008": {
+        "reward": 758.53,
+        "ref": 1097.87
+      },
+      "UFGA-2009": {
+        "reward": 445.31,
+        "ref": 753.71
+      }
+    }
+  },
+  "gpu_cost": "Not measured; unknown, not zero. Shared GPU with an unidentified concurrent client."
+}

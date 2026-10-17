@@ -1,0 +1,96 @@
+{
+  "exported_at": "2026-10-17T21:30:58.592102+00:00",
+  "source_run": "tmp\\full-extract\\results\\runtime-p3-v1-dev-20261017T205016Z",
+  "derived": true,
+  "configs": [
+    "multi"
+  ],
+  "logs": {
+    "multi/UFGA-1990": {
+      "source_sha256": "4a46ec493cdc8807365cf425c1d3f2d7310d4125eb164005f4b62f86312176ab",
+      "export_sha256": "283383c42621b988de14789fc412e98e8c1a120e6c1ce24203ab326a0c5dac8f"
+    },
+    "multi/UFGA-1991": {
+      "source_sha256": "f5b12519c2b7394c37481bed0b2a9be1f1bc530b279afeb5688d0f9f47c56a68",
+      "export_sha256": "879ca4f2886eaa7ecc0c8dd8ea79ba149abb18a70fd7818f9a01e493bef2fdb0"
+    },
+    "multi/UFGA-1992": {
+      "source_sha256": "35935afb4c29f46d671e525985246bae5af90ad2e5a0bd3e2a916e1a1087a521",
+      "export_sha256": "e53685da28201ccc65a31fee257f2d2aed671e3b314af529d32584e00d1d8868"
+    },
+    "multi/UFGA-1993": {
+      "source_sha256": "0a5f67c34d5430b9e4b67f32b1f99c35142bcc987713ea1d9cedcad3b4495d1e",
+      "export_sha256": "80334d46b0e98a8aede89f037f74fb013c7daf667ddc052dd7a06340096e56f5"
+    },
+    "multi/UFGA-1994": {
+      "source_sha256": "6787e5c8135d76f84f9b09a6c474c0596a6293990412662c98ce7af337518644",
+      "export_sha256": "f94c0ecd12b99054df4e3740afa2d72a5f12e37604aebf225ab548a79d4375e4"
+    },
+    "multi/UFGA-1995": {
+      "source_sha256": "de20c6dfe2a7b03f80219ddb00d5fcdda0fb6639f25a145f9fdde1d9fc31e9ab",
+      "export_sha256": "49be0915e951611322d947bee9c24c16c3ace2fdc3935b4d8e702f86ba11665c"
+    },
+    "multi/UFGA-1996": {
+      "source_sha256": "dd89e28a82b08e71177dabb05007e7a59cc12f5ae6b6adbe49a8780039e8da95",
+      "export_sha256": "54f9d94fa663edb7c0ef08503a8831a2e59d952df2f1a163ca8c9ffe2fc1fed7"
+    },
+    "multi/UFGA-1997": {
+      "source_sha256": "89b8d2396fd9ac73beb94e03de336a06ce88a5b0dee847f0369b087bbd836b4d",
+      "export_sha256": "9b535bae2b1927eca7e804d2f8f9893902a84acc3bbe75cfe4ceed386c1cd7f5"
+    },
+    "multi/UFGA-1998": {
+      "source_sha256": "e7d72c0374f0130e5c95ed8b83280ec7adacbb43da44f255e0cdbe2d9550d9e1",
+      "export_sha256": "cb5b5373cb593bcc29278eefa6a9bafc57eee794c823aa354b70176905e09ff1"
+    },
+    "multi/UFGA-1999": {
+      "source_sha256": "8227738b0387c003ba08defcb6a79e94cce635f7b07ef669718ef74450c8c063",
+      "export_sha256": "83ad066a76af176542587f31d06a6cc768467b8665811fe4679b45a2b06431b7"
+    },
+    "multi/UFGA-2000": {
+      "source_sha256": "25a440b988919ff0ac5a597966e8796595b1a6194068c12f8f70759d80e19c93",
+      "export_sha256": "fd32cce4ec531f2bd8e9b5db1eb7f0155c08e8d6dc814a0d14d471dcdf8935d0"
+    },
+    "multi/UFGA-2001": {
+      "source_sha256": "936c15faae18963a60b776ba104737b18a264d71087a62f0baaf152220c5b0a0",
+      "export_sha256": "ee3a303b49ca39c7d853fc82714d3fdead0b2659e307b767112e6d97316b0cb1"
+    },
+    "multi/UFGA-2002": {
+      "source_sha256": "0380ace38571838c79dc7c74a2565d0bcf01fd286b5352f64b5683a07ed375da",
+      "export_sha256": "26cce79833ed3f9eeefe1a7bda814205ce05bf51d6b5ed7a4b32544ab1e61a4f"
+    },
+    "multi/UFGA-2003": {
+      "source_sha256": "e657ae8f30aef5f3f382aa851b875cce28a4decbf819cc274f34e17be55d82ba",
+      "export_sha256": "14ea4a5aa6d6c317c6db971b9ad022da5c9770349f8df9f258a12ca65c30c066"
+    },
+    "multi/UFGA-2004": {
+      "source_sha256": "0dab181d4de0668cf260c433cf9aca6bc5a87766f36140dd00a3e0b9509bb0d5",
+      "export_sha256": "562651a7c3ff8edbf872245da44f1a26cf40ce3484bb93bd05991fef39360905"
+    },
+    "multi/UFGA-2005": {
+      "source_sha256": "a6efab58d1faad3364d460e702fdbd671f7b401f33bf8a076993f879a8c0a145",
+      "export_sha256": "ff79129ef0a0b8a58ac11ecdf2162024740e96289e61fa9a9a7e7c0b8f2b3de4"
+    },
+    "multi/UFGA-2006": {
+      "source_sha256": "bd83aa106aebbbb6426652e98db6ad6bc34cadc841871455efb66e5948b8ce38",
+      "export_sha256": "d060daeee7086d4326ebc3f77ef5eb3033aa9bf16ebb80080a53a562750695cd"
+    },
+    "multi/UFGA-2007": {
+      "source_sha256": "599f9c710cc506124c912cce1466a4a2986aad4ab0ed9b1b96ad832b91990a84",
+      "export_sha256": "aa1b83fe16a6f6e08c9da59d6c7e59ee2a6b0b12bdce7a876064b991ea2e6e11"
+    },
+    "multi/UFGA-2008": {
+      "source_sha256": "5e8a6cc03cf4c2c291b649d1392483788f3b9550c3f5709bedbd2d25fce7dd34",
+      "export_sha256": "cf0722e2f610344fd36637d0606ddb0d0f2ccc540e2b061608f058869d3c10d3"
+    },
+    "multi/UFGA-2009": {
+      "source_sha256": "11e44b5827b650685bc736fbf4807de5647bfc19af79e01cefaa0228481f39d8",
+      "export_sha256": "139b1f255d6ce661e7f97f251fc3d9f5bb7b1cf2bdc7e60c850eb0e2d804f8ed"
+    }
+  },
+  "transformations": [
+    "critic verdict: add text and boolean objection beside raw content",
+    "tool_call args: JSON string to object; args_raw kept if not an object",
+    "reset task: add split from dev task file"
+  ],
+  "note": "Display copy for the UI. Audits and receipts refer to the source logs."
+}

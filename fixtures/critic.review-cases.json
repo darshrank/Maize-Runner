@@ -1,0 +1,395 @@
+{
+  "scope": "Author-constructed synthetic critic review cases. No crop outcome or held-out season evaluation. Diagnostic coverage, not general accuracy.",
+  "cases": [
+    {
+      "case_id": "over_remaining_n",
+      "expected_accept": false,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 290,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 10,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=1.0; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 40,
+          "irr_mm": 0,
+          "reason": "Apply 40 kg N; this is within our remaining allowance."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 290,
+          "n_remaining_season_cap": 10,
+          "irr_total_mm": 0,
+          "spend_usd": 481.4
+        }
+      }
+    },
+    {
+      "case_id": "over_weekly_water",
+      "expected_accept": false,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 200,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 100,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=0.3; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 0,
+          "irr_mm": 60,
+          "reason": "Dry soil needs 60 mm irrigation now."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 200,
+          "n_remaining_season_cap": 100,
+          "irr_total_mm": 0,
+          "spend_usd": 332.0
+        }
+      }
+    },
+    {
+      "case_id": "inverted_stress",
+      "expected_accept": false,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 100,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 200,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=1.0; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 120,
+          "irr_mm": 0,
+          "reason": "n_stress=1.0 proves severe N deficiency, so apply 120 kg N."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 100,
+          "n_remaining_season_cap": 200,
+          "irr_total_mm": 0,
+          "spend_usd": 166.0
+        }
+      }
+    },
+    {
+      "case_id": "inverted_water_comparison",
+      "expected_accept": false,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 200,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 100,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=1.0; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 0,
+          "irr_mm": 25,
+          "reason": "The supplied rule is water below 0.35 => 25 mm. Moisture 0.74 is below 0.35, so apply 25 mm."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 200,
+          "n_remaining_season_cap": 100,
+          "irr_total_mm": 0,
+          "spend_usd": 332.0
+        }
+      }
+    },
+    {
+      "case_id": "n_cap_forbids_water",
+      "expected_accept": false,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 300,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 0,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=0.3; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 0,
+          "irr_mm": 0,
+          "reason": "The nitrogen season cap is exhausted, so irrigation is forbidden despite dry soil."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 300,
+          "n_remaining_season_cap": 0,
+          "irr_total_mm": 0,
+          "spend_usd": 498.0
+        }
+      }
+    },
+    {
+      "case_id": "historical_spend_is_cap",
+      "expected_accept": false,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 200,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 100,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=0.3; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 0,
+          "irr_mm": 0,
+          "reason": "spend_usd is already positive, so the dollar cap is exhausted and watering is prohibited."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 200,
+          "n_remaining_season_cap": 100,
+          "irr_total_mm": 0,
+          "spend_usd": 332.0
+        }
+      }
+    },
+    {
+      "case_id": "threshold_equality",
+      "expected_accept": false,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.35,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 200,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 100,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=0.7; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 0,
+          "irr_mm": 25,
+          "reason": "The rule is water strictly below 0.35 => 25 mm. Moisture equals 0.35, so it is strictly below 0.35."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.35,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 200,
+          "n_remaining_season_cap": 100,
+          "irr_total_mm": 0,
+          "spend_usd": 332.0
+        }
+      }
+    },
+    {
+      "case_id": "valid_dry_water_no_n",
+      "expected_accept": true,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 300,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 0,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=0.3; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 0,
+          "irr_mm": 25,
+          "reason": "Moisture 0.18 is low; apply 25 mm independently of the exhausted nitrogen cap."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.18,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 300,
+          "n_remaining_season_cap": 0,
+          "irr_total_mm": 0,
+          "spend_usd": 498.0
+        }
+      }
+    },
+    {
+      "case_id": "valid_wet_conserve",
+      "expected_accept": true,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70,
+          "n_applied_total": 200,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 100,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=1.0, water_stress=1.0; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 0,
+          "irr_mm": 0,
+          "reason": "Current soil is moist, mineral N is available and crop stress factors are 1.0; conserve inputs this week."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.74,
+          "soil_n_kg_ha": 70
+        },
+        "get_budget": {
+          "n_applied_total": 200,
+          "n_remaining_season_cap": 100,
+          "irr_total_mm": 0,
+          "spend_usd": 332.0
+        }
+      }
+    },
+    {
+      "case_id": "valid_supported_n",
+      "expected_accept": true,
+      "context": {
+        "week": 5,
+        "obs": {
+          "day": 35,
+          "week": 5,
+          "stage": "V8",
+          "soil_water_frac": 0.65,
+          "soil_n_kg_ha": 3,
+          "n_applied_total": 180,
+          "irr_total_mm": 0,
+          "biomass_kg_ha": 1800
+        },
+        "remaining_n_kg_ha": 120,
+        "reports": {
+          "weather": "Observed rain last 14 days: 25 mm. Noisy next-7-day outlook: 5 mm total. Forecast is uncertain.",
+          "crop": "Current crop stage V8, n_stress=0.2, water_stress=1.0; both are factors with 1=no stress and 0=severe stress."
+        },
+        "proposal": {
+          "n_kg_ha": 40,
+          "irr_mm": 0,
+          "reason": "V8 crop n_stress=0.2 and estimated soil N=3 support a moderate 40 kg N dose within the remaining 120 kg; soil moisture is adequate."
+        }
+      },
+      "tools": {
+        "get_soil": {
+          "soil_water_frac": 0.65,
+          "soil_n_kg_ha": 3
+        },
+        "get_budget": {
+          "n_applied_total": 180,
+          "n_remaining_season_cap": 120,
+          "irr_total_mm": 0,
+          "spend_usd": 298.8
+        }
+      }
+    }
+  ]
+}

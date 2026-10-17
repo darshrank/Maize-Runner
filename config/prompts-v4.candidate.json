@@ -1,0 +1,18 @@
+{
+  "prompt_version": "v4",
+  "prompt_hashes": {
+    "coordinator.txt": "ae848c77e01eb1237c2c6b76e0307d6020b78d2adb3b08ca67171f4ae3e38b00",
+    "critic.txt": "536f1814f044ff7345e0725da346134e9afdec3780ef99f702942c8fac286e26",
+    "crop.txt": "a1fb669ec5d5c4f0b13f54556821b108944fdd78ce23d84fbfb649927e17b5a7",
+    "planner.txt": "e40655a7ea7ba5da127a80caae7efa5fb1d03097797c6e6b400cf30fcd170aed",
+    "weather.txt": "e92cc1d9d1ceec8fa81912874ca88bbabee44cc3f4fa907ddbc86453b095acde"
+  },
+  "configs": [
+    "single",
+    "multi",
+    "multi_no_critic",
+    "multi_no_weather",
+    "multi_no_tools"
+  ],
+  "status": "snapshot; real-dev selection pending"
+}
