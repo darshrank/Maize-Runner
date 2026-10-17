@@ -59,6 +59,19 @@ no held-out years, no simulator/price/reward/cap change.
 - [ ] Then a separate, labelled agent-fix experiment on the same dev years
   (budget statements, critic arithmetic, dry-soil irrigation, critic verbosity).
 
+- [x] Person C UI request: `runs/multi/UFGA-1990..2009.jsonl` + `runs/index.json` are
+  a **derived display copy** of the protocol-3 v1 real multi run
+  (`scripts/export_ui_logs.py`; source/export SHA-256 in `runs/export-manifest.json`).
+  Critic verdicts carry `{"text", "objection": bool}` beside raw content; tool_call
+  args are objects (`args_raw` kept if not an object); reset task has `split`. Audits
+  refer to the archived source logs. The live logger now writes these formats too
+  (log-only change in the unpushed-then-pushed protocol-4 code; env request unchanged).
+  Old local toy `runs/` content was moved to ignored `tmp/old-runs-backup/`.
+- [ ] Protocol 4 (`e7d23a5`): code-computed `proposal_check` for critic/coordinator,
+  `max_n_this_week_kg_ha`, visible trailing-JSON extraction. 72 local tests pass.
+  Not yet deployed; pilot then 20-year run pending, after the v3 prompt-only run
+  (`results/prompt-p3-v3-dev-20261017T212226Z`, started 21:22:26Z).
+
 Read-only helper: `scripts/inspect_live_run.py RUN_DIR --weeks` (copy on Brev at
 `/ephemeral/fieldtwin/tools/`, outside the checkout).
 

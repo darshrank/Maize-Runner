@@ -13,6 +13,23 @@ PROMPT_ROOT = Path(__file__).parent / "prompts"
 AGENT_PROTOCOL_VERSION = 4
 
 
+def critic_log_fields(verdict):
+    """UI fields for a parsed critic verdict: display text and a boolean objection flag."""
+    objection = not verdict["accept"]
+    return {"text": verdict.get("objection") if objection else "Accepted: no objection.", "objection": objection}
+
+
+def tool_args_fields(arguments):
+    """Log tool arguments as an object; keep the raw text when it is not a JSON object."""
+    if isinstance(arguments, dict):
+        return {"args": arguments}
+    try:
+        value = json.loads(arguments)
+    except (TypeError, ValueError):
+        value = None
+    return {"args": value} if isinstance(value, dict) else {"args": {}, "args_raw": arguments}
+
+
 def trailing_json(content):
     """Return (object, prose prefix) when content ends with exactly one JSON object."""
     content = content.strip()
@@ -117,7 +134,7 @@ class AgentTeam:
                     for call in calls:
                         fn = call["function"]
                         name, call_id = fn["name"], call["id"]
-                        log.emit(week, role, "tool_call", {"name": name, "args": fn["arguments"]})
+                        log.emit(week, role, "tool_call", {"name": name, **tool_args_fields(fn["arguments"])})
                         if name not in request_tools:
                             raise ValueError(f"Tool {name!r} is not permitted for {role}")
                         if not isinstance(call_id, str) or not call_id or call_id in ids:
@@ -190,7 +207,8 @@ class AgentTeam:
                 messages.append({"role": "user", "content": "Invalid response. " + output_guide})
                 continue
             state.malformed = 0
-            log.emit(week, role, "message", {"content": content})
+            log.emit(week, role, "message", {"content": content,
+                     **(critic_log_fields(answer) if output == "critique" else {})})
             return answer
         raise PolicyFailure(f"{role} exceeded six model turns")
 

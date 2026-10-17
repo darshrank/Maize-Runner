@@ -8,6 +8,11 @@ __pycache__/
 !.env.example
 runs/*
 !runs/.gitkeep
+!runs/index.json
+!runs/export-manifest.json
+!runs/multi/
+runs/multi/*
+!runs/multi/UFGA-*.jsonl
 results/*
 !results/.gitkeep
 !results/iterations.md

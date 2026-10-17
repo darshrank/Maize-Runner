@@ -63,7 +63,7 @@ async def run_season(task, config, env, model, run_dir, *, n_cap=None,
         episode_id, obs, week = reset["episode_id"], reset["obs"], reset["week"]
         if week != 0:
             raise ValueError("Reset must start at week 0")
-        log.emit(0, "env", "message", {"reset": reset, "task": task.reset_body()})
+        log.emit(0, "env", "message", {"reset": reset, "task": {**task.reset_body(), "split": task.split}})
         log.emit(0, "coordinator", "message", {"episode_id": episode_id, "obs": obs,
                  "agent_protocol_version": AGENT_PROTOCOL_VERSION,
                  "synthetic_environment": bool(env.synthetic), "synthetic_model": bool(model.synthetic),

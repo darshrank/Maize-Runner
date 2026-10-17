@@ -311,6 +311,35 @@ def test_prose_before_final_json_is_extracted_visibly(tmp_path, content, expecte
     assert any(e["data"].get("lenient_json_extracted") for e in trace) is (expected == 30)
 
 
+def test_live_logs_use_ui_critic_tool_and_reset_formats(tmp_path):
+    asyncio.run(run_season(Task("dev", "STUB", 1), "multi", StubEnvironment(1), StubModel(), tmp_path))
+    trace = events(tmp_path / "multi/dev.jsonl")
+    verdicts = [e["data"] for e in trace if e["agent"] == "critic" and "objection" in e["data"]]
+    reviews = [e["data"]["review_record"] for e in trace if "review_record" in e["data"]]
+    assert verdicts and [v["objection"] for v in verdicts] == [not r["accept"] for r in reviews]
+    assert all(isinstance(v["text"], str) and v["text"] for v in verdicts)
+    assert all(isinstance(e["data"]["args"], dict) for e in trace if e["kind"] == "tool_call")
+    assert next(e["data"]["task"] for e in trace if "reset" in e["data"])["split"] == "dev"
+
+
+def test_ui_export_transforms_archived_formats_without_touching_source(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("export_ui_logs", "scripts/export_ui_logs.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    splits = {"UFGA-1990": "dev"}
+    critic = {"week": 0, "agent": "critic", "kind": "message", "data": {"content": '{"accept": false, "objection": "Too much N"}'}}
+    assert module.transform(critic, splits)["data"]["objection"] is True
+    assert module.transform(critic, splits)["data"]["text"] == "Too much N"
+    call = {"week": 0, "agent": "weather", "kind": "tool_call", "data": {"name": "get_weather", "args": '{"": "{}"}'}}
+    assert module.transform(call, splits)["data"]["args"] == {"": "{}"}
+    bad = {**call, "data": {"name": "get_weather", "args": "not json"}}
+    assert module.transform(bad, splits)["data"] == {"name": "get_weather", "args": {}, "args_raw": "not json"}
+    reset = {"week": 0, "agent": "env", "kind": "message", "data": {"reset": {}, "task": {"task_id": "UFGA-1990"}}}
+    assert module.transform(reset, splits)["data"]["task"]["split"] == "dev"
+    assert "split" not in reset["data"]["task"]
+
+
 @pytest.mark.parametrize("content", ['no json at all', '{"n_kg_ha": 1} trailing prose', '{"n_kg_ha": 1, "irr'])
 def test_unrecoverable_content_still_fails_validation(content):
     from fieldtwin_agents.agents import trailing_json
