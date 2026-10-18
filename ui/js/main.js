@@ -2,7 +2,7 @@
 // Demo flow (STATE.md): Season plays a past Gainesville test season, the presenter starts 2026 live (about 20 s a
 // week), moves to How it works, Results and Serving while it runs, and ends on the 2026 season-end result. Tabs follow
 // that order: 1 Season, 2 How it works, 3 Results, 4 Serving, 5 Agents, 6 Gym (the dock at the bottom, dock.js;
-// keys 1-6). The top bar holds the wordmark, the live chip during a live run (click: back
+// keys 1-6). No top bar (fix3): bottom right, level with the dock, the live chip during a live run (click: back
 // to Season) and the split badge of the current tab. Each tab has one headline saying what it proves.
 //
 // Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR (LEFT

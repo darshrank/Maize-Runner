@@ -24,15 +24,12 @@
     </filter>
   </svg>
 
-  <!-- Top bar (every page): wordmark, live chip during a live run (click: back to Season), the split badge for the
-       current tab. Pages are switched by the dock at the bottom (dock.js) or keys 1-6. -->
-  <header id="topbar">
-    <div id="wordmark"><i class="mark"></i><span>Maize Runner</span></div>
-    <div id="topright">
-      <button id="livechip" class="live-chip" hidden aria-label="Live season: back to Season"><i class="live-dot"></i><span class="t mono"></span></button>
-      <span id="src" class="badge split" hidden title="Split of every number on this tab"></span>
-    </div>
-  </header>
+  <!-- No top bar (fix3). Bottom right, level with the dock (every page): the live chip during a live run (click: back
+       to Season) and the split badge for the current tab. Pages are switched by the dock (dock.js) or keys 1-6. -->
+  <div id="corner">
+    <button id="livechip" class="live-chip" hidden aria-label="Live season: back to Season"><i class="live-dot"></i><span class="t mono"></span></button>
+    <span id="src" class="badge split" hidden title="Split of every number on this tab"></span>
+  </div>
 
   <!-- Season headline (3D and 2D): what the tab proves, then the season in plain words. Live: the run's status line. -->
   <header id="season-head" class="head">

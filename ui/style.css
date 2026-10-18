@@ -55,7 +55,7 @@
   --fs-h1: calc(clamp(30px, 2.3vw, 42px) * var(--type-scale));    /* tab headline */
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);   /* spring-like ease-out, no overshoot */
-  --gutter: 32px; --top: 56px; --dock: 84px; --radius: 20px; --blur: 18px;
+  --gutter: 32px; --top: 0px; --dock: 84px; --radius: 20px; --blur: 18px;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -107,16 +107,12 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .glow { filter: url(#glow); }
 .lite .glow { filter: none; }
 
-/* ---------------------------------------------------------------- top bar: wordmark, live chip, split */
-#topbar {
-  position: fixed; top: 0; left: 0; right: 0; height: var(--top); z-index: 9;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 var(--gutter);
-  border-bottom: 1px solid var(--glass-border);
-  background: rgba(10, 10, 11, 0.55); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+/* ---------------------------------------------------------------- corner: live chip, split (fix3: no top bar, --top 0) */
+#corner {
+  position: fixed; right: var(--gutter); bottom: 27px; z-index: 9;
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0;
 }
-#wordmark { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: var(--fs-3); letter-spacing: -0.01em; }
-#wordmark .mark { width: 10px; height: 10px; background: var(--accent); display: inline-block; border-radius: 2px; }
-#topright { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+#corner .badge.split { background: var(--glass-scene); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur)); }
 .live-chip {
   display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--glass-border); background: var(--accent-soft); color: var(--text); font-size: var(--fs-1); white-space: nowrap;
