@@ -50,6 +50,7 @@ uv run python -m agents_a.compare                           # comparison table -
 | `d0_single` | one agent, all tools, first prompt | 660 (tune 686, check 580) | -2.75 | done: fails in dry years (under-irrigation), over-fertilizes |
 | `d1_multi` | 5-role team, first prompt | 1 season only | | stopped: under-fertilized |
 | `d1b_multi` | d1 + N-economics prompt fixes | 1 season only | | stopped: N overshoot; water not fixed |
+| `d0b_single` | one agent with all of d1c's knowledge (fair test) | tune 1,396, check 1,069 | tune 1.41, check 0.24 | ties the team on tuned seasons; worse on unseen ones; 19 fallbacks vs 0 |
 | **`d1c_multi`** | 5-role team + sourced agronomy (UF/IFAS) | **tune 1,403, check 1,190; test 1,306** | **tune 1.45, check 1.20; test 1.21** | **final (A4 done)**; weak spot: leaching in wet seasons |
 
 Live table: `comparison.md` (`uv run python -m agents_a.compare`).

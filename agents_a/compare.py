@@ -29,7 +29,7 @@ def main() -> None:
              "|---" * 12 + "|"]
     for design in DESIGNS:
         rows = read_rows(ROOT / "agents_a" / "designs" / design / "results" / "eval.csv")
-        for subset in ("dev-tune", "dev-check", "test"):
+        for subset in ("dev-tune", "dev-check", "test", "tift_test"):
             sub = [r for r in rows if subset_of(r) == subset]
             if not sub:
                 continue

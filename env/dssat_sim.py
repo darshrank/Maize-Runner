@@ -29,6 +29,7 @@ Mapping notes (DSSAT has no direct output for some contract fields):
 """
 
 import atexit
+from datetime import date, timedelta
 import json
 import os
 import re
@@ -40,7 +41,8 @@ import weakref
 from pathlib import Path
 
 from env.sim_base import Simulator
-from env.weather import load_year, wth_path
+from env.weather import SITES as SITE_INFO
+from env.weather import load_year, planting_doy, wth_path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKER = Path(__file__).resolve().parent / "dssat_worker.py"
@@ -50,8 +52,9 @@ DEFAULTS = {
     "xfile_dir": ".cache/dssat_x",      # per-year copies of the experiment file
     "timeout_s": 120,
 }
-SITES = {"UFGA"}                 # the maize experiment shipped with gym-DSSAT
+SITES = set(SITE_INFO)           # weather stations; all reuse the UFGA8201 soil, hybrid and management
 BASE_YEAR = 1982                 # the experiment's original year (UFGA8201)
+BASE_PLANTING_DOY = 57           # its planting day (PDATE 82057)
 XFILE = "gym_dssat_pdi/envs/configs/maize/UFGA8201.jinja2"
 SOIL_N_INIT = 15.0               # kg/ha mineral N at simulation start (UFGA8201 initial conditions)
 MINERALIZATION = 0.3             # kg/ha/day, calibrated so a zero-N season ends near 0
@@ -139,17 +142,29 @@ class DssatSimulator(Simulator):
         self.close()
 
     # ---- experiment file for a real year -----------------------------------
-    def _xfile_for_year(self, year: int) -> Path:
-        """Copy of gym-DSSAT's X-file template with every 1982/1983 YYDDD date moved to year/year+1.
+    def _xfile_for_year(self, year: int, site: str = "UFGA") -> Path:
+        """Copy of gym-DSSAT's X-file template moved to `year` and `site`: every 1982/1983 YYDDD date is shifted to
+        the target year and by the site's planting offset (start, planting, harvest window and reported events keep
+        their spacing), and the field uses the site's weather station and coordinates.
         The jinja placeholders ({{ wther }} etc.) stay; gym-DSSAT fills them."""
         venv = Path(self.cfg["python"]).parent.parent
         base = next(venv.glob(f"lib/python3*/site-packages/{XFILE}")).read_text()
-        shift = {BASE_YEAR % 100: year % 100, (BASE_YEAR + 1) % 100: (year + 1) % 100}
-        text = re.sub(r"\b(8[23])(\d{3})\b", lambda m: f"{shift[int(m.group(1))]:02d}{m.group(2)}", base)
+        offset = planting_doy(site) - BASE_PLANTING_DOY
+
+        def move(m: re.Match) -> str:
+            yy, ddd = int(m.group(1)), int(m.group(2))
+            d = date(year + (1900 + yy - BASE_YEAR), 1, 1) + timedelta(days=ddd - 1 + offset)
+            return f"{d.year % 100:02d}{d.timetuple().tm_yday:03d}"
+
+        text = re.sub(r"\b(8[23])(\d{3})\b", move, base)
+        info = SITE_INFO[site]
+        text = text.replace("UFGA0002 UFGA ", f"UFGA0002 {site:<4s} ", 1)   # field's weather station (WSTA)
+        text = re.sub(r"^ 1\s+29\.6380\s+-82\.3689\s+40\b",
+                      f" 1 {info['lat']:15.4f} {info['lon']:15.4f} {info['elev']:9d}", text, count=1, flags=re.M)
         out_dir = Path(self.cfg["xfile_dir"])
         out_dir = out_dir if out_dir.is_absolute() else ROOT / out_dir
         out_dir.mkdir(parents=True, exist_ok=True)
-        path = out_dir / f"UFGA{year}.jinja2"
+        path = out_dir / f"{site}{year}.jinja2"
         tmp = path.with_suffix(f".{uuid.uuid4().hex}.tmp")   # unique: the server resets in parallel threads
         tmp.write_text(text)
         tmp.replace(path)
@@ -162,7 +177,7 @@ class DssatSimulator(Simulator):
         self.year_weather = load_year(site, year)   # also validates that the year exists
         wth = wth_path(site, year)
         self._start_worker()
-        resp = self._request({"cmd": "start", "xfile_template": str(self._xfile_for_year(year)),
+        resp = self._request({"cmd": "start", "xfile_template": str(self._xfile_for_year(year, site)),
                               "wth": str(wth)})
         self.planting_index = None
         self.state = resp["state"]
