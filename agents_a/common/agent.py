@@ -20,9 +20,12 @@ def function_tool(name: str, description: str, properties: dict, required: list[
 
 
 def run_role(policy, llm, role: str, system: str, user: str, read_tools: list[dict], answer_tool: dict,
-             episode_id: str, week: int, env, log, max_turns: int = 6, max_bad: int = 2) -> dict | None:
+             episode_id: str, week: int, env, log, max_turns: int = 6, max_bad: int = 2,
+             local_tools: dict | None = None) -> dict | None:
+    """local_tools: optional {name: (schema, fn)} computed on the agent side (e.g. a water balance); fn() -> result."""
+    local_tools = local_tools or {}
     answer_name = answer_tool["function"]["name"]
-    tools = read_tools + [answer_tool]
+    tools = read_tools + [schema for schema, _ in local_tools.values()] + [answer_tool]
     allowed = {t["function"]["name"] for t in read_tools}
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     bad = 0
@@ -55,6 +58,11 @@ def run_role(policy, llm, role: str, system: str, user: str, read_tools: list[di
                 bad += 1
             elif name in allowed and name in READ_TOOLS:
                 result = policy.call_tool(name, episode_id, week, env, log, agent=role)
+                bad = 0
+            elif name in local_tools:
+                log.event(week, role, "tool_call", {"name": name, "args": {}})
+                result = local_tools[name][1]()
+                log.event(week, role, "tool_result", {"name": name, "result": result})
                 bad = 0
             else:
                 bad += 1
