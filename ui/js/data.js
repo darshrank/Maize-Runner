@@ -10,7 +10,9 @@
 // task id, and eval.csv / summary.md are cut to their dev rows before any value is read. results_baseline's
 // runs/index.json is never read (it lists test years). Fake mode is retired: ui/fake/ and
 // lanec/scripts/fake_logs.py stay on disk, unused.
-// A missing or broken file returns null; callers show a quiet placeholder.
+// Every request goes through net.js (at most 4 in flight, network errors / resets retried). A missing file (HTTP
+// 404) or an empty one returns null and callers show a quiet placeholder; any other failure returns a LoadError
+// (re-exported here), which is listed in loadFailures() for the UI's load-failure card.
 //
 // Parsing rules (STATE.md): the line-level week is the decision week (0..W-1); the final line sits at week W
 // (harvest). A coordinator decision wins over the runner's policy/decision line. Critic messages are
@@ -18,6 +20,10 @@
 // proposal records) are not chat. A's design logs keep message text empty and put the content in
 // data.tool_calls[{name, arguments: JSON string}]: report tools become chat (see A_REPORT_TOOLS); a review_plan
 // verdict other than "accept" is a Critic objection. Fallbacks {why} (UI_SPEC) or {text}.
+
+import { request, fail, LoadError, loadFailures, onLoadFailures } from "./net.js";
+
+export { LoadError, loadFailures, onLoadFailures };
 
 const params = new URLSearchParams(location.search);
 export const LITE = params.get("lite") === "1";
@@ -64,22 +70,19 @@ export const SEASON_PAIR = { left: "farmer_ufga", right: "a_d1c_multi" };
 
 // ---------------------------------------------------------------- fetch helpers
 
-async function fetchText(url) {
-  try {
-    const r = await fetch(url, { cache: "no-store" });
-    return r.ok ? await r.text() : null;
-  } catch {
-    return null;
-  }
+// Text, null (404), or a LoadError.
+function fetchText(url) {
+  return request(url);
 }
 
+// Parsed JSON, null (404), or a LoadError (fetch failure, or a file that does not parse).
 async function fetchJson(url) {
   const text = await fetchText(url);
-  if (text === null) return null;
+  if (text === null || text instanceof LoadError) return text;
   try {
     return JSON.parse(text);
   } catch {
-    return null;
+    return fail(url, "not valid JSON");
   }
 }
 
@@ -101,12 +104,13 @@ export function sortConfigs(configs) {
 }
 
 // Dev seasons from tasks/dev.jsonl ({task_id, site, year, split}), in file order. Nothing else is a season here.
+// Returns the count, or a LoadError when the file failed to load.
 const devTasks = [];
 
 async function loadDevTasks() {
   if (devTasks.length) return devTasks.length;
   const text = await fetchText(paths.devTasks);
-  if (text === null) return 0;
+  if (text === null || text instanceof LoadError) return text || 0;
   for (const line of text.split("\n")) {
     try {
       const t = JSON.parse(line);
@@ -134,12 +138,16 @@ export function tuneTag(task) {
 
 // {config: [dev task ids]}: A's baseline configs for every dev season, B's runs/index.json and each A design's
 // runs/index.json, cut to dev seasons. fake_* configs and A's baseline configs listed in runs/index.json (local
-// toy runs) are skipped. A config listed by an A design reads its logs from that design's folder.
+// toy runs) are skipped. A config listed by an A design reads its logs from that design's folder. null when
+// tasks/dev.jsonl is missing or empty, a LoadError when it failed to load; an index.json that fails is skipped
+// (and listed in loadFailures()).
 export async function loadIndex() {
-  if (!(await loadDevTasks())) return null;
+  const count = await loadDevTasks();
+  if (count instanceof LoadError) return count;
+  if (!count) return null;
   const index = Object.fromEntries(BASELINE_CONFIGS.map((c) => [c, seasons()]));
   const add = (obj, design = null) => {
-    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+    if (!obj || obj instanceof LoadError || typeof obj !== "object" || Array.isArray(obj)) return;
     for (const [c, ids] of Object.entries(obj)) {
       if (c.startsWith("fake_") || BASELINE_CONFIGS.includes(c) || !Array.isArray(ids)) continue;
       const dev = ids.filter(isDev);
@@ -154,27 +162,32 @@ export async function loadIndex() {
   return index;
 }
 
-// Does the log file exist? HEAD request, cached. Dev seasons only.
+// Does the log file exist? HEAD request, cached: true, false (404), or a LoadError (not cached, so a later call
+// asks again). Dev seasons only.
 const logExists = new Map();
 
 export function hasLog(config, task) {
   if (!isDev(task)) return Promise.resolve(false);
   const key = `${config}/${task}`;
   if (!logExists.has(key)) {
-    logExists.set(key, fetch(paths.run(config, task), { method: "HEAD", cache: "no-store" })
-      .then((r) => r.ok).catch(() => false));
+    const p = request(paths.run(config, task), { method: "HEAD" }).then((r) => {
+      if (r instanceof LoadError) logExists.delete(key);
+      return r instanceof LoadError ? r : r === true;
+    });
+    logExists.set(key, p);
   }
   return logExists.get(key);
 }
 
 // Season picker: dev seasons where the index lists both SEASON_PAIR configs and both logs exist (dev order).
 // hidden: the dev seasons left out. One season at a time: 40 HEAD requests at once make the local http.server reset
-// connections, and the next fetch (e.g. an eval.csv) then fails.
+// connections, and the next fetch (e.g. an eval.csv) then fails. A HEAD that fails after its retries (LoadError)
+// keeps the season: only a 404 hides it, and loading that season shows the load-failure card if the log fails too.
 export async function pairSeasons(index) {
   const pair = Object.values(SEASON_PAIR), shown = [], hidden = [];
   for (const t of devTasks) {
     const ok = pair.every((c) => ((index && index[c]) || []).includes(t))
-      && (await Promise.all(pair.map((c) => hasLog(c, t)))).every(Boolean);
+      && (await Promise.all(pair.map((c) => hasLog(c, t)))).every((r) => r !== false);
     (ok ? shown : hidden).push(t);
   }
   return { shown, hidden };
@@ -182,10 +195,11 @@ export async function pairSeasons(index) {
 
 // ---------------------------------------------------------------- run log -> weeks model
 
+// The run model, null (missing or empty log), or a LoadError.
 export async function loadRun(config, task) {
   if (!isDev(task)) return null;   // never open a non-dev log
   const text = await fetchText(paths.run(config, task));
-  if (text === null) return null;
+  if (text === null || text instanceof LoadError) return text;
   const events = [];
   for (const line of text.split("\n")) {
     if (!line.trim()) continue;
@@ -360,9 +374,11 @@ export function weekEvents(run, k, stormMm) {
 
 // ---------------------------------------------------------------- weather
 
+// Weather days, null, or a LoadError.
 export async function loadWeather(site, year) {
   if (!site || !year) return null;
   const days = await fetchJson(paths.weather(site, year));
+  if (days instanceof LoadError) return days;
   return Array.isArray(days) && days.length ? days : null;
 }
 
@@ -422,18 +438,26 @@ export function parseDevCsv(text) {
   return rows;
 }
 
-// results_baseline/eval.csv plus each A design's results/eval.csv, dev rows only. null when none loads.
+// results_baseline/eval.csv plus each A design's results/eval.csv, dev rows only: {rows, failed}. failed lists
+// each file that failed to load (LoadError, not 404) with the configs it holds, so Results keeps their rows:
+// BASELINE_CONFIGS for results_baseline, the configs the design's runs/index.json maps to it for a design (the
+// design folder name when its index did not load either). null when every file is missing.
 export async function loadEval() {
-  const texts = await Promise.all([fetchText(paths.eval), ...A_DESIGNS.map((d) => fetchText(paths.aEval(d)))]);
+  const sources = [{ url: paths.eval, configs: BASELINE_CONFIGS }, ...A_DESIGNS.map((d) => {
+    const configs = Object.keys(aDesignOf).filter((c) => aDesignOf[c] === d);
+    return { url: paths.aEval(d), configs: configs.length ? configs : [`${d} (agents_a)`] };
+  })];
+  const texts = await Promise.all(sources.map((s) => fetchText(s.url)));
   if (texts.every((t) => t === null)) return null;
-  return texts.filter((t) => t !== null).flatMap(parseDevCsv);
+  const failed = sources.filter((s, i) => texts[i] instanceof LoadError).map((s) => ({ url: s.url, configs: [...s.configs] }));
+  return { rows: texts.filter((t) => typeof t === "string").flatMap(parseDevCsv), failed };
 }
 
 // results_baseline/summary.md, the "## Split: dev" table only: {head: [...], rows: [[...]]} or null. The text is
-// cut at the next "## " heading before the table is read.
+// cut at the next "## " heading before the table is read. A LoadError when the file failed to load.
 export async function loadSummaryDev() {
   const text = await fetchText(paths.summary);
-  if (text === null) return null;
+  if (text === null || text instanceof LoadError) return text;
   const lines = text.split(/\r?\n/);
   const at = lines.findIndex((l) => /^##\s+Split:\s*dev\s*$/i.test(l.trim()));
   if (at < 0) return null;
@@ -451,11 +475,13 @@ export async function loadSummaryDev() {
 // Pending ask to B (STATE.md): absent until B writes it.
 export async function loadIterations() {
   const items = await fetchJson(paths.iterations);
+  if (items instanceof LoadError) return items;
   return Array.isArray(items) ? items : null;
 }
 
 // STATE.md contract: {vllm_version, model, measured_at, rows: [...]}.
 export async function loadVllmMetrics() {
   const m = await fetchJson(paths.vllm);
+  if (m instanceof LoadError) return m;
   return m && typeof m === "object" && !Array.isArray(m) ? m : null;
 }

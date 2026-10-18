@@ -301,6 +301,21 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
   padding: 12px 18px; border: 1px solid var(--hairline-strong); background: #000; font-size: 15px;
 }
 
+/* Load-failure card (main.js renderLoadCard): the week cards' glass (black at 55%, 16px backdrop blur, 1px hairline,
+   radius 12), quiet text only. Top right; centered in place of the scene when a Season log failed (body.pair-failed). */
+#loadfail {
+  position: fixed; top: var(--top); right: var(--gutter); z-index: 7; width: min(360px, calc(100vw - 2 * var(--gutter)));
+  padding: 12px 16px; border-radius: 12px; border: 1px solid var(--hairline);
+  background: rgba(0, 0, 0, 0.55); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  color: var(--quiet); font-size: 14px; line-height: 1.4;
+}
+.pair-failed #loadfail { top: 45%; right: auto; left: 50%; transform: translate(-50%, -50%); }
+#loadfail .lf-head { font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+#loadfail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+#loadfail li { display: grid; gap: 2px; }
+#loadfail li .mono { overflow-wrap: anywhere; }
+.results-wrap tr.failed td { color: var(--quiet); }
+
 @media (prefers-reduced-motion: reduce) {
   .field-svg .sway { animation: none; }
   .field-svg .stalk, .field-svg .leaf, .field-svg .tassel, .field-svg .water, .field-svg .water-line,
