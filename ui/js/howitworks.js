@@ -15,6 +15,10 @@ import { DOCK_ICONS } from "./dock.js";
 import * as data from "./data.js";
 
 const CONFIG = "a_d1c_multi";
+// Live mode (?live=UFGA-2026): follow a season that scripts/live_season.py is playing right now. The page polls the
+// live log, lights each box as that agent answers and moves on week by week. Nothing is precomputed.
+const LIVE = new URLSearchParams(location.search).get("live");
+const POLL_MS = 600, STAGE_MS = 1800, HOLD_MS = 3500;   // poll; min time per stage; hold the finished week
 const PREFERRED = "UFGA-2006";
 const W = 1400, H = 770;
 const C = theme.color;
@@ -152,7 +156,8 @@ function stepCards(wk, s) {
         lines: [[cr.stage ? `Stage ${cr.stage}` : null, cr.water ? `soil ${cr.water}` : null].filter(Boolean).join(" · ") || null] },
     ];
   }
-  if (s === 1) return [{ box: "planner", head: "Proposes", main: wk.first && amt(wk.first.n, wk.first.irr), tools: joined(wk.tools.planner) }];
+  if (s === 1) return [{ box: "planner", head: "Proposes", main: wk.first && amt(wk.first.n, wk.first.irr), tools: joined(wk.tools.planner),
+    lines: [wk.first && firstSentence(wk.first.reason)] }];
   if (s === 2) {
     const v = wk.review;
     const head = !v ? "No verdict" : v.verdict === "object" ? "Objects" : v.verdict === "accept" ? "Accepts" : `Verdict: ${v.verdict}`;
@@ -359,10 +364,11 @@ function layout() {
 
 function render() {
   const { root, wk, step } = ui;
+  const label = LIVE && step === 2 ? "Critic reviews" : STEPS[step];
   const on = litParts(wk, step);
   root.querySelectorAll(".hiw-part").forEach((el) => el.classList.toggle("dim", !on.has(el.dataset.on)));
   root.querySelector(".hiw-count").textContent = `Step ${step + 1} of ${STEPS.length}`;
-  root.querySelector(".hiw-step-label").textContent = STEPS[step];
+  root.querySelector(".hiw-step-label").textContent = label;
   root.querySelectorAll(".hiw-pill").forEach((b, i) => b.classList.toggle("on", i === step));
   root.querySelector(".hiw-back").disabled = step === 0;
   root.querySelector(".hiw-next").disabled = step === STEPS.length - 1;
@@ -395,11 +401,60 @@ export function howStep(delta) {
   render();
 }
 
+// Live step from what the week's log already has: the furthest stage reached.
+function liveStep(wk) {
+  if (has(wk.rain)) return 5;
+  if (wk.submit) return 4;
+  if (wk.revised) return 3;
+  if (wk.review) return 2;
+  if (wk.first) return 1;
+  return 0;
+}
+
+const live = { k: -1, step: -1, shownAt: 0, done: false };
+
+async function livePoll() {
+  const run = await data.loadLiveRun(CONFIG, LIVE);
+  const sub = ui.root.querySelector(".hiw-sub");
+  if (!run || run instanceof data.LoadError) {
+    sub.textContent = `LIVE · ${LIVE} · waiting for the season to start (scripts/live_season.py --task-id ${LIVE})`;
+    return;
+  }
+  let k = run.weeks.reduce((m, w, i) => (w.events.length ? i : m), 0);
+  if (run.final && k === run.W) k = run.W - 1;   // the harvest line: stay on the last decision week
+  if (live.k >= 0 && k > live.k) {
+    if (live.step < 5) k = live.k;                                         // first show the week's field step
+    else if (performance.now() - live.shownAt < HOLD_MS) return;           // then hold it a moment
+  }
+  const wk = readWeek(run, k);
+  const target = liveStep(wk);
+  let step = target;
+  if (k === live.k && target > live.step) {
+    if (performance.now() - live.shownAt < STAGE_MS) return;   // let the current card be read first
+    step = live.step + 1;
+    if (step === 3 && !wk.revised) step = 4;
+  } else if (k !== live.k) {
+    step = 0;                                   // a new week starts from the data-gathering stage
+  }
+  if (k !== live.k || step !== live.step) {
+    live.k = k; live.step = step; live.shownAt = performance.now();
+    ui.wk = wk; ui.step = step;
+    render();
+  }
+  const f = run.final;
+  sub.textContent = f
+    ? `LIVE · ${LIVE} · season done: score $${Math.round(f.reward).toLocaleString("en-US")}/ha, grain ${Math.round(f.grain_kg_ha).toLocaleString("en-US")} kg/ha, `
+      + `water ${Math.round(f.irr_mm)} mm, N ${Math.round(f.n_applied)} kg/ha`
+    : `LIVE · ${LIVE} · Week ${k + 1} · ${wk.modelCalls} model calls this week so far`;
+  if (f && !live.done) live.done = true;
+}
+
 // Built once, on first visit; later visits only re-place the cards (the stage size may have changed while hidden).
 export async function renderHowItWorks(root) {
   if (root.dataset.built) { requestAnimationFrame(layout); return; }
   root.dataset.built = "1";
   ui.root = root;
+  if (LIVE) return renderLive(root);
   root.innerHTML = `<header class="hiw-head"><h1>How it works</h1><p class="hiw-sub">Loading the week…</p></header>`;
   const pick = await pickWeek();
   if (pick.error) {
@@ -430,4 +485,24 @@ export async function renderHowItWorks(root) {
   });
   new ResizeObserver(layout).observe(root.querySelector(".hiw-stage"));
   render();
+}
+
+function renderLive(root) {
+  root.innerHTML = `<header class="hiw-head">
+      <h1>How it works <span class="badge live-badge">LIVE</span></h1>
+      <p class="hiw-sub mono">LIVE · ${esc(LIVE)} · connecting…</p>
+    </header>
+    <div class="hiw-bar">
+      <span class="hiw-count mono"></span><span class="hiw-step-label"></span>
+      <button class="btn hiw-back" hidden></button><button class="btn hiw-next" hidden></button>
+      <div class="hiw-pills">${STEPS.map((s, i) => `<span class="hiw-pill" data-step="${i}">${i + 1} ${esc(i === 2 ? "Critic reviews" : s)}</span>`).join("")}</div>
+    </div>
+    <div class="hiw-stage">${diagramSvg()}<div class="hiw-pops" aria-live="polite"></div><div class="hiw-tip" role="tooltip" hidden></div></div>`;
+  root.querySelectorAll(".hiw-node").forEach((g) => {
+    g.addEventListener("pointerenter", () => ui.wk && showTip(g.dataset.box));
+    g.addEventListener("pointerleave", hideTip);
+  });
+  new ResizeObserver(layout).observe(root.querySelector(".hiw-stage"));
+  livePoll();
+  setInterval(livePoll, POLL_MS);
 }

@@ -455,6 +455,19 @@ export async function loadEval() {
 
 // results_baseline/summary.md, the "## Split: dev" table only: {head: [...], rows: [[...]]} or null. The text is
 // cut at the next "## " heading before the table is read. A LoadError when the file failed to load.
+// A live season: scripts/live_season.py appends runs/live/<config>/<task>.jsonl event by event while it runs.
+// Nothing is stored ahead of time; null until the run has started.
+export async function loadLiveRun(config, task) {
+  const text = await fetchText(`../runs/live/${config}/${task}.jsonl`);
+  if (text === null || text instanceof LoadError) return text;
+  const events = [];
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    try { events.push(JSON.parse(line)); } catch { /* a line being written right now */ }
+  }
+  return events.length ? buildRun(config, task, events) : null;
+}
+
 // A's headline numbers (agents_a/demo_results.json, built by scripts/build_demo_results.py). null if missing.
 export async function loadDemoResults() {
   return fetchJson("../agents_a/demo_results.json");

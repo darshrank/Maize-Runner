@@ -16,7 +16,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import agents.run as run  # noqa: E402
 from agents.client import EnvClient  # noqa: E402
 from agents.policies import make_policy  # noqa: E402
 from agents.run import RunLogger, find_task, load_config, play_season  # noqa: E402
@@ -35,16 +34,19 @@ def say(text: str = "") -> None:
 
 
 class LiveLogger(RunLogger):
-    """RunLogger that prints each event as it happens and rewrites the log file every week."""
+    """RunLogger that prints each event as it happens and appends it to the live log at once (the UI follows it)."""
 
     def __init__(self, config: str, task_id: str, weeks_limit: int | None):
         super().__init__(config, task_id)
         self.weeks_limit = weeks_limit
         self.path = ROOT / "runs" / "live" / config / f"{task_id}.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text("")          # start empty: nothing from an earlier run is ever shown
 
     def event(self, week, agent, kind, data):
         super().event(week, agent, kind, data)
+        with open(self.path, "a") as f:   # one line per event, written immediately
+            f.write(json.dumps(self.events[-1]) + "\n")
         if kind == "message":
             for call in data.get("tool_calls", []):
                 self.answer(agent, call["name"], call.get("arguments") or "{}")
@@ -56,7 +58,6 @@ class LiveLogger(RunLogger):
             w, o = data["weekly"], data["obs"]
             say(f"  {C['env']}gym-DSSAT ran the week: rain {w['rain_mm']:.0f} mm, N uptake {w['n_uptake']:.1f}, "
                 f"leached {w['n_leached']:.1f} kg/ha -> stage {o['stage']}, biomass {o['biomass_kg_ha']:.0f} kg/ha{C['off']}")
-            self.path.write_text("".join(json.dumps(e) + "\n" for e in self.events))
             if self.weeks_limit and data["week"] >= self.weeks_limit and not data["done"]:
                 raise SystemExit(f"\n(stopped after {self.weeks_limit} weeks; the full log so far is in {self.path})")
 
@@ -121,9 +122,6 @@ def main() -> None:
     config = f"a_{args.design}"
     log = LiveLogger(config, task["task_id"], args.weeks)
     final = play_season(LivePolicy(make_policy(config), task), task, env, log)
-    log.path.write_text("".join(json.dumps(e) + "\n" for e in log.events))
-    run.RUNS_DIR = ROOT / "runs" / "live"
-    log.save()   # also lists it in runs/live/index.json
     gain = final["reward"] - farmer["reward"]
     say(f"\n{C['bold']}Season done.{C['off']} FieldTwin team ${final['reward']:,.0f}/ha "
         f"({C['green'] if gain >= 0 else C['red']}{gain:+,.0f} vs farmer practice{C['off']}), grain {final['grain_kg_ha']:,.0f} kg/ha, "
