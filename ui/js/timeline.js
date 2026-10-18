@@ -13,7 +13,7 @@
 import { theme } from "./theme.js";
 
 const NS = "http://www.w3.org/2000/svg";
-const FULL = { H: 86, LABEL_W: 104, RIGHT_PAD: 132, RAIN_TOP: 4, RAIN_H: 34, TRACK_Y: 56 };
+const FULL = { H: 74, LABEL_W: 96, RIGHT_PAD: 124, RAIN_TOP: 4, RAIN_H: 28, TRACK_Y: 48 };
 
 function el(name, attrs = {}, text) {
   const e = document.createElementNS(NS, name);
@@ -101,7 +101,7 @@ export class Timeline {
     svg.append(this.progress);
     for (let k = 0; k < cells; k++) {
       svg.append(el("line", { class: "tick", x1: x0 + k * cw, x2: x0 + k * cw, y1: TRACK_Y - 3, y2: TRACK_Y + 3 }));
-      svg.append(el("text", { class: "wk", "data-week": k, x: x0 + (k + 0.5) * cw, y: TRACK_Y + 24, "text-anchor": "middle" },
+      svg.append(el("text", { class: "wk", "data-week": k, x: x0 + (k + 0.5) * cw, y: TRACK_Y + 21, "text-anchor": "middle" },
         k === W ? "H" : String(k + 1)));
     }
     const pill = (cls, k, y, h) => el("rect", { class: cls, x: x0 + (k + 0.18) * cw, y, width: 0.64 * cw, height: h, rx: h / 2 });

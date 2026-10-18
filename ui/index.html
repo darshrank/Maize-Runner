@@ -24,11 +24,10 @@
     </filter>
   </svg>
 
-  <!-- Top bar (every page): wordmark, tab nav with key hints (main.js builds it), live chip during a live run (click:
-       back to Season), the split badge for the current tab. -->
+  <!-- Top bar (every page): wordmark, live chip during a live run (click: back to Season), the split badge for the
+       current tab. Pages are switched by the dock at the bottom (dock.js) or keys 1-6. -->
   <header id="topbar">
     <div id="wordmark"><i class="mark"></i><span>FieldTwin</span></div>
-    <nav id="tabs" aria-label="Pages"></nav>
     <div id="topright">
       <button id="livechip" class="live-chip" hidden aria-label="Live season: back to Season"><i class="live-dot"></i><span class="t mono"></span></button>
       <span id="src" class="badge split" hidden title="Split of every number on this tab"></span>
@@ -197,6 +196,8 @@
   <div id="notice" class="quiet" hidden></div>
   <!-- Load failures (net.js, after retries): each file that failed and why. Season shows it centered instead of a half scene. -->
   <aside id="loadfail" role="status" aria-live="polite" hidden></aside>
+  <!-- Page dock (dock.js): one icon per tab in the demo order, its key under the icon. -->
+  <nav id="dock" aria-label="Pages"></nav>
 
   <script type="module" src="js/main.js"></script>
 </body>

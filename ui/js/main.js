@@ -1,9 +1,9 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8).
 // Demo flow (STATE.md): Season plays a past Gainesville test season, the presenter starts 2026 live (about 20 s a
 // week), moves to How it works, Results and Serving while it runs, and ends on the 2026 season-end result. Tabs follow
-// that order: 1 Season, 2 How it works, 3 Results, 4 Serving, 5 Agents, 6 Gym (top bar, keys 1-6). The top bar holds
-// the wordmark, the tabs with their key hints, the live chip during a live run (click: back to Season) and the split
-// badge of the current tab. Each tab has one headline saying what it proves.
+// that order: 1 Season, 2 How it works, 3 Results, 4 Serving, 5 Agents, 6 Gym (the dock at the bottom, dock.js, with
+// each tab's key on its icon; keys 1-6). The top bar holds the wordmark, the live chip during a live run (click: back
+// to Season) and the split badge of the current tab. Each tab has one headline saying what it proves.
 //
 // Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR (LEFT
 // farmer practice, RIGHT the FieldTwin team). Under each field: running counters (nitrogen, water, leaching) and, at
@@ -29,6 +29,7 @@ import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
 import { weekLines, esc, mdPlain, mdHtml } from "./agents.js";
 import { Carousel } from "./carousel.js";
+import { Dock } from "./dock.js";
 import { renderHowItWorks, howStep, setLiveTask, liveStarted } from "./howitworks.js";
 import { resultsPage } from "./resultsCharts.js";
 import { renderServing } from "./serving.js";
@@ -37,12 +38,12 @@ export { theme };
 
 const $ = (id) => document.getElementById(id);
 const PAGES = [
-  { id: "season", label: "Season" },
-  { id: "how", label: "How it works" },
-  { id: "results", label: "Results" },
-  { id: "serving", label: "Serving" },
-  { id: "agents", label: "Agents" },
-  { id: "gym", label: "Gym" },
+  { id: "season", label: "Season", icon: "sprout" },
+  { id: "how", label: "How it works", icon: "flow" },
+  { id: "results", label: "Results", icon: "bars" },
+  { id: "serving", label: "Serving", icon: "chip" },
+  { id: "agents", label: "Agents", icon: "chats" },
+  { id: "gym", label: "Gym", icon: "loop" },
 ];
 const VIEWS = PAGES.map((p) => p.id);
 const params = new URLSearchParams(location.search);
@@ -63,7 +64,7 @@ const state = {
 };
 const fields = {};       // 2D FieldViews (view2d only)
 let s3d = null;          // Season3D (3D only)
-let timeline, cards = null;
+let timeline, dock, cards = null;
 // Live season (data.LIVE_TASKS): Play asks the demo server (scripts/demo_server.py) to start
 // scripts/live_season.py, then the page follows its log, always on the latest finished week. 1x only: the weeks
 // arrive as fast as the model answers. Logs from an earlier run are never shown: nothing loads before Play.
@@ -183,10 +184,11 @@ function liveActive() {
 
 // ---------------------------------------------------------------- views and top bar
 
-function buildTabs() {
-  $("tabs").innerHTML = PAGES.map((p, i) => `<button class="tab" data-view="${p.id}" aria-keyshortcuts="${i + 1}">`
-    + `<span>${esc(p.label)}</span><span class="kbd">${i + 1}</span></button>`).join("");
-  $("tabs").querySelectorAll(".tab").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
+// Page dock (dock.js, restored from before 2dd426a): tabs in the demo order, key i + 1 on each icon. ?story=1 hides it.
+function buildDock() {
+  dock = new Dock($("dock"), PAGES.map((p, i) => ({ id: p.id, label: p.label, icon: p.icon, key: String(i + 1) })),
+    { onSelect: setView, reduceMotion: REDUCE });
+  dock.setHidden(STORY);
 }
 
 function setView(view) {
@@ -194,10 +196,7 @@ function setView(view) {
   if (!page) return;
   const changed = view !== state.view;
   state.view = view;
-  $("tabs").querySelectorAll(".tab").forEach((b) => {
-    b.classList.toggle("active", b.dataset.view === view);
-    b.setAttribute("aria-current", b.dataset.view === view ? "page" : "false");
-  });
+  if (dock) dock.setActive(view);
   for (const id of VIEWS) {
     const el = $(id);
     const on = id === view;
@@ -599,8 +598,8 @@ async function renderGym() {
     + `<div class="gym-hero card"><div><div class="v big-num">${n(dev)}</div><div class="k">dev seasons <span class="badge split">dev</span></div></div>`
     + `<div><div class="v big-num">${n(test)}</div><div class="k">held-out test seasons <span class="badge split">test</span></div></div>`
     // gym_env/README.md:9 Dataset row; counts from gym_env/environments/fieldtwin/data/{dev,test}.jsonl
-    + `<p class="gym-card" style="padding:0"><span>Real Gainesville seasons as a NeMo Gym dataset, one row per season. One rollout = one season: `
-    + `the model calls read tools and submits one decision per week until the crop matures.</span></p></div>`
+    + `<p class="gym-hero-text">Real Gainesville seasons as a NeMo Gym dataset, one row per season. One rollout = one season: `
+    + `the model calls read tools and submits one decision per week until the crop matures.</p></div>`
     // gym_env/README.md:10 Resources server
     + `<div class="gym-card card"><h2>Resources server</h2><p>A thin adapter over the FieldTwin env server on port 9000.</p><p class="quiet">resources_servers/fieldtwin/app.py</p></div>`
     // gym_env/README.md:11 Tools
@@ -1140,7 +1139,7 @@ async function main() {
   readCssTheme();
   if (data.LITE) document.body.classList.add("lite");
   if (STORY) document.body.classList.add("story");
-  buildTabs();
+  buildDock();
   data.onLoadFailures(renderLoadCard);
   if (!(await initSeason())) return;
   setView(state.view);

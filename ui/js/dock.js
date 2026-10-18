@@ -118,9 +118,12 @@ export class Dock {
     el.type = "button";
     el.dataset.page = item.id;
     el.setAttribute("aria-label", item.label);
+    if (item.key) el.setAttribute("aria-keyshortcuts", item.key);
     el.style.width = el.style.height = `${BASE}px`;
+    // Key hint: always visible in the icon's top-right corner (the tooltip repeats it with the label).
     el.innerHTML = `<svg class="dock-icon" viewBox="0 0 24 24" aria-hidden="true">${DOCK_ICONS[item.icon] || ""}</svg>`
       + `<span class="dock-label" aria-hidden="true">${item.label}${item.key ? ` <span class="dock-key">${item.key}</span>` : ""}</span>`
+      + (item.key ? `<span class="dock-kbd" aria-hidden="true">${item.key}</span>` : "")
       + '<span class="dock-dot" aria-hidden="true"></span>';
     const it = { ...item, el, size: new Spring(BASE), hop: new Spring(0), hopTimer: 0 };
     el.addEventListener("pointerenter", () => el.classList.add("hover"));
