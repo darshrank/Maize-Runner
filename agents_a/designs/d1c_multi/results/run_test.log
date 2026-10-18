@@ -1,0 +1,51 @@
+frozen commit: 48343d5, started 20:59
+running 15 seasons: UFGA-2010, UFGA-2011, UFGA-2012, UFGA-2013, UFGA-2014, UFGA-2015, UFGA-2016, UFGA-2017, UFGA-2018, UFGA-2019, UFGA-2020, UFGA-2021, UFGA-2022, UFGA-2023, UFGA-2024
+ UFGA-2017  reward   1591.4  grain   10613  N   186  irr  168  leached  21.9  llm 151  fallbacks 0  1252s
+ UFGA-2014  reward   1671.8  grain   10591  N   187  irr   55  leached  12.6  llm 161  fallbacks 0  1329s
+ UFGA-2015  reward   1497.7  grain   10078  N   196  irr  210  leached   1.3  llm 147  fallbacks 0  1393s
+ UFGA-2012  reward   1643.5  grain   11530  N   221  irr  192  leached  43.6  llm 153  fallbacks 0  1395s
+ UFGA-2011  reward    984.2  grain    7928  N   227  irr  268  leached   7.2  llm 157  fallbacks 0  1468s
+ UFGA-2016  reward   1093.2  grain    8083  N   220  irr  148  leached   7.4  llm 158  fallbacks 0  1494s
+ UFGA-2010  reward    902.4  grain    7026  N   221  irr   90  leached  14.7  llm 167  fallbacks 0  1582s
+ UFGA-2013  reward   1431.9  grain    9650  N   192  irr   80  leached  27.4  llm 176  fallbacks 0  1848s
+ UFGA-2020  reward   1785.7  grain   11312  N   162  irr  180  leached  11.0  llm 153  fallbacks 0  1314s
+ UFGA-2021  reward   1331.3  grain    9228  N   184  irr  202  leached  12.3  llm 154  fallbacks 0  1419s
+ UFGA-2019  reward    946.8  grain    7952  N   231  irr  213  leached  34.4  llm 155  fallbacks 0  1538s
+ UFGA-2022  reward   1183.6  grain    8979  N   225  irr  260  leached  11.9  llm 158  fallbacks 0  1462s
+ UFGA-2018  reward   1058.2  grain    8003  N   197  irr   40  leached  56.0  llm 166  fallbacks 0  1699s
+ UFGA-2024  reward    618.9  grain    5641  N   196  irr  254  leached   0.4  llm 150  fallbacks 0  1405s
+ UFGA-2023  reward   1853.5  grain   12447  N   216  irr  193  leached  33.3  llm 162  fallbacks 0  1506s
+# FieldTwin eval summary
+
+Mean ± 95% CI (normal approx). Farmer practice = `farmer_ufga` (config.yaml eval.farmer_practice). gap closed = (reward - farmer practice) / (hindsight - farmer practice). Hindsight knows the future: it is an unreachable ceiling.
+
+## Split: dev-check
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d1c_multi | 5 | 1189.9 ± 363.6 | 1253.5 ± 311.6 | 8887.4 ± 1814.1 | 220.4 ± 5.1 | 26.0 ± 22.9 | 1.20 | +22% |
+| farmer | 5 | 831.7 ± 310.7 | 887.9 ± 289.8 | 6283.9 ± 1597.3 | 160.0 ± 0.0 | 23.0 ± 23.4 | -1.66 | +8% |
+| farmer_ufga (farmer practice) | 5 | 1039.7 ± 188.0 | 1091.7 ± 159.5 | 7427.2 ± 826.6 | 116.0 ± 0.0 | 21.3 ± 13.3 | 0.00 | +0% |
+| no_n | 5 | 151.0 ± 38.4 | 180.2 ± 27.0 | 933.8 ± 139.8 | 0.0 ± 0.0 | 12.0 ± 11.2 | -7.09 | -44% |
+| hindsight (unreachable ceiling) | 5 | 1165.0 ± 189.4 | 1211.9 ± 149.5 | 7860.2 ± 788.9 | 135.2 ± 31.8 | 19.2 ± 21.8 | 1.00 | -10% |
+
+## Split: dev-tune
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d1c_multi | 15 | 1402.9 ± 172.4 | 1442.6 ± 179.8 | 9732.2 ± 877.1 | 205.8 ± 11.9 | 16.3 ± 7.1 | 1.45 | -19% |
+| farmer | 15 | 1088.2 ± 128.3 | 1122.6 ± 137.2 | 7524.5 ± 653.4 | 160.0 ± 0.0 | 14.1 ± 7.9 | -0.30 | -30% |
+| farmer_ufga (farmer practice) | 15 | 1142.4 ± 126.3 | 1191.5 ± 129.1 | 7944.1 ± 669.0 | 116.0 ± 0.0 | 20.1 ± 5.8 | 0.00 | +0% |
+| no_n | 15 | 153.1 ± 40.1 | 175.6 ± 39.7 | 909.6 ± 205.7 | 0.0 ± 0.0 | 9.2 ± 4.0 | -5.50 | -54% |
+| hindsight (unreachable ceiling) | 15 | 1322.2 ± 139.3 | 1352.9 ± 143.9 | 8664.5 ± 731.2 | 143.2 ± 18.7 | 12.6 ± 5.6 | 1.00 | -37% |
+
+## Split: test
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d1c_multi | 15 | 1306.3 ± 186.5 | 1354.3 ± 191.1 | 9270.6 ± 942.5 | 204.1 ± 10.3 | 19.7 ± 8.2 | 1.21 | -15% |
+| farmer | 15 | 1096.2 ± 140.0 | 1131.1 ± 142.6 | 7563.6 ± 719.3 | 160.0 ± 0.0 | 14.3 ± 6.8 | 0.12 | -38% |
+| farmer_ufga (farmer practice) | 15 | 1074.1 ± 107.7 | 1130.4 ± 114.1 | 7627.4 ± 591.3 | 116.0 ± 0.0 | 23.0 ± 5.6 | 0.00 | +0% |
+| no_n | 15 | 198.7 ± 40.4 | 221.3 ± 41.8 | 1146.8 ± 216.8 | 0.0 ± 0.0 | 9.3 ± 3.6 | -4.58 | -60% |
+| hindsight (unreachable ceiling) | 15 | 1265.2 ± 137.2 | 1296.7 ± 141.5 | 8250.1 ± 784.3 | 135.7 ± 15.0 | 12.9 ± 4.9 | 1.00 | -44% |
+
