@@ -1,6 +1,7 @@
 """Fetch real daily weather from NASA POWER and convert it for FieldTwin.
 
   uv run python scripts/fetch_power.py [--sites UFGA,RALE] [--start 1990] [--end 2024]
+  (the current year is fetched up to a week before today: a partial year)
 
 Outputs per (site, year):
   data/power/raw/<SITE>_<YEAR>.json   raw API response (cache: not refetched if present)
@@ -41,6 +42,14 @@ SITES = {
 REFHT, WNDHT = 2.0, 2.0   # POWER T2M/RH2M are at 2 m, WS2M wind at 2 m
 
 
+LAG_DAYS = 7   # NASA POWER publishes daily data within a few days; stay a week behind today
+
+
+def last_day(year: int) -> date:
+    """Dec 31, or a week before today for the current year (a partial year)."""
+    return min(date(year, 12, 31), date.today() - timedelta(days=LAG_DAYS))
+
+
 def fetch_raw(site: str, year: int) -> dict:
     """Download one site-year (cached). One request at a time, 3 retries with backoff."""
     path = DATA / "power" / "raw" / f"{site}_{year}.json"
@@ -48,7 +57,7 @@ def fetch_raw(site: str, year: int) -> dict:
         return json.loads(path.read_text())
     s = SITES[site]
     params = {"parameters": ",".join(PARAMS), "community": "AG", "latitude": s["lat"],
-              "longitude": s["lon"], "start": f"{year}0101", "end": f"{year}1231", "format": "JSON"}
+              "longitude": s["lon"], "start": f"{year}0101", "end": last_day(year).strftime("%Y%m%d"), "format": "JSON"}
     for attempt in range(1, 4):
         try:
             r = httpx.get(API, params=params, timeout=120)
@@ -80,7 +89,7 @@ def fill_missing(values: list[float], fill_value: float) -> tuple[list[float], i
 def convert(raw: dict, year: int) -> tuple[list[dict], int]:
     fill_value = raw.get("header", {}).get("fill_value", -999)
     series = raw["properties"]["parameter"]
-    n_days = (date(year, 12, 31) - date(year, 1, 1)).days + 1
+    n_days = (last_day(year) - date(year, 1, 1)).days + 1
     keys = [(date(year, 1, 1) + timedelta(d)).strftime("%Y%m%d") for d in range(n_days)]
     cols, filled = {}, 0
     for p, name in PARAMS.items():
@@ -98,16 +107,24 @@ def convert(raw: dict, year: int) -> tuple[list[dict], int]:
 
 def tav_amp(days: list[dict]) -> tuple[float, float]:
     """TAV = annual mean temperature; AMP = max minus min of the monthly mean temperatures
-    (matches the shipped UFGA files, e.g. AMP 13.0 in UFGA8201.WTH)."""
+    (matches the shipped UFGA files, e.g. AMP 13.0 in UFGA8201.WTH). Needs all 12 months."""
     tmean = np.array([(d["tmax_c"] + d["tmin_c"]) / 2 for d in days])
     months = np.array([int(d["date"][5:7]) for d in days])
     monthly = [tmean[months == m].mean() for m in range(1, 13)]
     return float(tmean.mean()), float(max(monthly) - min(monthly))
 
 
+def tav_amp_for(site: str, year: int, days: list[dict]) -> tuple[float, float]:
+    """A partial (current) year lacks some months, so it uses the previous full year's TAV and AMP."""
+    if len({d["date"][5:7] for d in days}) == 12:
+        return tav_amp(days)
+    prev = DATA / "weather" / f"{site}_{year - 1}.json"
+    return tav_amp(json.loads(prev.read_text()))
+
+
 def write_wth(site: str, year: int, days: list[dict], elev: float) -> Path:
     s = SITES[site]
-    tav, amp = tav_amp(days)
+    tav, amp = tav_amp_for(site, year, days)
     lines = [
         f"*WEATHER DATA : {s['name']} (NASA POWER {year})",
         "",

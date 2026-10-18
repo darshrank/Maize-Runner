@@ -29,6 +29,7 @@ Mapping notes (DSSAT has no direct output for some contract fields):
 """
 
 import atexit
+import calendar
 from datetime import date, timedelta
 import json
 import os
@@ -55,6 +56,16 @@ DEFAULTS = {
 SITES = set(SITE_INFO)           # weather stations; all reuse the UFGA8201 soil, hybrid and management
 BASE_YEAR = 1982                 # the experiment's original year (UFGA8201)
 BASE_PLANTING_DOY = 57           # its planting day (PDATE 82057)
+# DSSAT's two-digit years: 00-25 -> 20xx, 26-99 -> 19xx. A later season runs on a stand-in calendar year (the latest
+# year <= 2025 with the same leap status, e.g. 2025 for 2026) carrying the real season's weather; only the label and
+# DSSAT's stored atmospheric CO2 (a few ppm lower) differ.
+Y2K_MAX = 2025
+
+
+def dssat_year_for(year: int) -> int:
+    if year <= Y2K_MAX:
+        return year
+    return max(y for y in range(2000, Y2K_MAX + 1) if calendar.isleap(y) == calendar.isleap(year))
 XFILE = "gym_dssat_pdi/envs/configs/maize/UFGA8201.jinja2"
 SOIL_N_INIT = 15.0               # kg/ha mineral N at simulation start (UFGA8201 initial conditions)
 MINERALIZATION = 0.3             # kg/ha/day, calibrated so a zero-N season ends near 0
@@ -141,6 +152,18 @@ class DssatSimulator(Simulator):
     def __del__(self):
         self.close()
 
+    def _proxy_wth(self, site: str, year: int, dssat_year: int) -> Path:
+        """`year`'s weather file relabeled to `dssat_year` (same leap status, so day-of-year lines up)."""
+        src = wth_path(site, year).read_text().splitlines()
+        yy, py = f"{year % 100:02d}", f"{dssat_year % 100:02d}"
+        lines = [py + l[2:] if re.match(rf"^{yy}\d{{3}}\s", l) else l for l in src]
+        out = ROOT / ".cache" / "dssat_wth_proxy" / f"{site}{year}" / f"{site}{py}01.WTH"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(f".{uuid.uuid4().hex}.tmp")
+        tmp.write_text("\n".join(lines) + "\n")
+        tmp.replace(out)
+        return out
+
     # ---- experiment file for a real year -----------------------------------
     def _xfile_for_year(self, year: int, site: str = "UFGA") -> Path:
         """Copy of gym-DSSAT's X-file template moved to `year` and `site`: every 1982/1983 YYDDD date is shifted to
@@ -175,15 +198,16 @@ class DssatSimulator(Simulator):
         if site not in SITES:
             raise ValueError(f"dssat simulator supports sites {sorted(SITES)}, got {site!r}")
         self.year_weather = load_year(site, year)   # also validates that the year exists
-        wth = wth_path(site, year)
+        dssat_year = dssat_year_for(year)
+        wth = wth_path(site, year) if dssat_year == year else self._proxy_wth(site, year, dssat_year)
         self._start_worker()
-        resp = self._request({"cmd": "start", "xfile_template": str(self._xfile_for_year(year, site)),
+        resp = self._request({"cmd": "start", "xfile_template": str(self._xfile_for_year(dssat_year, site)),
                               "wth": str(wth)})
         self.planting_index = None
         self.state = resp["state"]
-        if self.state["yrdoy"] // 1000 != year:     # e.g. a two-digit-year mix-up in DSSAT
+        if self.state["yrdoy"] // 1000 != dssat_year:   # e.g. a two-digit-year mix-up in DSSAT
             self.close()
-            raise DssatError(f"DSSAT simulated year {self.state['yrdoy'] // 1000}, expected {year}")
+            raise DssatError(f"DSSAT simulated year {self.state['yrdoy'] // 1000}, expected {dssat_year}")
         self.sim_day = 0                     # simulation-day index of self.state
         self.done = False
         self.observed = [self._weather_day(self.state)]

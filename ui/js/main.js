@@ -26,7 +26,7 @@ import { weekLines, chatHtml, esc, mdPlain } from "./agents.js";
 import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
-import { renderHowItWorks, howStep } from "./howitworks.js";
+import { renderHowItWorks, howStep, setLiveTask, liveStarted } from "./howitworks.js";
 import { headlineResults, attachBento, introBento } from "./resultsCharts.js";
 import { renderServing } from "./serving.js";
 
@@ -59,6 +59,11 @@ const state = {
 const fields = {};       // 2D FieldViews (view2d only)
 let s3d = null;          // Season3D (3D only)
 let timeline, dock, cards = null;
+// Live season (data.LIVE_TASKS): Play asks the demo server (scripts/demo_server.py) to start
+// scripts/live_season.py, then the page follows its log, always on the latest finished week. 1x only: the weeks
+// arrive as fast as the model answers. Logs from an earlier run are never shown: nothing loads before Play.
+const LIVE_POLL_MS = 1500;
+const live = { started: null, timer: null, sig: "" };
 
 // ---------------------------------------------------------------- formatting
 
@@ -517,7 +522,8 @@ function showCards() {
 // neither field is shown: the load card stands in for the scene (no half scene).
 async function loadPair() {
   const task = state.task;
-  const loaded = await Promise.all(SIDES.map((s) => (state.pair[s] ? data.loadRun(state.pair[s], task) : null)));
+  const skip = data.isLive(task) && live.started !== task;
+  const loaded = await Promise.all(SIDES.map((s) => (state.pair[s] && !skip ? data.loadRun(state.pair[s], task) : null)));
   if (task !== state.task) return;   // the season changed while loading
   state.pairFailed = loaded.some((r) => r instanceof data.LoadError);
   SIDES.forEach((s, i) => (state.runs[s] = state.pairFailed ? null : loaded[i]));
@@ -539,21 +545,95 @@ async function loadPair() {
   renderBadges();
   renderFieldHeads();
   renderTimeline();
-  state.week = Math.min(state.week, maxW());
+  state.week = data.isLive(task) && live.started === task ? liveWeek() : Math.min(state.week, maxW());
   renderCards();
   setWeek(state.week, { force: true });
 }
 
 // New season: the pair stays SEASON_PAIR.
 async function selectTask(task) {
+  setPlaying(false);
   state.task = task;
+  live.started = null;   // coming back to the live season means a fresh run on Play
+  const isLive = data.isLive(task);
+  setLiveTask(isLive ? task : null);   // How it works follows the live season too
+  document.querySelectorAll(".speed button").forEach((b) => (b.disabled = isLive && +b.dataset.speed !== 1));
+  if (isLive) setSpeed(1);
+  liveNotice();
   await loadPair();
+}
+
+// ---------------------------------------------------------------- live season
+
+// The team's latest finished week (its step_result is in), or the harvest once the season is done.
+function liveWeek() {
+  const run = state.runs.right;
+  if (!run) return 0;
+  if (run.final) return run.W;
+  let k = 0;
+  run.weeks.forEach((w, i) => { if (w.step) k = i; });
+  return k;
+}
+
+function liveNotice(text) {
+  if (!data.isLive(state.task)) { notice(""); return; }
+  const year = (data.parseTaskId(state.task) || {}).year || state.task;
+  notice(text || (live.started === state.task ? "" : `Press Play to run the ${year} season live: the team decides each week as you watch (about 20 s a week).`));
+}
+
+// The first Play on this page starts a fresh season (stopping any run left from before); Play after Pause
+// picks the same run up again.
+async function startLive() {
+  const task = state.task;
+  if (live.started === task) { clearInterval(live.timer); live.timer = setInterval(followLive, LIVE_POLL_MS); followLive(); return; }
+  let res;
+  try {
+    res = await fetch(`/api/live/start?task=${encodeURIComponent(task)}&restart=1`, { method: "POST" });
+  } catch { res = null; }
+  if (!res || !res.ok) {
+    setPlaying(false);
+    liveNotice("Live runs need the demo server: uv run python scripts/demo_server.py, then open http://localhost:8080/ui/");
+    return;
+  }
+  live.sig = "";
+  live.started = task;
+  liveStarted();
+  liveNotice();
+  clearInterval(live.timer);
+  live.timer = setInterval(followLive, LIVE_POLL_MS);
+  followLive();
+}
+
+// Reload only when the team's log grew (a new week or the harvest), so the fields do not replay a week twice.
+async function followLive() {
+  const task = state.task;
+  if (!state.playing || !data.isLive(task)) { clearInterval(live.timer); live.timer = null; return; }
+  const run = await data.loadRun(state.pair.right, task);
+  if (task !== state.task) return;
+  if (!(run && run.final)) {   // the run stopped before the harvest: say why (e.g. the model tunnel is down)
+    const st = await fetch("/api/live/status").then((r) => r.json()).catch(() => null);
+    if (st && !st.running && st.returncode !== null) {
+      setPlaying(false);
+      liveNotice(`The live run stopped: ${(st.tail || []).slice(-1)[0] || "see runs/live/console.txt"}`);
+      return;
+    }
+  }
+  if (!run || run instanceof data.LoadError) return;
+  let k = 0;
+  run.weeks.forEach((w, i) => { if (w.step) k = i; });
+  const sig = `${k}:${!!run.final}`;
+  if (sig === live.sig && state.runs.right) return;
+  live.sig = sig;
+  await loadPair();
+  if (run.final) { setPlaying(false); notice(""); }
 }
 
 // Week change: fields animate this week's data events (dose, uptake, leaching, storm) when the week moved.
 function setWeek(k, { force = false } = {}) {
   const prev = state.week;
-  state.week = Math.max(0, Math.min(maxW(), k));
+  // Live: the farmer's season is done in seconds, so stop at the team's latest finished week.
+  const cap = data.isLive(state.task) ? liveWeek() : maxW();
+  state.week = Math.max(0, Math.min(cap, k));
   const moved = state.week !== prev || force;
   const spread = Math.min(1.2, (theme.motion.weekSeconds / state.speed) * 0.7);
   const views = {};
@@ -580,13 +660,15 @@ function setWeek(k, { force = false } = {}) {
 
 function setPlaying(on) {
   state.playing = on;
-  if (on && state.week >= maxW()) setWeek(0);
+  if (on && data.isLive(state.task)) startLive();
+  else if (on && state.week >= maxW()) setWeek(0);
   $("play").textContent = on ? "Pause" : "Play";
   $("play").classList.toggle("on", on);
   $("play").setAttribute("aria-label", on ? "Pause" : "Play");
 }
 
 function setSpeed(s) {
+  if (data.isLive(state.task) && s !== 1) return;   // live: the weeks come as fast as the team decides
   state.speed = s;
   document.querySelectorAll(".speed button").forEach((b) => b.classList.toggle("on", +b.dataset.speed === s));
 }
@@ -638,7 +720,7 @@ function loop() {
   const frame = (now) => {
     const elapsed = (now - last) / 1000;
     last = now;
-    if (state.playing) {
+    if (state.playing && !data.isLive(state.task)) {
       clock += (elapsed * state.speed) / theme.motion.weekSeconds;
       if (clock >= 1) {
         clock = 0;
@@ -713,11 +795,15 @@ async function main() {
   setView(state.view);
   bind();
   state.index = await data.loadIndex();
-  state.seasons = await data.seasonList(await data.loadSeasonSplits());
+  const liveSeasons = data.LIVE_TASKS.map((t) => {
+    const p = data.parseTaskId(t) || {};
+    return { task: t, site: p.site || null, year: p.year || null, split: "live", available: true, live: true };
+  });
+  state.seasons = [...liveSeasons, ...(await data.seasonList(await data.loadSeasonSplits()))];
   const unavailable = state.seasons.filter((s) => !s.available).map((s) => s.task);
   if (unavailable.length) console.info(`FieldTwin: seasons missing a Season log (unavailable): ${unavailable.join(", ")}`);
-  // Default: the earliest available season (by year; file order breaks ties).
-  const first = state.seasons.filter((s) => s.available).sort((a, b) => a.year - b.year)[0];
+  // Default: the earliest available recorded season (by year; file order breaks ties).
+  const first = state.seasons.filter((s) => s.available && !s.live).sort((a, b) => a.year - b.year)[0];
   const task = first ? first.task : null;
   if (state.index instanceof data.LoadError) state.index = null;   // tasks/dev.jsonl failed: the load card says why
   if (!task) {

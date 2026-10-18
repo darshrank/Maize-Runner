@@ -532,3 +532,11 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .srv-notes p { margin: 0; font-size: var(--fs-1); color: var(--muted); }
 .srv-empty { height: 100%; min-height: 60vh; display: grid; place-content: center; gap: 10px; text-align: center; }
 .srv-empty-text { font-size: var(--fs-3); }
+
+/* How it works, live mode (?live=<task>) */
+.live-badge { color: var(--leach); border-color: var(--leach); margin-left: 10px; vertical-align: middle; animation: live-pulse 1.6s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .live-badge { animation: none; } }
+
+/* Live season: only 1x (the weeks come as fast as the team decides) */
+.speed button:disabled { opacity: 0.35; cursor: not-allowed; }
