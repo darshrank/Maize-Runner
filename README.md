@@ -1,5 +1,10 @@
 # FieldTwin
 
+Person B session pickup: [handoff.md](handoff.md), with current done/pending work,
+completed DSSAT results and the exact Brev resume commands.
+System diagrams: [flowchart and high-level design](ARCHITECTURE.md), including
+current implementation and clearly marked proposed improvements.
+
 FieldTwin is a multi-agent crop advisor for one maize field in Gainesville, Florida, over one season.
 Every week it decides how much nitrogen (kg N/ha) and irrigation (mm) to apply, and it is scored on profit
 minus a nitrate-leaching penalty. The crop is simulated by **gym-DSSAT** (the DSSAT CERES-Maize model) on
@@ -15,7 +20,7 @@ minus a nitrate-leaching penalty. The crop is simulated by **gym-DSSAT** (the DS
 | Env server (HTTP, port 9000) | **real**, frozen contract below | A |
 | Baselines | **done** for all 35 seasons, frozen in `results_baseline/`: `no_n`, `farmer` (60/60/40 split), `farmer_ufga` (UF experiment schedule = farmer practice), `hindsight` (ceiling) | A |
 | NeMo Gym environment | **real**: `gym_env/` (tasks, tools, verifier = final reward), see `gym_env/README.md` | A |
-| Agents | stub: `agents/policies/nemotron_stub.py` | **B** |
+| Agents | single, five-agent multi and three ablations; real Nemotron integration verified on toy, DSSAT dev evaluation in progress | **B** |
 | UI | working replay viewer (`ui/`), to be restyled | C |
 
 ## Quick start
@@ -102,9 +107,9 @@ Farmer practice is set in `config.yaml` (`eval.farmer_practice`); it was chosen 
 
 1. **Get a simulator running.** Either your own env server from this repo (Quick start; toy if you cannot install
    gym-DSSAT) or the shared one on Brev. Point `config.yaml` `env.url` at it (default `http://localhost:9000`).
-2. **Model endpoint.** Copy `.env.example` to `.env` and set `VLLM_BASE_URL` (default `http://localhost:8000/v1`) and
+2. **Model endpoint.** Export `VLLM_BASE_URL` (`.env.example` is a reference; dotenv is not loaded automatically) (default `http://localhost:8000/v1`) and
    `VLLM_MODEL`. `config.yaml` `agents.base_url_env` / `agents.model_env` name these variables.
-3. **Write a policy.** Start from `agents/policies/nemotron_stub.py`; the interface is in `agents/policies/base.py`:
+3. **Policies are implemented** in `agents/policies/single.py`, `multi.py` and the shared `nemotron.py` adapter. The interface is in `agents/policies/base.py`:
    ```python
    class Policy(ABC):
        name: str
@@ -179,3 +184,15 @@ Kinds: `tool_call`, `tool_result`, `message`, `decision` (`{n_kg_ha, irr_mm, rea
 - An episode abandoned mid-season keeps its DSSAT process until the env server restarts.
 - Only the UFGA site is set up (Raleigh is defined in `scripts/fetch_power.py` but not fetched), hence 15 test seasons, not 20.
 - `soil_n_kg_ha` on gym-DSSAT is a mass-balance estimate (see above); the reward does not use it.
+
+## Person B implementation and evidence
+
+See [PERSON_B.md](PERSON_B.md) for serving, inference and dev experiments, and
+[TASKS_PERSON_B.md](TASKS_PERSON_B.md) for the maintained done/pending list.
+B0 is verified on the Brev H100: [host](results/b0-host.json), [tool smoke](results/b0-smoke.json).
+B1/B2 live-model toy checks: [audit](results/b1-b2-live.json), [logs](results/b1-b2-live-logs.zip).
+`fixtures/replay.nemotron-toy.{single,multi}.jsonl` are complete replay samples.
+Five configs are registered: `single`, `multi`, `multi_no_critic`, `multi_no_weather`, `multi_no_tools`.
+Default model backend is vLLM; set `FIELDTWIN_MODEL_BACKEND=stub` explicitly for software checks.
+The runtime enforces action caps, role tool permissions, at most one planner revision,
+and a visible shared-farmer fallback after malformed outputs or model HTTP failures.

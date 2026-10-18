@@ -1,7 +1,7 @@
 [project]
 name = "fieldtwin"
 version = "0.1.0"
-description = "FieldTwin: a multi-agent crop advisor (walking skeleton)"
+description = "FieldTwin: a multi-agent crop advisor"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

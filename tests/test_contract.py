@@ -21,7 +21,7 @@ WEEKLY_KEYS = {"rain_mm", "n_leached", "n_uptake", "n_gas"}
 FINAL_KEYS = {"grain_kg_ha", "n_applied", "n_uptake", "n_leached", "n_gas", "irr_mm",
               "profit_usd_ha", "reward"}
 WEATHER_DAY_KEYS = {"day", "tmax", "tmin", "rain_mm"}
-TASK = {"task_id": "UFGA-2015", "site": "UFGA", "year": 2015}
+TASK = {"task_id": "UFGA-1995", "site": "UFGA", "year": 1995}
 
 
 @pytest.fixture(params=SIMULATORS)
@@ -134,12 +134,12 @@ def test_outlook_is_the_real_weather_that_follows(sim_name):
     from env import make_simulator
     from env.weather import PLANTING_DOY, load_year
     sim = make_simulator(sim_name, {**load_config()["env"], "outlook_noise": {"rain_frac": 0.0, "temp_c": 0.0}})
-    sim.reset("UFGA", 2015)
+    sim.reset("UFGA", 1995)
     for week in range(3):
         outlook = sim.weather_outlook(7, np.random.default_rng(0))
         sim.step_week(80 if week == 0 else 0, 30)   # management must not change the weather
         assert sim.weather_history(7) == outlook
-    real = load_year("UFGA", 2015)[PLANTING_DOY - 1 + 15:PLANTING_DOY - 1 + 22]   # days 15-21 after planting
+    real = load_year("UFGA", 1995)[PLANTING_DOY - 1 + 15:PLANTING_DOY - 1 + 22]   # days 15-21 after planting
     assert [w["rain_mm"] for w in outlook] == [d["rain_mm"] for d in real]
     sim.close()
 

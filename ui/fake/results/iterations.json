@@ -1,0 +1,42 @@
+[
+ {
+  "version": "v1",
+  "change": "single agent, one prompt",
+  "dev_reward_mean": 944.6,
+  "dev_gap_closed": 0.273,
+  "dev_leached_mean": 29.9,
+  "fake": true
+ },
+ {
+  "version": "v2",
+  "change": "five agents, no critic",
+  "dev_reward_mean": 949.1,
+  "dev_gap_closed": 0.286,
+  "dev_leached_mean": 30.6,
+  "fake": true
+ },
+ {
+  "version": "v3",
+  "change": "added critic (objection skips the dose)",
+  "dev_reward_mean": 912.4,
+  "dev_gap_closed": 0.181,
+  "dev_leached_mean": 26.0,
+  "fake": true
+ },
+ {
+  "version": "v4",
+  "change": "critic splits the dose after the rain",
+  "dev_reward_mean": 1001.5,
+  "dev_gap_closed": 0.435,
+  "dev_leached_mean": 26.9,
+  "fake": true
+ },
+ {
+  "version": "v5",
+  "change": "irrigation waits for forecast rain",
+  "dev_reward_mean": 986.0,
+  "dev_gap_closed": 0.391,
+  "dev_leached_mean": 26.2,
+  "fake": true
+ }
+]

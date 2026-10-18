@@ -1,0 +1,76 @@
+{
+  "scope": "Read-only comparison of published dev baseline results and existing v3 dev results. No new rollout; no held-out performance analysis.",
+  "integrated_a_commit": "a866f06",
+  "baseline_path": "results_baseline\\eval.csv",
+  "baseline_sha256": "f9ba9ab30e4b4f86c0c12b9a55d3bc3b6b3a6125dc5005d6a23fb3407f534a1f",
+  "farmer_practice": "farmer_ufga",
+  "original_farmer_matches_all_20_archived_dev_rows": true,
+  "dev_baselines": {
+    "farmer": {
+      "seasons": 20,
+      "reward": 1024.0455,
+      "profit_usd_ha": 1063.9175,
+      "grain_kg_ha": 7214.37,
+      "n_applied": 160.0,
+      "irr_mm": 111.25,
+      "n_leached": 16.341,
+      "n_uptake": 177.3785,
+      "n_gas": 4.2395000000000005
+    },
+    "farmer_ufga": {
+      "seasons": 20,
+      "reward": 1116.7175,
+      "profit_usd_ha": 1166.5555,
+      "grain_kg_ha": 7814.9,
+      "n_applied": 116.0,
+      "irr_mm": 264.0,
+      "n_leached": 20.4255,
+      "n_uptake": 155.9615,
+      "n_gas": 2.3695
+    },
+    "hindsight": {
+      "seasons": 20,
+      "reward": 1282.9015,
+      "profit_usd_ha": 1317.656,
+      "grain_kg_ha": 8463.405,
+      "n_applied": 141.2,
+      "irr_mm": 144.05,
+      "n_leached": 14.244,
+      "n_uptake": 173.3885,
+      "n_gas": 3.145
+    },
+    "no_n": {
+      "seasons": 20,
+      "reward": 152.5495,
+      "profit_usd_ha": 176.7245,
+      "grain_kg_ha": 915.67,
+      "n_applied": 0.0,
+      "irr_mm": 0.0,
+      "n_leached": 9.9075,
+      "n_uptake": 43.4275,
+      "n_gas": 0.0985
+    }
+  },
+  "v3_comparison": {
+    "single": {
+      "seasons": 20,
+      "mean_reward": 593.236,
+      "reward_minus_farmer_practice": -523.4815,
+      "relative_reward_percent": -46.876806354337596,
+      "gap_closed_vs_56_candidate_hindsight": -3.1500114331102878
+    },
+    "multi": {
+      "seasons": 20,
+      "mean_reward": 878.0415,
+      "reward_minus_farmer_practice": -238.67599999999993,
+      "relative_reward_percent": -21.372997199381217,
+      "gap_closed_vs_56_candidate_hindsight": -1.436215279449285
+    }
+  },
+  "notes": [
+    "Historical results stay unchanged; official reference now farmer_ufga selected by A on dev.",
+    "B fallback remains the original farmer policy; reference selection does not change fallback.",
+    "Hindsight selects among 56 candidate policies using outcome knowledge; it is not a mathematical upper bound on all possible adaptive policies.",
+    "One stochastic agent rollout per year/version; no independent generalization or cost-saving conclusion."
+  ]
+}

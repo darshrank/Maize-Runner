@@ -1,0 +1,59 @@
+{
+  "scope": "Live Nemotron critic-role diagnostics on ten author-constructed synthetic review cases, two repeats. Not DSSAT policy performance, held-out accuracy, or training.",
+  "versions": {
+    "v3": {
+      "source_run": "results\\critic-v4-review",
+      "metrics": {
+        "cases": 20,
+        "correct": 13,
+        "bad_plan_rejection_rate": 0.8571428571428571,
+        "good_plan_acceptance_rate": 0.16666666666666666,
+        "balanced_accuracy": 0.5119047619047619,
+        "false_accepts": 2,
+        "false_rejects": 5,
+        "errors": 0
+      },
+      "prompt_sha256": "6f5d9401d1efaf2e0dbae59f88f95b4d43fc57994673d9f02a31c0f79f6808a0"
+    },
+    "v4": {
+      "source_run": "results\\critic-v4-review",
+      "metrics": {
+        "cases": 20,
+        "correct": 14,
+        "bad_plan_rejection_rate": 1.0,
+        "good_plan_acceptance_rate": 0.0,
+        "balanced_accuracy": 0.5,
+        "false_accepts": 0,
+        "false_rejects": 6,
+        "errors": 0
+      },
+      "prompt_sha256": "536f1814f044ff7345e0725da346134e9afdec3780ef99f702942c8fac286e26"
+    },
+    "v5": {
+      "source_run": "results\\critic-v5-review",
+      "metrics": {
+        "cases": 20,
+        "correct": 16,
+        "bad_plan_rejection_rate": 1.0,
+        "good_plan_acceptance_rate": 0.3333333333333333,
+        "balanced_accuracy": 0.6666666666666666,
+        "false_accepts": 0,
+        "false_rejects": 4,
+        "errors": 0
+      },
+      "prompt_sha256": "5b6e988f5f080650075db68ff812dab7d7ef9bd40b46db8e65660a7824f321ad"
+    }
+  },
+  "case_sha256": "ee6437cf2ed5ffeb83522a803b66175aa5639aa3e50aa27cc94545ccd3a583d0",
+  "selection": "Neither candidate promoted; v5 catches every constructed bad proposal but still rejects four of six expected-acceptable reviews. The shared default remains v1.",
+  "limitations": [
+    "v5 wording was revised after inspecting v4 failures on these same development cases",
+    "Two stochastic repeats without a fixed sampling seed do not establish general accuracy",
+    "The existing critic reviews the planner before the coordinator; final coordinator errors are outside this review",
+    "source_commit identifies the base checkout; candidate code was uncommitted during diagnostics and actual source hashes are recorded per file"
+  ],
+  "archive": {
+    "path": "results\\critic-review-logs.zip",
+    "sha256": "63fa040b1416a0e738937f60f60137b967443335542ab6a3c16e925daba194eb"
+  }
+}

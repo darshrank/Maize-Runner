@@ -9,6 +9,7 @@ are replaced, others are kept, so you can add configs incrementally.
 import argparse
 import csv
 import math
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -84,14 +85,16 @@ def summary_table(split: str, rows: list[dict], farmer_practice: str = "farmer")
     return "\n".join(lines)
 
 
-def write_summary(path: Path, rows: list[dict], farmer_practice: str = "farmer") -> None:
+def write_summary(path: Path, rows: list[dict], provenance: str = "", *, farmer_practice: str = "farmer") -> None:
     parts = ["# FieldTwin eval summary", "",
              f"Mean ± 95% CI (normal approx). Farmer practice = `{farmer_practice}` (config.yaml eval.farmer_practice). "
              "gap closed = (reward - farmer practice) / (hindsight - farmer practice). "
              "Hindsight knows the future: it is an unreachable ceiling.", ""]
+    if provenance:
+        parts += [provenance, ""]
     for split in sorted({r["split"] for r in rows}):
         parts += [summary_table(split, [r for r in rows if r["split"] == split], farmer_practice), ""]
-    path.write_text("\n".join(parts))
+    path.write_text("\n".join(parts), encoding="utf-8")
 
 
 def main() -> None:
@@ -117,8 +120,14 @@ def main() -> None:
                   f"grain {row['grain_kg_ha']:8.1f}  leached {row['n_leached']:6.1f}")
 
     rows = write_csv(RESULTS / "eval.csv", new_rows)
-    write_summary(RESULTS / "summary.md", rows, cfg["eval"].get("farmer_practice", "farmer"))
-    print((RESULTS / "summary.md").read_text())
+    backend = os.environ.get("FIELDTWIN_MODEL_BACKEND", cfg.get("agents", {}).get("backend", "vllm"))
+    simulator = cfg["env"]["simulator"]
+    provenance = f"Run context: simulator `{simulator}`; model backend `{backend}`."
+    if simulator == "toy" or backend == "stub":
+        provenance += " Synthetic plumbing results; not crop-performance evidence."
+    write_summary(RESULTS / "summary.md", rows, provenance,
+                  farmer_practice=cfg["eval"].get("farmer_practice", "farmer"))
+    print((RESULTS / "summary.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

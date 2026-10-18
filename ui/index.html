@@ -3,60 +3,161 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FieldTwin Replay</title>
+  <title>FieldTwin</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <!-- Fonts and three.js are vendored (ui/vendor/README.md): replay makes no CDN calls. -->
   <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-      }
-    }
+    { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }
   </script>
 </head>
-<body>
-  <!-- Top bar: pickers and playback controls -->
-  <header id="topbar">
-    <div class="brand"><span class="logo">■</span> FieldTwin</div>
-    <label>Task <select id="task-picker"></select></label>
-    <label>Left <select id="left-picker"></select></label>
-    <label>Right <select id="right-picker"></select></label>
-    <button id="play-btn" title="Play / pause">▶</button>
-    <label class="slider">Week <input id="week-slider" type="range" min="0" max="20" step="1" value="0">
-      <span id="week-label">0</span></label>
-    <label>Speed <select id="speed-picker">
-      <option value="0.5">0.5×</option>
-      <option value="1" selected>1×</option>
-      <option value="2">2×</option>
-      <option value="4">4×</option>
-    </select></label>
-  </header>
+<body class="not-loaded">
+  <!-- Shared glow filters: #glow for the field SVGs, #glow-icon for the dock icons. ?lite=1 drops both. -->
+  <svg class="defs" width="0" height="0" aria-hidden="true">
+    <filter id="glow" filterUnits="userSpaceOnUse" x="-40" y="-60" width="720" height="600" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-icon" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </svg>
 
-  <main id="layout">
-    <!-- Two fields, same season -->
-    <section id="fields">
-      <div class="field-panel" id="field-left" data-side="left">
-        <div class="field-title"><span class="side">LEFT</span> <span class="config-name"></span></div>
-        <div class="field-canvas"></div>
-        <div class="counters"></div>
+  <div id="wordmark"><i class="mark"></i><span>FieldTwin</span></div>
+  <span id="src" class="badge" hidden title="Data source of every number on screen"></span>
+
+  <!-- 1 Season, 3D (default): canvas plus HTML overlays that season3d.js places from the projected field anchors
+       every frame: pickers above each field, the finale in one row under the fields. The only numbers here: one
+       week label and, at season end, the profit finale. -->
+  <div id="stage3d" hidden>
+    <div class="s3-anchor" id="s3-head-left"><div class="s3-in up">
+      <select class="s3-name cfg-pick" data-side="left" aria-label="Left field"></select>
+      <div class="cfg-model quiet mono" data-side="left" hidden></div>
+      <div class="cfg-none quiet" data-side="left" hidden>No run for this season</div>
+    </div></div>
+    <div class="s3-anchor" id="s3-head-right"><div class="s3-in up">
+      <select class="s3-name cfg-pick" data-side="right" aria-label="Right field"></select>
+      <div class="cfg-model quiet mono" data-side="right" hidden></div>
+      <div class="cfg-none quiet" data-side="right" hidden>No run for this season</div>
+    </div></div>
+    <div class="s3-anchor" id="s3-fin-left"><div class="s3-in down">
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
+      <div class="fin-leach" hidden></div>
+    </div></div>
+    <div class="s3-anchor" id="s3-fin-right"><div class="s3-in down">
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
+      <div class="fin-leach" hidden></div>
+    </div></div>
+    <div class="s3-anchor" id="s3-fin-mid"><div class="s3-in down">
+      <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge"></span></div>
+    </div></div>
+    <div id="s3-week" aria-live="polite"></div>
+  </div>
+
+  <!-- Week cards (3D Season): one card per week, left side, synced with the week; key N toggles them -->
+  <aside id="weekcards" hidden></aside>
+
+  <!-- 1 Season controls; with ?view2d=1 also the R1 2D side view (fallback) -->
+  <main id="season" class="view">
+    <div id="week" aria-live="polite">
+      <span id="week-num" class="mono">Week 0</span><span id="week-of" class="mono quiet"></span><span id="week-date" class="quiet"></span>
+    </div>
+
+    <div id="fields">
+      <section class="field" id="field-left">
+        <header class="field-head">
+          <h2><select class="cfg-pick" data-side="left" aria-label="Left field"></select></h2>
+          <span class="cfg-model quiet mono" data-side="left" hidden></span>
+          <span class="cfg-none quiet" data-side="left" hidden>No run for this season</span>
+          <span id="fb-left" class="badge fallback" hidden></span>
+        </header>
+        <div class="plot" id="plot-left"></div>
+        <div class="tally" id="tally-left">
+          <div class="live"><span class="label">N leached</span><span class="v mono leach">n/a</span><span class="unit">kg/ha</span></div>
+          <div class="end" id="end-left" hidden>
+            <span class="label">Profit</span><span class="v mono profit">n/a</span><span class="unit">$/ha</span>
+            <span class="label">Grain</span><span class="v mono grain">n/a</span><span class="unit">kg/ha</span>
+          </div>
+        </div>
+        <div class="lines">
+          <div class="objection" id="obj-left" hidden><span class="who">Critic</span><span class="t"></span></div>
+          <div class="why" id="why-left"><span class="who"></span><span class="t"></span><span class="flag" hidden>fallback</span></div>
+        </div>
+      </section>
+
+      <section class="field" id="field-right">
+        <header class="field-head">
+          <h2><select class="cfg-pick" data-side="right" aria-label="Right field"></select></h2>
+          <span class="cfg-model quiet mono" data-side="right" hidden></span>
+          <span class="cfg-none quiet" data-side="right" hidden>No run for this season</span>
+          <span id="fb-right" class="badge fallback" hidden></span>
+        </header>
+        <div class="plot" id="plot-right"></div>
+        <div class="tally" id="tally-right">
+          <div class="live"><span class="label">N leached</span><span class="v mono leach">n/a</span><span class="unit">kg/ha</span></div>
+          <div class="end" id="end-right" hidden>
+            <span class="label">Profit</span><span class="v mono profit">n/a</span><span class="unit">$/ha</span>
+            <span class="label">Grain</span><span class="v mono grain">n/a</span><span class="unit">kg/ha</span>
+          </div>
+        </div>
+        <div class="lines">
+          <div class="objection" id="obj-right" hidden><span class="who">Critic</span><span class="t"></span></div>
+          <div class="why" id="why-right"><span class="who"></span><span class="t"></span><span class="flag" hidden>fallback</span></div>
+        </div>
+      </section>
+    </div>
+
+    <section id="bottom">
+      <div id="controls">
+        <button id="play" class="btn" aria-label="Play">Play</button>
+        <button id="prev" class="btn" aria-label="Previous week">&lsaquo;</button>
+        <button id="next" class="btn" aria-label="Next week">&rsaquo;</button>
+        <button id="reset" class="btn" aria-label="Reset to week 0">Reset</button>
+        <div class="seg speed" role="group" aria-label="Speed ([ and ] keys)">
+          <button data-speed="0.5">0.5x</button><button data-speed="1" class="on">1x</button><button data-speed="2">2x</button><button data-speed="4">4x</button>
+        </div>
+        <label class="pick"><span class="label">Season</span><select id="task" class="task" aria-label="Season"></select></label>
+        <span class="keys quiet">Space play · arrows step · [ ] speed · R reset</span>
       </div>
-      <div class="field-panel" id="field-right" data-side="right">
-        <div class="field-title"><span class="side">RIGHT</span> <span class="config-name"></span></div>
-        <div class="field-canvas"></div>
-        <div class="counters"></div>
-      </div>
+      <svg id="timeline" role="img" aria-label="Season timeline: daily rain and week scrubber"></svg>
     </section>
-
-    <!-- Agent log for the selected field and current week -->
-    <aside id="log-panel">
-      <div class="log-header">Agent log · <span id="log-title"></span></div>
-      <div id="log"></div>
-    </aside>
   </main>
 
-  <!-- Rain per week; storms highlighted. Click a bar to jump to that week. -->
-  <footer id="weather-strip"></footer>
+  <!-- 2 Agents: the full weekly chat for one run -->
+  <main id="agents" class="view" hidden>
+    <div class="agents-wrap">
+      <header class="agents-bar">
+        <div class="seg cfg" id="cfg" role="group" aria-label="Run"></div>
+        <label class="pick"><span class="label">Season</span><select id="task-agents" class="task" aria-label="Season"></select></label>
+        <div class="stepper">
+          <button id="a-prev" class="btn" aria-label="Previous week">&lsaquo;</button>
+          <span id="a-week" class="mono" aria-live="polite">Week 0</span>
+          <button id="a-next" class="btn" aria-label="Next week">&rsaquo;</button>
+        </div>
+        <span id="a-fb" class="badge fallback" hidden></span>
+      </header>
+      <div id="agents-body"></div>
+    </div>
+  </main>
 
-  <script type="module" src="app.js"></script>
+  <!-- 3 Results: A's dev baselines (summary.md "Split: dev", eval.csv dev rows) -->
+  <main id="results" class="view" hidden>
+    <div class="results-wrap" id="results-body"></div>
+  </main>
+
+  <!-- 4-5 Gym, Serving: quiet placeholders until their units -->
+  <main id="placeholder" class="view" hidden>
+    <div class="placeholder">
+      <span class="label" id="placeholder-title"></span>
+      <span id="placeholder-text">Coming soon</span>
+      <span class="quiet mono" id="placeholder-file"></span>
+    </div>
+  </main>
+
+  <nav id="dock" aria-label="Pages"></nav>
+  <div id="notice" class="quiet" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

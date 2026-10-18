@@ -8,12 +8,19 @@ from agents.policies.farmer import Farmer
 from agents.policies.farmer_ufga import FarmerUFGA
 from agents.policies.nemotron_stub import NemotronStub
 from agents.policies.no_n import NoN
+from agents.policies.single import Single
+from agents.policies.multi import Multi, MultiNoCritic, MultiNoWeather, MultiNoTools
 
 POLICIES: dict[str, type[Policy]] = {
     "no_n": NoN,
     "farmer": Farmer,
     "farmer_ufga": FarmerUFGA,
     "nemotron_stub": NemotronStub,
+    "single": Single,
+    "multi": Multi,
+    "multi_no_critic": MultiNoCritic,
+    "multi_no_weather": MultiNoWeather,
+    "multi_no_tools": MultiNoTools,
 }
 
 

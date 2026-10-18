@@ -92,7 +92,8 @@ def play_season(policy: Policy, task: dict, env: EnvClient, log: RunLogger) -> d
     episode_id, obs, week = reset["episode_id"], reset["obs"], reset["week"]
     while True:
         d = policy.decide(episode_id, week, obs, env, log)
-        log.event(week, "policy", "decision", {"n_kg_ha": d.n_kg_ha, "irr_mm": d.irr_mm, "reason": d.reason})
+        log.event(week, getattr(policy, "decision_agent", "policy"), "decision",
+                  {"n_kg_ha": d.n_kg_ha, "irr_mm": d.irr_mm, "reason": d.reason})
         resp = env.step(episode_id, d.n_kg_ha, d.irr_mm, d.reason)
         log.event(week, "env", "step_result", resp)
         obs, week = resp["obs"], resp["week"]
@@ -105,12 +106,13 @@ def run_one(config: str, task: dict, env_url: str) -> tuple[dict, dict]:
     """Play and save one season. Returns (final, stats) with stats = llm_calls, fallbacks, wall_s."""
     t0 = time.time()
     env = EnvClient(env_url)
+    log = RunLogger(config, task["task_id"])
     try:
-        log = RunLogger(config, task["task_id"])
         final = play_season(make_policy(config), task, env, log)
-        log.save()
     finally:
         env.close()
+        if log.events:
+            log.save()
     return final, {"llm_calls": log.llm_calls, "fallbacks": log.fallbacks,
                    "wall_s": round(time.time() - t0, 2)}
 
@@ -122,7 +124,11 @@ def main() -> None:
     ap.add_argument("--split", default=None, help="dev or test (default: search both)")
     args = ap.parse_args()
     cfg = load_config()
-    final, _ = run_one(args.policy, find_task(args.task_id, args.split), cfg["env"]["url"])
+    task = find_task(args.task_id, args.split)
+    from fieldtwin_agents.contracts import CONFIGS
+    if args.policy in CONFIGS and task["split"] != "dev":
+        ap.error("Interactive Nemotron runs are dev-only; Person A owns held-out evaluation via eval.run_eval")
+    final, _ = run_one(args.policy, task, cfg["env"]["url"])
     print(json.dumps(final, indent=2))
 
 

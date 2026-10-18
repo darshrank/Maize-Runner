@@ -1,0 +1,18 @@
+{
+  "prompt_version": "v1",
+  "prompt_hashes": {
+    "coordinator.txt": "c16da65db07dccd2e4342625501c5687166202ab3438151e6a7328c7b8542790",
+    "critic.txt": "6f5d9401d1efaf2e0dbae59f88f95b4d43fc57994673d9f02a31c0f79f6808a0",
+    "crop.txt": "a1fb669ec5d5c4f0b13f54556821b108944fdd78ce23d84fbfb649927e17b5a7",
+    "planner.txt": "e40655a7ea7ba5da127a80caae7efa5fb1d03097797c6e6b400cf30fcd170aed",
+    "weather.txt": "e92cc1d9d1ceec8fa81912874ca88bbabee44cc3f4fa907ddbc86453b095acde"
+  },
+  "configs": [
+    "single",
+    "multi",
+    "multi_no_critic",
+    "multi_no_weather",
+    "multi_no_tools"
+  ],
+  "status": "walking-skeleton snapshot; real-dev selection pending"
+}
