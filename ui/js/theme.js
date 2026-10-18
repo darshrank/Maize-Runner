@@ -95,7 +95,7 @@ export function readCssTheme(root = document.documentElement) {
   const css = getComputedStyle(root);
   for (const name of TOKENS) {
     const v = css.getPropertyValue(`--${name}`).trim();
-    if (!v) console.error(`FieldTwin theme: style.css token --${name} is missing`);
+    if (!v) console.error(`Maize Runner theme: style.css token --${name} is missing`);
     theme.color[name.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = v;
   }
   root.style.setProperty("--ms", `${theme.motion.ms}ms`);

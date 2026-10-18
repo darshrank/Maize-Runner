@@ -5,7 +5,7 @@
 //              weather file, one bar per week from the log's weekly.rain_mm (labelled as such)
 //   storm weeks (weekly rain > theme.stormMm) drawn brighter
 //   scrubber: week ticks 0..W-1 plus harvest; click or drag to seek
-//   Critic objection weeks (FieldTwin run): a white outline pill above the track (the Objection pill's look)
+//   Critic objection weeks (Maize Runner run): a white outline pill above the track (the Objection pill's look)
 //   fallback weeks (either run): a small white outline pill under the track (.flag-pill)
 //   live: weeks after `cap` (not decided yet) keep their observed rain, dimmed
 // Dose timing shows in the fields now, so there are no per-config marker rows.

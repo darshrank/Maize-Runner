@@ -1,6 +1,6 @@
 // Headline charts for the Results page (A's demo results, agents_a/demo_results.json, built by
 // scripts/build_demo_results.py from the committed eval.csv files). Plain SVG strings; colors come from the
-// style.css tokens through CSS classes (farmer = --muted, FieldTwin team = --accent, water = --water,
+// style.css tokens through CSS classes (farmer = --muted, Maize Runner team = --accent, water = --water,
 // leaching = --leach), so they follow the theme. Score = the env's reward (USD/ha per season).
 
 const money = (v) => `$${Math.round(v).toLocaleString("en-US")}`;
@@ -15,7 +15,7 @@ export function headlineChart(test) {
   const bars = [
     { label: "Farmer practice", value: test.farmer, cls: "c-farmer" },
     ...(test.single ? [{ label: "Single agent", value: test.single, cls: "c-single" }] : []),
-    { label: "FieldTwin team", value: test.team, cls: "c-team" },
+    { label: "Maize Runner team", value: test.team, cls: "c-team" },
   ];
   const W = 560, H = 300, top = 30, bottom = 46, left = 16, right = 150;
   const max = Math.max(test.hindsight, ...bars.map((b) => b.value)) * 1.12;
@@ -58,9 +58,9 @@ export function sitesChart(sites) {
       + `<text class="l dim" x="${gx}" y="${H - 12}" text-anchor="middle">${escapeText(s.note)}</text>`;
   }).join("");
   return `<div class="chart-card mb-card"><div class="chart-title">Works at a site it never saw</div>`
-    + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Farmer practice vs FieldTwin team at two sites">`
+    + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Farmer practice vs Maize Runner team at two sites">`
     + `<line class="axis" x1="${left}" x2="${W - right}" y1="${y(0)}" y2="${y(0)}"/>${body}</svg>`
-    + `<div class="chart-caption legend"><span class="key c-farmer"></span>Farmer practice <span class="key c-team"></span>FieldTwin team</div></div>`;
+    + `<div class="chart-caption legend"><span class="key c-farmer"></span>Farmer practice <span class="key c-team"></span>Maize Runner team</div></div>`;
 }
 
 // 3. Resource tiles: water and leaching vs farmer practice, plus failed decisions.
@@ -213,7 +213,7 @@ function heroBars(t) {
     + `<div class="res-ref" style="left:${w(t.hindsight)}"></div></div></div>`;
   return `<div class="res-bars"><div class="res-bar"><span></span><div class="res-ref-label" style="width:${w(t.hindsight)}">`
     + `<span>Grid hindsight ${usd1(t.hindsight)}</span><span class="quiet">reference</span></div></div>`
-    + bar("farmer", "Farmer practice", t.farmer) + bar("team", "FieldTwin team", t.team)
+    + bar("farmer", "Farmer practice", t.farmer) + bar("team", "Maize Runner team", t.team)
     + `<div class="res-bar"><span></span><span class="res-note">Mean score per season ($/ha). Grid hindsight: the best fixed schedule from a grid search run after the season, weather known.</span></div></div>`;
 }
 

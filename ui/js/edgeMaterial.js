@@ -1,4 +1,4 @@
-// Edge-line cube material for the FieldTwin field, ported from the fragment shader of the React Bits
+// Edge-line cube material for the Maize Runner field, ported from the fragment shader of the React Bits
 // <Cubes /> component (reactbits.dev, JavaScript + CSS variant). Not React: a three.js ShaderMaterial (GLSL3)
 // used only inside this app. Do not export or publish it as a standalone component or package.
 //
@@ -7,7 +7,7 @@
 //
 // What is ported (FRAGMENT): fwidth-based UV edge lines with antialiased coverage, edges faded on faces seen
 // edge-on, side shading from a fixed light, and the ripple flash on faces and edges. Faces use the page
-// background (#07090a) for the cut-out look. Changes for FieldTwin: per-instance edge color (data-driven)
+// background (#07090a) for the cut-out look. Changes for Maize Runner: per-instance edge color (data-driven)
 // and per-instance flash (rgb = ripple color, a = strength) instead of single uniforms; solid edges only;
 // a perspective scene with instanceMatrix and view-space normals instead of the 2D grid projection.
 // The ring, spring and intro logic from the same component lives in field3d.js.

@@ -4,8 +4,8 @@
 // do not export or publish it as a standalone component or package.
 //
 // What is ported: per-icon size from the pointer's horizontal distance to the icon center (magnification), a
-// spring toward that size, a label tooltip on hover. Changes for FieldTwin: cos^2 falloff instead of a linear
-// map, a small hop on click, a dot under the active page, the FieldTwin look (black bar, 1px hairline, no
+// spring toward that size, a label tooltip on hover. Changes for Maize Runner: cos^2 falloff instead of a linear
+// map, a small hop on click, a dot under the active page, the Maize Runner look (black bar, 1px hairline, no
 // blur, no tiles, no shadows), and reduced motion (no magnification, no hop).
 //
 // Credit: the React Bits Dock component by David Haz.
