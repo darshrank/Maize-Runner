@@ -10,6 +10,10 @@
 //            per-kind glow gains; then the two passes are mixed
 //   storm    a week with logged rain over theme.stormMm: rain streaks, strong lean (dioramas), one lightning
 //            flash (cubes lit through uFlash, one bloomed bolt) when the week is entered
+//   fit      the scene centers in the space right of the week cards (a camera view offset), the camera backs off
+//            along its home direction when both fields would not fit that width or the labels-to-slab height would
+//            not fit between the top bar and the finale row, and the camera moves up or down to center the scene in
+//            that height, so no field slides under the cards or the finale (fitView, theme.three.fit)
 //   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): field pickers
 //            centered above their field, the finale in one row under the fields (each field's number centered on
 //            its projected x, the gap centered between them). Labels are pushed apart so none overlaps another,
@@ -98,7 +102,11 @@ export class Season3D {
     const C = T.camera;
     this.camera = new THREE.PerspectiveCamera(C.fov, 16 / 9, 0.1, 200);
     this.home = { pos: new THREE.Vector3(...C.pos), target: new THREE.Vector3(...C.target) };
+    this.basePos = this.home.pos.clone();
+    this.baseTarget = this.home.target.clone();
     this.camera.position.copy(this.home.pos);
+    this.reserve = { target: 0, cur: 0, fitted: -1, floor: null };   // px on the left kept free for the week cards
+    this.pv = new THREE.Vector3();
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.target.copy(this.home.target);
     this.controls.enableDamping = !reduceMotion;
@@ -253,10 +261,10 @@ export class Season3D {
   // heads: {left, right} elements centered above each field (bottom edge at the anchor); fins: {left, right} the
   // finale under each field (top edge on the row); mid: the gap between them; floor: the element whose top edge
   // the finale row must stay above (the controls).
-  setOverlays({ heads, fins, mid, floor }) {
-    this.ov = { heads, fins, mid, floor, floorY: null, floorAge: 0 };
+  // side: the element on the left the scene must stay clear of (the week cards).
+  setOverlays({ heads, fins, mid, floor, side = null }) {
+    this.ov = { heads, fins, mid, floor, side, floorY: null, floorAge: 0 };
     this.anchors = Object.fromEntries(SIDES.map((s) => [s, this.fields[s].anchors()]));
-    this.pv = new THREE.Vector3();
   }
 
   project(p) {
@@ -277,8 +285,11 @@ export class Season3D {
     // Reads first (sizes), then writes, so the layout is computed once per frame.
     o.floorAge -= dt;
     if (o.floor && (o.floorY === null || o.floorAge <= 0)) {
-      o.floorY = o.floor.getBoundingClientRect().top - this.root.getBoundingClientRect().top;
+      const top = this.root.getBoundingClientRect();
+      o.floorY = o.floor.getBoundingClientRect().top - top.top;
       o.floorAge = 0.5;
+      const r = o.side && !o.side.hidden ? o.side.getBoundingClientRect() : null;
+      this.reserve.target = r && r.width ? Math.max(0, r.right - top.left + T.fit.gap) : 0;
     }
     // Each overlay is a zero-size anchor; its one child (.s3-in) holds the content and carries the size.
     const size = (el) => { const c = el.firstElementChild || el; return { w: c.offsetWidth, h: c.offsetHeight }; };
@@ -352,12 +363,59 @@ export class Season3D {
     this.active = on;
   }
 
+  // Center the scene in the free width right of the reserve (a wider virtual frame, rendered from its left part),
+  // then back the camera off until both fields fit that width and the label anchors to the slab bottom fit between
+  // fit.top and the finale row, and move it up or down to center them there. Projection-based, a few passes.
+  fitView() {
+    const w = this.root.clientWidth, h = this.root.clientHeight;
+    if (!w || !h) return;
+    const L = this.reserve.cur, free = Math.max(1, w - L), C = T.camera, F = T.fit;
+    const floor = this.ov && this.ov.floorY !== null ? this.ov.floorY : h - 120;
+    this.reserve.fitted = L;
+    this.reserve.floor = floor;
+    this.camera.aspect = (w + L) / h;
+    if (L > 0.5) this.camera.setViewOffset(w + L, h, 0, 0, w, h);
+    else this.camera.clearViewOffset();
+    this.camera.updateProjectionMatrix();
+    const half = T.fieldX + this.fields.left.W / 2 + F.margin + 0.6 * C.dollyX;
+    const d0 = this.basePos.distanceTo(this.baseTarget);
+    const tanV = Math.tan(THREE.MathUtils.degToRad(C.fov) / 2);
+    let k = Math.max(1, (half * h) / (0.92 * free * tanV) / d0), dy = 0;
+    if (this.user) return;   // the viewer holds the camera; the frame still follows the cards
+    const anchors = SIDES.map((s) => this.fields[s].anchors());
+    const top = F.top, bottom = Math.max(top + 80, floor - F.bottom);
+    for (let pass = 0; pass < 4; pass++) {
+      this.placeCamera(k, dy);
+      const ys = anchors.flatMap((a) => [a.head, ...a.bottom]).map((p) => this.project(p).y);
+      const a = Math.min(...ys), b = Math.max(...ys);
+      if (b - a > bottom - top) k *= (b - a) / (bottom - top);
+      const pxPerUnit = h / (2 * d0 * k * tanV);
+      dy += ((a + b) / 2 - (top + bottom) / 2) / pxPerUnit;
+    }
+    this.placeCamera(k, dy);
+  }
+
+  // Home camera at distance factor k along the base direction, raised by dy world units (camera and target).
+  placeCamera(k, dy) {
+    const target = this.baseTarget.clone();
+    target.y -= dy;
+    const pos = this.basePos.clone().sub(this.baseTarget).multiplyScalar(k).add(target);
+    this.home.pos.copy(pos);
+    this.home.target.copy(target);
+    if (this.resetAnim) return;
+    this.camera.position.copy(pos);
+    this.camera.position.x += this.dollyX;
+    this.controls.target.copy(target);
+    this.controls.target.x += this.dollyX * 0.4;
+    this.camera.lookAt(this.controls.target);
+    this.camera.updateMatrixWorld();
+  }
+
   resize() {
     const w = this.root.clientWidth, h = this.root.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    this.fitView();
     const pr = this.renderer.getPixelRatio();
     this.shared.uPx.value = (h * pr) / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
     if (this.bloomComposer) {
@@ -391,6 +449,10 @@ export class Season3D {
       this.fields[s].flash(f);
     }
     this.tickRain(this.reduce ? 0 : dt);
+    const R = this.reserve;
+    R.cur = this.reduce ? R.target : R.cur + (R.target - R.cur) * Math.min(1, dt * 6);
+    const floorY = this.ov ? this.ov.floorY : null;
+    if (Math.abs(R.cur - R.fitted) > 0.5 || (floorY !== null && Math.abs(floorY - (R.floor ?? -1)) > 1)) this.fitView();
     this.tickCamera(dt);
     this.ambient.intensity = T.glass.ambient * (1 + 2 * f);
     this.render();

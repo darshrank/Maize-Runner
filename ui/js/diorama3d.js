@@ -564,8 +564,8 @@ export class Diorama {
 
     this.pulse *= Math.exp(-1.4 * dt);
     const pulse = this.reduce ? 0 : this.pulse, lv = clamp(this.level.x, 0, 1);
-    this.fluid.mat.uniforms.uEmit.value = 0.06 + 0.8 * lv + 1.7 * pulse;
-    this.slabMat.emissive.copy(this.soilColor).lerp(this.red, clamp(GL.slabRed * (lv + 0.5 * pulse), 0, 1));
+    this.fluid.mat.uniforms.uEmit.value = 0.06 + 0.8 * lv + T.leachPulse.fluid * pulse;
+    this.slabMat.emissive.copy(this.soilColor).lerp(this.red, clamp(GL.slabRed * (lv + T.leachPulse.slab * pulse), 0, 1));
     this.drawWater(clamp(this.water.x, 0, 1));
     this.tickMotes(Math.min(dt, 0.05));
   }

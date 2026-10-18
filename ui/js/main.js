@@ -92,6 +92,12 @@ function signedMoney(v) {
   return `${v < 0 ? "−" : "+"}$${fmt(Math.abs(v), 0)}/ha`;
 }
 
+// Gap at harvest (right minus left). Positive: "+$X/ha", counted up in the accent color. Zero or negative
+// (the right field earned the same or less): "−$X/ha" or "$0/ha" in quiet text, set at once, no accent, no count.
+function gapMoney(v) {
+  return Math.round(v) === 0 ? "$0/ha" : signedMoney(v);
+}
+
 // Finale count-up from 0 (longer than the 400 ms counters: it is the closing beat). Reduced motion: no count.
 function countUp(el, value, format, ms = 1400) {
   cancelAnimationFrame(el._raf);
@@ -247,7 +253,8 @@ function renderFinale() {
     finals[side] = final;
     const prof = document.querySelector(`#s3-fin-${side} .fin-profit`);
     const p = final && has(final.profit_usd_ha) ? final.profit_usd_ha : null;
-    if (p !== null && prof.hidden) countUp(prof.querySelector(".v"), p, money);
+    if (p !== null && prof._v !== p) countUp(prof.querySelector(".v"), p, money);   // new value (or new config)
+    prof._v = p;
     prof.hidden = p === null;
     const leach = document.querySelector(`#s3-fin-${side} .fin-leach`);
     const nl = final && has(final.n_leached) ? final.n_leached : null;
@@ -257,7 +264,17 @@ function renderFinale() {
   const box = document.querySelector("#s3-fin-mid .fin-delta");
   const l = finals.left && finals.left.profit_usd_ha, r = finals.right && finals.right.profit_usd_ha;
   const delta = has(l) && has(r) ? r - l : null;
-  if (delta !== null && box.hidden) countUp(box.querySelector(".v"), delta, signedMoney);
+  const ahead = delta !== null && Math.round(delta) > 0;
+  if (delta !== null && box._v !== delta) {
+    const v = box.querySelector(".v");
+    if (ahead) countUp(v, delta, signedMoney);
+    else {
+      cancelAnimationFrame(v._raf);
+      v.textContent = gapMoney(delta);
+    }
+  }
+  box._v = delta;
+  box.classList.toggle("behind", delta !== null && !ahead);
   box.hidden = delta === null;
 }
 
@@ -394,6 +411,12 @@ function cardHtml(k, W, names) {
     + `<p class="wc-text">${esc(line.text)}</p>`
     + `${line.side ? `<p class="wc-side">${esc(names[line.side])}</p>` : ""}`
     + `${obj ? `<p class="wc-obj" title="${esc(obj)}"><span class="who">Critic</span> ${esc(cut(obj, theme.three.cards.objectionChars))}</p>` : ""}`;
+}
+
+// Card counter: "Week N / last week" (the same numbering as "Week N of M" on the Agents page), "Harvest" last.
+function cardCounter(i) {
+  const W = maxW();
+  return i < W ? { cur: `Week ${i}`, tot: String(W - 1) } : { cur: "Harvest", tot: "" };
 }
 
 function renderCards() {
@@ -582,9 +605,10 @@ async function initSeason() {
         fins: { left: $("s3-fin-left"), right: $("s3-fin-right") },
         mid: $("s3-fin-mid"),
         floor: $("bottom"),
+        side: $("weekcards"),
       });
       cards = new Carousel($("weekcards"), { stiffness: theme.three.cards.stiffness, damping: theme.three.cards.damping,
-        reduceMotion: REDUCE, label: "Week cards", onChange: (k) => setWeek(k) });
+        reduceMotion: REDUCE, label: "Week cards", onChange: (k) => setWeek(k), counter: cardCounter });
       document.body.classList.add("s3d");
     } catch (err) {
       fallback2D(err);

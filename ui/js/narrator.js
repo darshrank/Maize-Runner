@@ -3,7 +3,9 @@
 //
 // Every value in a line comes from the two runs on screen (data.js weeks model) or the weather file; a trigger
 // fires only when its data is there. One trigger per week, first match in this order:
-//   harvest     the final week, both runs have final.profit_usd_ha: compare the two fields
+//   harvest     the final week, both runs have final.profit_usd_ha: compare the two fields. The pool follows the
+//               sign of right minus left (rounded to whole dollars): harvestRight when the right field earned more,
+//               harvestLeft when it earned less, harvestTie when equal. No line assumes which side wins.
 //   fallback    a run logged a fallback this week
 //   doseRain    a run applied N this week (decision.n_kg_ha > 0) and a day of this week has >= HEAVY_MM of rain
 //               (weather file aligned to week 0); {when} counts days from the week's start, when the decision
@@ -91,13 +93,23 @@ export const LINES = {
     "Fallback engaged. The soil is unbothered.",
     "Fallback week. The corn has no opinion on the matter.",
   ],
-  harvest: [
-    "Harvest. {better} made {diff}/ha more than {worse}. The corn is unmoved.",
-    "Season over. {better} comes out {diff}/ha ahead. The weather takes no credit.",
+  // Right field earned more.
+  harvestRight: [
+    "Harvest. {right} made {diff}/ha more than {left}. The corn is unmoved.",
+    "Season over. {right} comes out {diff}/ha ahead. The weather takes no credit.",
     "Harvest. {lp} for {left}, {rp} for {right}. The corn has stopped growing to listen.",
-    "That is the season. {better} wins by {diff}/ha. The nitrogen has no further comment.",
-    "Harvest is in. A {diff}/ha gap. The rain claims it was all part of the plan.",
-    "Done. {better} leads by {diff}/ha. The soil would like a nap.",
+    "That is the season. {right} ends {diff}/ha ahead. The nitrogen has no further comment.",
+    "Harvest is in. {right} by {diff}/ha. The rain claims it was all part of the plan.",
+    "Done. {right} leads by {diff}/ha. The soil would like a nap.",
+  ],
+  // Right field earned less.
+  harvestLeft: [
+    "Harvest. {right} made {diff}/ha less than {left}. The corn is unmoved.",
+    "Season over. {left} comes out {diff}/ha ahead. The weather takes no credit.",
+    "Harvest. {lp} for {left}, {rp} for {right}. The corn has stopped growing to listen.",
+    "That is the season. {right} ends {diff}/ha behind. The nitrogen has no further comment.",
+    "Harvest is in. {left} by {diff}/ha. The rain claims it was all part of the plan.",
+    "Done. {left} leads by {diff}/ha. The soil would like a nap.",
   ],
   quietAny: [
     "Week {week}. Nothing worth a headline. The corn approves.",
@@ -167,10 +179,9 @@ export function narrate(ctx) {
   if (k >= W) {
     const l = runs.left && runs.left.final, r = runs.right && runs.right.final;
     if (!l || !r || !has(l.profit_usd_ha) || !has(r.profit_usd_ha)) return null;
-    const lp = l.profit_usd_ha, rp = r.profit_usd_ha, diff = Math.abs(rp - lp);
-    const vars = { left: names.left, right: names.right, lp: money(lp), rp: money(rp), diff: money(diff),
-      better: rp > lp ? names.right : names.left, worse: rp > lp ? names.left : names.right };
-    return line(Math.round(diff) === 0 ? "harvestTie" : "harvest", vars);
+    const lp = l.profit_usd_ha, rp = r.profit_usd_ha, gap = Math.round(rp - lp);
+    const vars = { left: names.left, right: names.right, lp: money(lp), rp: money(rp), diff: money(Math.abs(rp - lp)) };
+    return line(gap === 0 ? "harvestTie" : gap > 0 ? "harvestRight" : "harvestLeft", vars);
   }
 
   const weeks = Object.fromEntries(sides.map((s) => [s, week(s)]));

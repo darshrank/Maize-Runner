@@ -178,7 +178,7 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 select.cfg-pick {
   pointer-events: auto; appearance: none; -webkit-appearance: none; background: transparent; border: 1px solid transparent;
   padding: 2px 22px 2px 6px; font-family: inherit; font-size: inherit; font-weight: 600; color: inherit; cursor: pointer;
-  text-align: center;
+  text-align: center; field-sizing: content;   /* as wide as the selected label, so the caret sits next to it */
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
   background-position: calc(100% - 11px) 55%, calc(100% - 6px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
   transition: border-color var(--ms) var(--ease);
@@ -189,12 +189,17 @@ select.cfg-pick option { background: #000; color: var(--text); font-size: 16px; 
 select.cfg-pick.s3-name { font-size: 24px; }
 .cfg-model { font-size: 14px; }
 .cfg-none { font-size: 15px; }
+/* 3D heads: the picker's bottom edge sits on the anchor on both sides; the model line hangs just under it. */
+.s3-in.up .cfg-model, .s3-in.up .cfg-none { position: absolute; top: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
 .field-head h2 select.cfg-pick { text-align: left; }
 .fin-profit { display: grid; justify-items: center; animation: rise 600ms var(--ease) both; }
 .fin-profit .v { font-size: 60px; font-weight: 600; line-height: 1; }
 .fin-profit .unit { font-size: 14px; color: var(--quiet); letter-spacing: 0.06em; text-transform: uppercase; }
 .fin-delta { display: grid; justify-items: center; gap: 8px; padding-bottom: 6px; animation: rise 600ms var(--ease) both; }
 .fin-delta .v { font-size: 40px; font-weight: 600; line-height: 1; color: var(--accent); }
+/* The right field earned the same or less: quiet text, no accent, no rise. */
+.fin-delta.behind { animation: none; }
+.fin-delta.behind .v { font-size: 22px; font-weight: 500; color: var(--quiet); }
 .fin-leach { font-size: 15px; color: var(--leach); animation: rise 600ms var(--ease) both; }
 #s3-week { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 2; pointer-events: none;
   font: 600 22px/1.2 var(--sans); }
@@ -208,28 +213,31 @@ select.cfg-pick.s3-name { font-size: 24px; }
 /* Week cards (carousel.js, cube effect): left side, one card per week, only the current one visible. Dark frosted
    glass: black at 55%, 16px backdrop blur, 1px hairline, radius 12, no gradient, no shadow. */
 #weekcards {
-  position: fixed; left: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 3; width: 288px;
+  position: fixed; left: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 3; width: clamp(220px, 16vw, 288px);
   display: grid; gap: 10px; outline: none; touch-action: pan-y; user-select: none; cursor: grab;
 }
 #weekcards.dragging { cursor: grabbing; }
 #weekcards:focus-visible .carousel-viewport { outline: 1px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
-.carousel-viewport { position: relative; height: 224px; }
+.carousel-viewport { position: relative; height: 248px; }
+@media (max-width: 1500px) { .carousel-viewport { height: 288px; } }   /* narrower cards: the date wraps, text runs longer */
 .carousel-card {
   position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden;
   background: rgba(0, 0, 0, 0.55); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   border: 1px solid var(--hairline-strong); will-change: transform;
 }
-.carousel-card-body { height: 100%; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.carousel-card-body { height: 100%; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
 .carousel-shade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
 .carousel-counter { display: flex; justify-content: center; align-items: baseline; gap: 6px; font-size: 14px; color: var(--quiet); }
 .carousel-counter .cur-box { display: inline-block; overflow: hidden; height: 1.3em; }
 .carousel-counter .cur { display: inline-block; color: var(--text); }
-.wc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.wc-week { font-size: 17px; font-weight: 600; }
+.wc-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; }
+.wc-week { font-size: 17px; font-weight: 600; white-space: nowrap; }
 .wc-date { font-size: 14px; color: var(--quiet); white-space: nowrap; }
-.wc-text { margin: 0; font-size: 16px; line-height: 1.4; color: #d3dbc9; }
+.wc-text { margin: 0; font-size: 16px; line-height: 1.4; color: #d3dbc9; flex: none;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
 .wc-side { margin: -6px 0 0; font-size: 14px; color: var(--quiet); }
-.wc-obj { margin: auto 0 0; font-size: 14px; line-height: 1.4; color: var(--critic); }
+.wc-obj { margin: auto 0 0; font-size: 14px; line-height: 1.4; color: var(--critic); flex: none;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .wc-obj .who { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 
 /* ---------------------------------------------------------------- agents page (full weekly chat) */

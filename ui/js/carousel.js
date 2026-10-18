@@ -11,7 +11,8 @@
 // settles 120 ms after it stops, arrow keys / Home / End on the root, reduced motion (jumps).
 // Changes for FieldTwin: no arrows, no autoplay, no loop; only the current card is visible at rest (the others
 // are hidden, not stacked); setIndex() from outside moves the deck without calling onChange, so playback and
-// the deck stay in sync both ways without echo.
+// the deck stay in sync both ways without echo; counter(index, n) -> {cur, tot} replaces the "07 / 20" text
+// (an empty tot hides the slash).
 //
 // Credit: the React Bits Carousel component by David Haz.
 //
@@ -49,11 +50,13 @@ const DEAD_ZONE = 6, OVERSHOOT = 0.3, SHADE = 0.6;
 
 export class Carousel {
   // root: an empty element. onChange(index) fires only for the viewer's own moves (drag, wheel, keys).
-  constructor(root, { stiffness = 150, damping = 24, onChange = null, reduceMotion = false, label = "Carousel" } = {}) {
+  constructor(root, { stiffness = 150, damping = 24, onChange = null, reduceMotion = false, label = "Carousel",
+    counter = null } = {}) {
     this.root = root;
     this.k = stiffness;
     this.c = damping;
     this.onChange = onChange;
+    this.format = counter || ((i, n) => ({ cur: pad2(i + 1), tot: pad2(n) }));
     this.reduce = reduceMotion;
     this.n = 0;
     this.index = 0;
@@ -75,6 +78,7 @@ export class Carousel {
     this.counter.className = "carousel-counter mono";
     this.counter.innerHTML = `<span class="cur-box"><span class="cur">00</span></span><span class="sep">/</span><span class="tot">00</span>`;
     this.cur = this.counter.querySelector(".cur");
+    this.sep = this.counter.querySelector(".sep");
     this.tot = this.counter.querySelector(".tot");
     root.append(this.viewport, this.counter);
 
@@ -101,7 +105,6 @@ export class Carousel {
     this.index = clamp(index, 0, Math.max(0, this.n - 1));
     this.p = this.index;
     this.v = 0;
-    this.tot.textContent = pad2(this.n);
     this.setCounter(false);
     this.layout();
   }
@@ -127,7 +130,10 @@ export class Carousel {
   }
 
   setCounter(animate, dir = 1) {
-    this.cur.textContent = pad2(this.index + 1);
+    const { cur, tot } = this.format(this.index, this.n);
+    this.cur.textContent = cur;
+    this.tot.textContent = tot;
+    this.sep.hidden = this.tot.hidden = !tot;
     if (animate && !this.reduce && this.cur.animate) {
       this.cur.animate([{ transform: `translateY(${dir * 70}%)`, opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
         { duration: 320, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)" });

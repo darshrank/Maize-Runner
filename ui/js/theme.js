@@ -71,13 +71,18 @@ export const theme = {
     cores: { perCube: 3, size: 0.075, dose: 36, uptake: 18, leach: 80, capN: 360, capLeach: 520 },
     plants: { maxH: 2.4, sprout: 0.1 },
     maize: { body: "#050a03", tassel: "#d6f25a", thirst: "#c9a227" },
-    labelY: 3.3,                  // field names sit above this height (above the tallest plant)
+    labelY: 3.55,                 // field names sit above this height (above the tallest plant, room for the model line)
     camera: { fov: 38, pos: [0, 1.9, 16.2], target: [0, -1.2, 0], dollyX: 2.2, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
     // Bloom between R2 (1.0 / 0.0) and R3 (0.5 / 0.15). Selective: plants (rim), water fill, N and leach cores,
     // groundwater fluid, lightning bolt. glow: per-kind gain in the bloom pass only (the scene itself is unchanged).
+    // R5 (browser check): water 0.7 and pool 1.0 washed a full soil profile into solid cyan and the slab into a red
+    // haze over the controls; both lowered so the glass and edges stay readable.
     bloom: { strength: 0.6, radius: 0.52, threshold: 0.1 },
-    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.7, core: 1.0, pool: 1.0 },
+    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.22, core: 1.0, pool: 0.35 },
+    // Leaching pulse (each splash adds to it, capped at 1.6, decays): gain on the groundwater fluid's emission and
+    // on the slab's red tint. R4 used 1.7 and 0.5; one leaching week saturated the slab.
+    leachPulse: { fluid: 0.6, slab: 0.2 },
     thirst: { start: 0.32, full: 0.15 },   // obs.soil_water_frac where leaves start to droop / droop fully
     stormLean: 0.55,              // bend at the plant top in a storm week (logged rain > stormMm)
     wind: 0.09, stormWind: 0.22,  // sway amplitude, calm and storm
@@ -85,6 +90,11 @@ export const theme = {
     bolt: 1.4,                    // lightning bolt line brightness at the flash peak (bloomed)
     rain: 520,                    // rain streaks at full storm (weekly.rain_mm / 100)
     cards: { objectionChars: 100, stiffness: 150, damping: 24 },   // week cards (carousel.js)
+    // Camera refit (season3d.js fitView): the scene centers in the space right of the week cards (gap px past their
+    // right edge) and backs off when both fields (plus margin world units and the dolly sway) would not fit that
+    // width, or when the label anchors (labelY) to the slab bottom would not fit between `top` px (top bar and
+    // pickers) and `bottom` px above the controls (the finale row).
+    fit: { margin: 0.5, gap: 24, top: 124, bottom: 150 },
   },
   // Mote counts at full scale (each scaled by its value over the max across both fields for this task).
   motes: {
