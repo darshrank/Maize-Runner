@@ -403,6 +403,99 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .hiw-tip-msg { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .hiw-part { transition: none; } }
 
+/* ---- Results: headline charts (resultsCharts.js; A's demo_results.json). Colors are the theme tokens. ---- */
+.results-wrap .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
+.chart-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 12px; background: rgba(255, 255, 255, 0.02); }
+.chart-title { font-size: var(--fs-2); color: var(--text); margin-bottom: 6px; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--font); fill: var(--text); }
+.chart text.v { font-size: 15px; font-weight: 600; }
+.chart text.l { font-size: 12px; fill: var(--muted); }
+.chart text.dim { opacity: 0.7; }
+.chart text.gain { font-size: 16px; font-weight: 700; fill: var(--accent); }
+.chart .axis { stroke: var(--border); stroke-width: 1; }
+.chart .ceiling { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 6 5; opacity: 0.8; }
+.chart .c-farmer, .key.c-farmer { fill: var(--muted); background: var(--muted); opacity: 0.5; }
+.chart .c-single { fill: var(--text); opacity: 0.85; }
+.chart text.v.in { fill: var(--bg); }
+.chart .c-team, .key.c-team { fill: var(--accent); background: var(--accent); }
+.chart .c-loss { fill: var(--leach); opacity: 0.8; }
+.chart-caption { font-size: var(--fs-1); color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.chart-caption b { color: var(--text); }
+.chart-caption .t-team { color: var(--accent); }
+.chart-caption .t-warn { color: var(--warn); }
+.chart-caption.legend { display: flex; align-items: center; gap: 8px; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tile { border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.tile .big { font-size: 40px; font-weight: 700; line-height: 1.1; }
+.tile .tl { font-size: var(--fs-2); color: var(--text); margin-top: 4px; }
+.tile .ts { font-size: var(--fs-1); color: var(--muted); margin-top: 2px; }
+.tile.t-water .big { color: var(--water); }
+.tile.t-leach .big { color: var(--leach); }
+.tile.t-team .big { color: var(--accent); }
+.res-more { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 10px; }
+.res-more > summary { cursor: pointer; color: var(--muted); font-size: var(--fs-2); }
+.res-more[open] > summary { color: var(--text); }
+@media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } .results-wrap .charts { grid-template-columns: 1fr; } }
+
+/* ---- Results bento (look ported from React Bits MagicBento; glow = FieldTwin green) ---- */
+.bento {
+  --mb-glow-rgb: 118, 185, 0;   /* --accent as r, g, b */
+  --mb-radius: 20px;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; grid-auto-flow: row dense;
+}
+.mb-cell { grid-column: span var(--span, 1); min-width: 0; --mb-delay: 0ms; }
+.mb-cell > .mb-card { height: 100%; box-sizing: border-box; }
+.mb-card {
+  position: relative; isolation: isolate; overflow: hidden;
+  border: none !important; border-radius: var(--mb-radius) !important;
+  background: linear-gradient(180deg, #1a1820 0%, #121116 100%) !important;
+  box-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.85), 0 8px 18px -12px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* spotlight inside the hovered card */
+.mb-card::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(300px circle at var(--mb-x, -999px) var(--mb-y, -999px),
+    rgba(var(--mb-glow-rgb), calc(0.09 * var(--mb-hot, 0))) 0%, rgba(var(--mb-glow-rgb), 0) 70%);
+  transition: opacity 300ms ease;
+}
+/* border glow near the cursor (neighbors too) + the click wave ring */
+.mb-card::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; padding: 1px; border-radius: inherit; pointer-events: none;
+  background:
+    radial-gradient(225px circle at var(--mb-x, -999px) var(--mb-y, -999px),
+      rgba(var(--mb-glow-rgb), calc(0.85 * var(--mb-near, 0))) 0%, rgba(var(--mb-glow-rgb), calc(0.35 * var(--mb-near, 0))) 45%,
+      rgba(var(--mb-glow-rgb), 0) 100%),
+    radial-gradient(circle at var(--mb-wx, -999px) var(--mb-wy, -999px),
+      rgba(var(--mb-glow-rgb), 0) calc(var(--mb-wr, 0px) - 110px),
+      rgba(var(--mb-glow-rgb), calc(0.6 * var(--mb-wa, 0))) calc(var(--mb-wr, 0px) - 20px),
+      rgba(var(--mb-glow-rgb), calc(0.85 * var(--mb-wa, 0))) calc(var(--mb-wr, 0px) - 3px),
+      rgba(var(--mb-glow-rgb), 0) var(--mb-wr, 0px));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.mb-card.chart-card { padding: 18px 20px 14px; }
+.mb-card.tile { padding: 20px 22px; }
+.mb-card.tile .big { font-size: 44px; letter-spacing: -0.02em; }
+/* staggered intro (only when the cell has been armed by introBento) */
+@media (prefers-reduced-motion: no-preference) {
+  .bento .mb-cell:not(.mb-in) { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.97); }
+  .bento .mb-cell.mb-in { opacity: 1; transform: none;
+    transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--mb-delay),
+      transform 760ms cubic-bezier(0.34, 1.4, 0.64, 1) var(--mb-delay); }
+}
+@media (max-width: 1000px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mb-cell { grid-column: span min(var(--span, 1), 2); } }
+@media (max-width: 620px) { .bento { grid-template-columns: 1fr; } .mb-cell { grid-column: span 1; } }
+/* team vs single: three side-by-side comparisons */
+.tvs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 4px; }
+.tvs-title { font-size: var(--fs-2); color: var(--text); }
+.tvs-title .quiet { font-size: var(--fs-1); }
+.tvs-unit { font-size: var(--fs-1); color: var(--muted); margin-top: -4px; }
+.chart text.row { font-size: 14px; fill: var(--text); }
+@media (max-width: 900px) { .tvs { grid-template-columns: 1fr; } }
+
 /* ---------------------------------------------------------------- Serving (serving.js): vLLM metrics */
 #serving { overflow-y: auto; }
 .srv-wrap { max-width: 1100px; margin: 0 auto; padding: 8px var(--gutter) 32px; display: grid; gap: 14px; }

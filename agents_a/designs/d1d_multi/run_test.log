@@ -1,0 +1,41 @@
+d1d_multi (ablation; d1c_multi stays final), frozen at b34db33, started 01:45 (retry after tunnel drop)
+running 15 seasons: UFGA-2010, UFGA-2011, UFGA-2012, UFGA-2013, UFGA-2014, UFGA-2015, UFGA-2016, UFGA-2017, UFGA-2018, UFGA-2019, UFGA-2020, UFGA-2021, UFGA-2022, UFGA-2023, UFGA-2024
+ UFGA-2012  reward   1492.7  grain   10798  N   226  irr  177  leached  47.6  llm 181  fallbacks 0  1031s
+ UFGA-2017  reward   1637.6  grain   11252  N   203  irr  224  leached  28.9  llm 184  fallbacks 0  1082s
+ UFGA-2013  reward   1809.0  grain   11670  N   186  irr  107  leached  30.4  llm 205  fallbacks 0  1153s
+ UFGA-2014  reward   1668.7  grain   11145  N   227  irr  111  leached  17.5  llm 198  fallbacks 0  1160s
+ UFGA-2016  reward   1106.5  grain    8214  N   225  irr  165  leached   5.0  llm 187  fallbacks 0  1172s
+ UFGA-2011  reward   1191.7  grain    8631  N   182  irr  275  leached   6.8  llm 188  fallbacks 0  1218s
+ UFGA-2015  reward   1231.9  grain    8782  N   220  irr  173  leached   0.0  llm 179  fallbacks 0  1269s
+ UFGA-2010  reward    917.6  grain    6995  N   215  irr   76  leached  13.3  llm 205  fallbacks 0  1404s
+ UFGA-2018  reward   1177.0  grain    8626  N   191  irr   90  leached  49.1  llm 200  fallbacks 0  1046s
+ UFGA-2020  reward   1889.0  grain   12428  N   224  irr  186  leached  13.3  llm 191  fallbacks 0  979s
+ UFGA-2019  reward    979.9  grain    7802  N   224  irr  165  leached  24.9  llm 189  fallbacks 0  1099s
+ UFGA-2021  reward   1569.8  grain   10481  N   192  irr  199  leached   9.0  llm 194  fallbacks 0  1030s
+ UFGA-2023  reward   1788.9  grain   11750  N   220  irr  126  leached  17.4  llm 190  fallbacks 0  1058s
+ UFGA-2022  reward   1237.1  grain    9167  N   212  irr  266  leached  12.2  llm 193  fallbacks 0  1123s
+ UFGA-2024  reward    819.9  grain    6911  N   221  irr  259  leached   0.3  llm 183  fallbacks 0  1059s
+# FieldTwin eval summary
+
+Mean ± 95% CI (normal approx). Farmer practice = `farmer_ufga` (config.yaml eval.farmer_practice). gap closed = (reward - farmer practice) / (hindsight - farmer practice). Hindsight knows the future: it is an unreachable ceiling.
+
+## Split: dev-tune
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d1d_multi | 3 | 1225.1 ± 716.5 | 1274.2 ± 738.4 | 8915.1 ± 3412.7 | 214.3 ± 9.4 | 20.1 ± 20.6 | 1.27 | -18% |
+| farmer | 3 | 916.0 ± 499.8 | 968.4 ± 537.5 | 6686.7 ± 2424.7 | 160.0 ± 0.0 | 21.5 ± 26.7 | -0.04 | -12% |
+| farmer_ufga (farmer practice) | 3 | 924.8 ± 547.1 | 984.4 ± 582.0 | 6871.2 ± 3015.8 | 116.0 ± 0.0 | 24.4 ± 21.6 | 0.00 | +0% |
+| no_n | 3 | 188.4 ± 138.3 | 215.8 ± 152.5 | 1118.0 ± 790.4 | 0.0 ± 0.0 | 11.2 ± 10.9 | -3.12 | -54% |
+| hindsight (unreachable ceiling) | 3 | 1160.7 ± 713.9 | 1194.9 ± 730.7 | 7704.0 ± 3539.4 | 133.3 ± 26.1 | 14.0 ± 11.6 | 1.00 | -43% |
+
+## Split: test
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d1d_multi | 15 | 1367.8 ± 175.7 | 1412.7 ± 181.5 | 9643.3 ± 918.6 | 211.2 ± 8.1 | 18.4 ± 7.7 | 1.54 | -20% |
+| farmer | 15 | 1096.2 ± 140.0 | 1131.1 ± 142.6 | 7563.6 ± 719.3 | 160.0 ± 0.0 | 14.3 ± 6.8 | 0.12 | -38% |
+| farmer_ufga (farmer practice) | 15 | 1074.1 ± 107.7 | 1130.4 ± 114.1 | 7627.4 ± 591.3 | 116.0 ± 0.0 | 23.0 ± 5.6 | 0.00 | +0% |
+| no_n | 15 | 198.7 ± 40.4 | 221.3 ± 41.8 | 1146.8 ± 216.8 | 0.0 ± 0.0 | 9.3 ± 3.6 | -4.58 | -60% |
+| hindsight (unreachable ceiling) | 15 | 1265.2 ± 137.2 | 1296.7 ± 141.5 | 8250.1 ± 784.3 | 135.7 ± 15.0 | 12.9 ± 4.9 | 1.00 | -44% |
+

@@ -16,3 +16,10 @@ schedules), an unreachable ceiling.
 
 To compare an agent: run it with `eval.run_eval` (rows land in `results/eval.csv`), then copy these baseline rows
 into the same file or read both; gap closed = (reward - farmer_ufga) / (hindsight - farmer_ufga) per split.
+
+## Second site: Tifton, GA (added Oct 17, 2026)
+
+`tift_test` = Tifton 2010-2024 (15 seasons), planted Mar 15 (UGA Extension window), same UFGA soil and hybrid in
+Tifton's NASA POWER weather. Never used for tuning. Mean reward: no_n 174, farmer (60/60/40) 1,137,
+farmer_ufga 1,063, hindsight 1,271. Farmer practice stays `farmer_ufga` (chosen beforehand on Gainesville dev),
+although the 60/60/40 split does better at Tifton; both are reported.

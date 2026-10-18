@@ -43,7 +43,7 @@ def main() -> None:
     cfg = load_config()
     ap = argparse.ArgumentParser(description="Run an agent design on a split.")
     ap.add_argument("--design", required=True, choices=sorted(DESIGNS))
-    ap.add_argument("--split", default="dev", choices=["dev", "test"])
+    ap.add_argument("--split", default="dev", choices=["dev", "test", "tift_test"])
     ap.add_argument("--subset", choices=["tune", "check", "all"], default="all",
                     help="dev only: tune = 1990-2004, check = 2005-2009")
     ap.add_argument("--limit", type=int, default=None, help="only the first N seasons")
@@ -82,7 +82,7 @@ def main() -> None:
     done = {(r["split"], r["task_id"]) for r in rows}
     baseline = [r for r in read_rows(BASELINES) if (r["split"], r["task_id"]) in done]
     by_subset = [dict(r, split=subset_of(r)) for r in rows + baseline]   # summary only; eval.csv keeps "dev"
-    write_summary(results / "summary.md", by_subset, cfg["eval"].get("farmer_practice", "farmer"))
+    write_summary(results / "summary.md", by_subset, farmer_practice=cfg["eval"].get("farmer_practice", "farmer"))
     print((results / "summary.md").read_text())
 
 

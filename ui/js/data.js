@@ -455,6 +455,11 @@ export async function loadEval() {
 
 // results_baseline/summary.md, the "## Split: dev" table only: {head: [...], rows: [[...]]} or null. The text is
 // cut at the next "## " heading before the table is read. A LoadError when the file failed to load.
+// A's headline numbers (agents_a/demo_results.json, built by scripts/build_demo_results.py). null if missing.
+export async function loadDemoResults() {
+  return fetchJson("../agents_a/demo_results.json");
+}
+
 export async function loadSummaryDev() {
   const text = await fetchText(paths.summary);
   if (text === null || text instanceof LoadError) return text;

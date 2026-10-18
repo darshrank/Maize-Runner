@@ -7,9 +7,23 @@ ROOT = Path(__file__).resolve().parent.parent
 WEATHER_DIR = ROOT / "data" / "weather"
 WTH_DIR = ROOT / "data" / "dssat_wth"
 
-# Planting day of year of gym-DSSAT's UFGA8201 maize experiment (PDATE 82057 = Feb 26).
-# The toy simulator plants on the same day so both simulators play the same window.
-PLANTING_DOY = 57
+# Sites: weather station code -> planting day of year, field coordinates and elevation (m).
+# UFGA: gym-DSSAT's UFGA8201 maize experiment (PDATE 82057 = Feb 26).
+# TIFT: Tifton, GA (UGA Tifton campus, Coastal Plain); planted Mar 15, inside UGA Extension's south Georgia
+#   window (planting can begin early-mid March; March-April best). It reuses the UFGA soil and hybrid:
+#   "the same field and variety in another climate".
+# Both simulators plant on the site's day so they play the same window.
+SITES = {
+    "UFGA": {"planting_doy": 57, "lat": 29.6380, "lon": -82.3689, "elev": 40},
+    "TIFT": {"planting_doy": 74, "lat": 31.4700, "lon": -83.5300, "elev": 96},
+}
+PLANTING_DOY = SITES["UFGA"]["planting_doy"]   # kept for UFGA-only callers
+
+
+def planting_doy(site: str) -> int:
+    if site not in SITES:
+        raise ValueError(f"unknown site {site!r}; known: {sorted(SITES)}")
+    return SITES[site]["planting_doy"]
 
 
 def available_years(site: str) -> list[int]:

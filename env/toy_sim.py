@@ -11,7 +11,7 @@ gym-DSSAT (env/dssat_sim.py).
 import numpy as np
 
 from env.sim_base import Simulator
-from env.weather import PLANTING_DOY, load_year
+from env.weather import load_year, planting_doy
 
 DAYS = 140                  # 20 weeks
 BUCKET_MM = 150.0           # soil water capacity
@@ -38,7 +38,7 @@ def load_weather(site: str, year: int) -> tuple[list[dict], int]:
     """The whole calendar year as weather days, numbered relative to planting (day 0).
     Returns (days, index of planting)."""
     year_days = load_year(site, year)
-    p = PLANTING_DOY - 1
+    p = planting_doy(site) - 1
     if len(year_days) < p + 1 + DAYS:
         raise ValueError(f"weather for {site} {year} is shorter than the season")
     days = [{"day": i - p, "tmax": d["tmax_c"], "tmin": d["tmin_c"], "rain_mm": d["rain_mm"]}

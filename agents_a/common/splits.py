@@ -3,6 +3,7 @@
   tune  = dev 1990-2004 (15 seasons): judge and tune designs here
   check = dev 2005-2009 (5 seasons): confirm a change still helps on unseen seasons before keeping it
   test  = 2010-2024 (15 seasons): sealed; run once at the end (A4)
+  tift_test = Tifton, GA 2010-2024 (15 seasons): a second site, never used for tuning (transfer check)
 """
 
 TUNE_YEARS = range(1990, 2005)

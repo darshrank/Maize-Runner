@@ -36,6 +36,7 @@ PARAMS = {
 SITES = {
     "UFGA": {"name": "Gainesville, FL, USA", "lat": 29.63, "lon": -82.37},
     "RALE": {"name": "Raleigh, NC, USA", "lat": 35.78, "lon": -78.64},
+    "TIFT": {"name": "Tifton, GA, USA", "lat": 31.47, "lon": -83.53},   # UGA Tifton campus, Coastal Plain
 }
 REFHT, WNDHT = 2.0, 2.0   # POWER T2M/RH2M are at 2 m, WS2M wind at 2 m
 

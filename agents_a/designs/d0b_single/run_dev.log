@@ -1,0 +1,47 @@
+running 20 seasons: UFGA-1990, UFGA-1991, UFGA-1992, UFGA-1993, UFGA-1994, UFGA-1995, UFGA-1996, UFGA-1997, UFGA-1998, UFGA-1999, UFGA-2000, UFGA-2001, UFGA-2002, UFGA-2003, UFGA-2004, UFGA-2005, UFGA-2006, UFGA-2007, UFGA-2008, UFGA-2009
+ UFGA-1991  reward    934.8  grain    7258  N   207  irr    0  leached  50.2  llm 50  fallbacks 0  1107s
+ UFGA-1990  reward   1576.7  grain   10322  N   184  irr  180  leached   3.4  llm 45  fallbacks 1  1117s
+ UFGA-1994  reward   1837.3  grain   11861  N   230  irr  100  leached   5.6  llm 56  fallbacks 0  1175s
+ UFGA-1993  reward   1116.0  grain    8379  N   225  irr  175  leached  11.8  llm 49  fallbacks 3  1194s
+ UFGA-1992  reward   1566.9  grain   10754  N   250  irr  130  leached   8.3  llm 58  fallbacks 0  1204s
+ UFGA-1997  reward   1565.8  grain   10373  N   208  irr   92  leached  15.9  llm 55  fallbacks 2  1229s
+ UFGA-1996  reward   1311.9  grain    9765  N   199  irr  170  leached  60.0  llm 52  fallbacks 2  1310s
+ UFGA-1995  reward   1360.9  grain    9522  N   177  irr  187  leached  31.7  llm 54  fallbacks 2  1325s
+ UFGA-2002  reward   1578.4  grain   10605  N   215  irr  180  leached   4.0  llm 48  fallbacks 0  994s
+ UFGA-1999  reward   1727.6  grain   11692  N   226  irr  178  leached  21.8  llm 50  fallbacks 1  1193s
+ UFGA-2003  reward   1246.6  grain    9479  N   240  irr  125  leached  46.6  llm 49  fallbacks 1  1129s
+ UFGA-1998  reward    434.6  grain    5076  N   230  irr  255  leached   7.9  llm 54  fallbacks 2  1266s
+ UFGA-2001  reward   1709.1  grain   11747  N   229  irr  235  leached  18.5  llm 54  fallbacks 0  1206s
+ UFGA-2004  reward   1341.3  grain    9519  N   221  irr  203  leached   5.8  llm 51  fallbacks 0  1150s
+ UFGA-2000  reward   1628.7  grain   11134  N   218  irr  280  leached   0.0  llm 59  fallbacks 1  1308s
+ UFGA-2005  reward    605.7  grain    6173  N   225  irr   40  leached  77.7  llm 62  fallbacks 1  1506s
+ UFGA-2006  reward   1287.6  grain    9598  N   262  irr  210  leached   4.6  llm 57  fallbacks 0  1445s
+ UFGA-2009  reward    686.0  grain    6683  N   218  irr  127  leached  69.8  llm 51  fallbacks 1  1393s
+ UFGA-2007  reward   1696.2  grain   11366  N   213  irr  225  leached   6.9  llm 57  fallbacks 1  1639s
+ UFGA-2008  reward   1072.0  grain    8886  N   300  irr  215  leached   9.7  llm 59  fallbacks 1  1811s
+# FieldTwin eval summary
+
+Mean ± 95% CI (normal approx). Farmer practice = `farmer` (config.yaml eval.farmer_practice). gap closed = (reward - farmer practice) / (hindsight - farmer practice). Hindsight knows the future: it is an unreachable ceiling.
+
+farmer_ufga
+
+## Split: dev-check
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d0b_single | 5 | 1069.5 ± 392.6 | 1151.8 ± 326.2 | 8541.2 ± 1873.5 | 243.6 ± 32.4 | 33.7 ± 32.2 | 0.71 | +46% |
+| farmer (farmer practice) | 5 | 831.7 ± 310.7 | 887.9 ± 289.8 | 6283.9 ± 1597.3 | 160.0 ± 0.0 | 23.0 ± 23.4 | 0.00 | +0% |
+| farmer_ufga | 5 | 1039.7 ± 188.0 | 1091.7 ± 159.5 | 7427.2 ± 826.6 | 116.0 ± 0.0 | 21.3 ± 13.3 | 0.62 | -7% |
+| no_n | 5 | 151.0 ± 38.4 | 180.2 ± 27.0 | 933.8 ± 139.8 | 0.0 ± 0.0 | 12.0 ± 11.2 | -2.04 | -48% |
+| hindsight (unreachable ceiling) | 5 | 1165.0 ± 189.4 | 1211.9 ± 149.5 | 7860.2 ± 788.9 | 135.2 ± 31.8 | 19.2 ± 21.8 | 1.00 | -17% |
+
+## Split: dev-tune
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d0b_single | 15 | 1395.8 ± 183.0 | 1443.2 ± 178.0 | 9832.3 ± 923.3 | 217.3 ± 10.0 | 19.4 ± 9.6 | 1.31 | +38% |
+| farmer (farmer practice) | 15 | 1088.2 ± 128.3 | 1122.6 ± 137.2 | 7524.5 ± 653.4 | 160.0 ± 0.0 | 14.1 ± 7.9 | 0.00 | +0% |
+| farmer_ufga | 15 | 1142.4 ± 126.3 | 1191.5 ± 129.1 | 7944.1 ± 669.0 | 116.0 ± 0.0 | 20.1 ± 5.8 | 0.23 | +43% |
+| no_n | 15 | 153.1 ± 40.1 | 175.6 ± 39.7 | 909.6 ± 205.7 | 0.0 ± 0.0 | 9.2 ± 4.0 | -4.00 | -35% |
+| hindsight (unreachable ceiling) | 15 | 1322.2 ± 139.3 | 1352.9 ± 143.9 | 8664.5 ± 731.2 | 143.2 ± 18.7 | 12.6 ± 5.6 | 1.00 | -11% |
+

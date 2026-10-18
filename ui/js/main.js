@@ -27,6 +27,7 @@ import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
 import { renderHowItWorks, howStep } from "./howitworks.js";
+import { headlineResults, attachBento, introBento } from "./resultsCharts.js";
 import { renderServing } from "./serving.js";
 
 export { theme };
@@ -146,7 +147,7 @@ function setView(view) {
     $("placeholder-file").textContent = `Needs ${page.file}`;
   }
   if (view === "agents") renderAgents();
-  if (view === "results") renderResults();
+  if (view === "results") { introNext = true; renderResults(); }
   if (view === "how") renderHowItWorks($("how-body"));
   if (view === "serving") renderServing($("serving-body"));
   showCards();
@@ -365,7 +366,7 @@ function renderAgents() {
 // named. Then A's summary.md "Split: dev" baseline table (config cells in plain labels), then the eval.csv dev rows
 // for the selected season with its tuned / not-tuned tag. Hindsight reads "Grid hindsight" (STATE.md data rules).
 // A config whose eval.csv failed to load keeps its row in both tables, marked "failed to load" (never dropped).
-let summaryDev, evalDev;
+let summaryDev, evalDev, demoResults, introNext = true;
 const REF = "farmer_ufga";
 
 function mean(xs) {
@@ -393,7 +394,9 @@ function plainConfigCell(cell) {
 }
 
 async function renderResults() {
-  if (summaryDev === undefined) [summaryDev, evalDev] = await Promise.all([data.loadSummaryDev(), data.loadEval()]);
+  if (summaryDev === undefined) {
+    [summaryDev, evalDev, demoResults] = await Promise.all([data.loadSummaryDev(), data.loadEval(), data.loadDemoResults()]);
+  }
   if (state.view !== "results") return;
   // A row is an array of cells, or {failed: config} for a config whose eval.csv failed to load.
   const failedRow = (head, c) => `<tr class="failed"><td>${esc(data.configName(c))}</td>`
@@ -406,7 +409,11 @@ async function renderResults() {
   const failed = new Set(((evalDev && evalDev.failed) || []).flatMap((f) => f.configs));
   const stats = configStats(evalRows).filter((st) => !failed.has(st.config));
   const statsHead = ["config", "seasons", "mean profit $/ha", "mean N leached kg/ha", "mean grain kg/ha", "profit wins, tuned", "profit wins, not tuned"];
-  let html = `<div class="res-head"><span class="label">All configs vs Farmer practice, dev seasons</span><span class="badge">dev</span></div>`;
+  // Headline charts first (held-out test, second site, resources, team vs single); the dev tables below are collapsed.
+  let html = demoResults && !(demoResults instanceof data.LoadError) ? headlineResults(demoResults)
+    : `<div class="quiet">Headline results unavailable: agents_a/demo_results.json ${demoResults ? "failed to load" : "is missing"}.</div>`;
+  html += `<details class="res-more"><summary>Full results: every config, all dev seasons</summary>`;
+  html += `<div class="res-head"><span class="label">All configs vs Farmer practice, dev seasons</span><span class="badge">dev</span></div>`;
   html += stats.length || failed.size ? table(statsHead, data.sortConfigs([...stats.map((st) => st.config), ...failed]).map((c) => {
     const st = stats.find((x) => x.config === c);
     return st ? [data.configName(st.config), String(st.n), fmt(st.profit, 2), fmt(st.leached, 2), fmt(st.grain, 0), winCell(st, st.tuned), winCell(st, st.notTuned)]
@@ -420,19 +427,11 @@ async function renderResults() {
   html += summaryDev instanceof data.LoadError ? `<div class="quiet">No dev summary: results_baseline/summary.md failed to load.</div>`
     : summaryDev ? table(summaryDev.head, summaryDev.rows.map((r) => [plainConfigCell(r[0]), ...r.slice(1)]))
     : `<div class="quiet">No dev summary: results_baseline/summary.md is missing.</div>`;
-  const p = data.parseTaskId(state.task);
-  const rows = evalRows.filter((r) => r.task_id === state.task && !failed.has(r.config));
-  // Failed configs that would have a row this season (the index lists the season, or the config is not indexed).
-  const failedHere = [...failed].filter((c) => !(state.index && state.index[c]) || state.index[c].includes(state.task));
-  const tag = data.tuneTag(state.task);
-  html += `<div class="res-head"><span class="label">Season ${esc(p ? p.year : state.task || "")}</span><span class="badge">dev</span>`
-    + `${tag ? `<span class="badge tag">${esc(tag)}</span>` : ""}</div>`;
-  const cols = ["profit_usd_ha", "grain_kg_ha", "n_applied", "n_leached", "irr_mm", "reward"];
-  html += rows.length || failedHere.length ? table(["config", ...cols], data.sortConfigs([...rows.map((r) => r.config), ...failedHere])
-    .map((c) => rows.find((r) => r.config === c) || { failed: c })
-    .map((r) => (r.failed ? r : [data.configName(r.config), ...cols.map((h) => fmt(r[h], h === "profit_usd_ha" || h === "grain_kg_ha" || h === "n_applied" || h === "irr_mm" ? 0 : 1))])))
-    : `<div class="quiet">No eval.csv dev rows for this season.</div>`;
+  html += `</details>`;
   $("results-body").innerHTML = html;
+  attachBento($("results-body"));
+  introBento($("results-body"), introNext);
+  introNext = false;
 }
 
 function renderTimeline() {
