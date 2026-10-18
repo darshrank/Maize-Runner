@@ -20,6 +20,7 @@ const CONFIG = "a_d1c_multi";
 // and moves on week by week. Nothing is precomputed.
 let LIVE = new URLSearchParams(location.search).get("live");
 let liveTimer = null;
+let liveGo = !!LIVE;   // picked on the Season page: nothing shows until Play there (liveStarted)
 const POLL_MS = 600, STAGE_MS = 1800, HOLD_MS = 3500;   // poll; min time per stage; hold the finished week
 const PREFERRED = "UFGA-2006";
 const W = 1400, H = 770;
@@ -417,7 +418,7 @@ let live = { k: -1, step: -1, shownAt: 0, done: false };
 
 async function livePoll() {
   const task = LIVE;
-  const run = await data.loadLiveRun(CONFIG, task);
+  const run = liveGo ? await data.loadLiveRun(CONFIG, task) : null;
   if (task !== LIVE || !ui.root) return;   // switched seasons while loading
   const sub = ui.root.querySelector(".hiw-sub");
   if (!run || run instanceof data.LoadError) {
@@ -516,6 +517,7 @@ function renderLive(root) {
 export function setLiveTask(task) {
   if (task === LIVE) return;
   LIVE = task;
+  liveGo = false;
   clearInterval(liveTimer);
   liveTimer = null;
   live = { k: -1, step: -1, shownAt: 0, done: false };
@@ -524,4 +526,10 @@ export function setLiveTask(task) {
   delete root.dataset.built;
   ui.wk = null; ui.step = 0;
   if (!root.closest("[hidden]")) renderHowItWorks(root);
+}
+
+// Play on the Season page started (or restarted) the live season: follow it from its first week.
+export function liveStarted() {
+  liveGo = true;
+  live = { k: -1, step: -1, shownAt: 0, done: false };
 }

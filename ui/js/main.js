@@ -26,7 +26,7 @@ import { weekLines, chatHtml, esc, mdPlain } from "./agents.js";
 import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
-import { renderHowItWorks, howStep, setLiveTask } from "./howitworks.js";
+import { renderHowItWorks, howStep, setLiveTask, liveStarted } from "./howitworks.js";
 import { headlineResults, attachBento, introBento } from "./resultsCharts.js";
 
 export { theme };
@@ -548,6 +548,7 @@ async function loadPair() {
 async function selectTask(task) {
   setPlaying(false);
   state.task = task;
+  live.started = null;   // coming back to the live season means a fresh run on Play
   const isLive = data.isLive(task);
   setLiveTask(isLive ? task : null);   // How it works follows the live season too
   document.querySelectorAll(".speed button").forEach((b) => (b.disabled = isLive && +b.dataset.speed !== 1));
@@ -574,19 +575,23 @@ function liveNotice(text) {
   notice(text || (live.started === state.task ? "" : `Press Play to run the ${year} season live: the team decides each week as you watch (about 20 s a week).`));
 }
 
+// The first Play on this page starts a fresh season (stopping any run left from before); Play after Pause
+// picks the same run up again.
 async function startLive() {
   const task = state.task;
+  if (live.started === task) { clearInterval(live.timer); live.timer = setInterval(followLive, LIVE_POLL_MS); followLive(); return; }
   let res;
   try {
-    res = await fetch(`/api/live/start?task=${encodeURIComponent(task)}`, { method: "POST" });
+    res = await fetch(`/api/live/start?task=${encodeURIComponent(task)}&restart=1`, { method: "POST" });
   } catch { res = null; }
   if (!res || !res.ok) {
     setPlaying(false);
     liveNotice("Live runs need the demo server: uv run python scripts/demo_server.py, then open http://localhost:8080/ui/");
     return;
   }
-  if ((await res.json()).status === "started") live.sig = "";
+  live.sig = "";
   live.started = task;
+  liveStarted();
   liveNotice();
   clearInterval(live.timer);
   live.timer = setInterval(followLive, LIVE_POLL_MS);

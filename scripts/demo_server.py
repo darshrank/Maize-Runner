@@ -26,12 +26,15 @@ state = {"proc": None, "task": None}
 
 
 @app.post("/api/live/start")
-def start(task: str = "UFGA-2026"):
+def start(task: str = "UFGA-2026", restart: bool = False):
     if task not in LIVE_TASKS:
         raise HTTPException(400, f"live seasons: {sorted(LIVE_TASKS)}")
     proc = state["proc"]
     if proc is not None and proc.poll() is None:
-        return {"status": "running", "task": state["task"]}
+        if not restart:
+            return {"status": "running", "task": state["task"]}
+        proc.terminate()                  # a fresh page's Play: stop the old run, start over
+        proc.wait(timeout=10)
     for old in (ROOT / "runs" / "live").glob(f"*/{task}.jsonl"):
         old.unlink()                      # an earlier run is never shown, even if this one fails to start
     LOG.parent.mkdir(parents=True, exist_ok=True)
