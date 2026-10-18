@@ -206,6 +206,7 @@ function setView(view) {
     el.hidden = !on;
   }
   $("season-head").hidden = view !== "season";
+  $("brand").hidden = view !== "season";
   if (view === "season" && changed) { const h = $("season-head"); h.classList.remove("enter"); void h.offsetWidth; h.classList.add("enter"); }
   showScene();
   renderBadges();
