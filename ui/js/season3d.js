@@ -106,6 +106,7 @@ export class Season3D {
     this.baseTarget = this.home.target.clone();
     this.camera.position.copy(this.home.pos);
     this.reserve = { target: 0, cur: 0, fitted: -1, floor: null };   // px on the left kept free for the week cards
+    this.finExtra = 0;   // px reserved under the fields beyond fit.bottom when the finale gap drops a line
     this.pv = new THREE.Vector3();
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.target.copy(this.home.target);
@@ -313,6 +314,13 @@ export class Season3D {
     const mx = (fl + fr) / 2;
     const fits = ms.w === 0 || (mx - ms.w / 2 >= fl + fs.left.w / 2 + PAD && mx + ms.w / 2 <= fr - fs.right.w / 2 - PAD);
     const total = fits ? Math.max(rowH, ms.h) : rowH + 8 + ms.h;
+    // When the gap drops a line, fitView reserves that line too (finExtra px). Kept until the finale hides, so
+    // the refit cannot flip it back and forth.
+    const extra = ms.w === 0 ? 0 : fits ? this.finExtra : ms.h + 8;
+    if (extra !== this.finExtra) {
+      this.finExtra = extra;
+      this.fitView();
+    }
     let y = Math.max(at.left.bottom, at.right.bottom) + 18;
     if (o.floorY !== null) y = Math.min(y, o.floorY - 8 - total);
     place(o.fins.left, fl, y);
@@ -383,7 +391,7 @@ export class Season3D {
     let k = Math.max(1, (half * h) / (0.92 * free * tanV) / d0), dy = 0;
     if (this.user) return;   // the viewer holds the camera; the frame still follows the cards
     const anchors = SIDES.map((s) => this.fields[s].anchors());
-    const top = F.top, bottom = Math.max(top + 80, floor - F.bottom);
+    const top = F.top, bottom = Math.max(top + 80, floor - F.bottom - this.finExtra);
     for (let pass = 0; pass < 4; pass++) {
       this.placeCamera(k, dy);
       const ys = anchors.flatMap((a) => [a.head, ...a.bottom]).map((p) => this.project(p).y);

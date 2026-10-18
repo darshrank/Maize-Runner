@@ -13,13 +13,14 @@
 // Real data only, dev seasons only (data.js).
 //
 // Week semantics (STATE.md): position k in 0..W-1 shows week k's decision and its outcome (obs at the end of
-// week k); k = W is harvest (the final line). Every number on screen comes from data.js. Theme: js/theme.js.
+// week k); k = W is harvest (the final line). Data stays 0-based; every label shows weeks 1-based (weekNo):
+// "Week 1 / W" .. "Week W / W", then "Harvest". Every number on screen comes from data.js. Theme: js/theme.js.
 
 import { theme, applyCssTheme } from "./theme.js";
 import * as data from "./data.js";
 import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
-import { weekLines, chatHtml, esc } from "./agents.js";
+import { weekLines, chatHtml, esc, mdPlain } from "./agents.js";
 import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
@@ -84,6 +85,11 @@ function setNumber(el, value, digits = 0, pending = "n/a") {
   step(t0);
 }
 
+// 1-based week label for 0-based week k.
+function weekNo(k) {
+  return k + 1;
+}
+
 function money(v) {
   return `${v < 0 ? "−" : ""}$${fmt(Math.abs(v), 0)}`;
 }
@@ -141,8 +147,9 @@ function setView(view) {
 function renderTaskPicker() {
   const tasks = data.seasons();
   const html = tasks.map((t) => {
-    const p = data.parseTaskId(t);
-    return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>${esc(p ? p.year : t)}</option>`;
+    const p = data.parseTaskId(t), tag = data.tuneTag(t);
+    return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>`
+      + `${esc(p ? p.year : t)}${tag ? ` · ${esc(tag)}` : ""}</option>`;
   }).join("");
   document.querySelectorAll("select.task").forEach((s) => (s.innerHTML = html));
 }
@@ -227,8 +234,8 @@ function renderFieldHeads() {
 function renderWeekLabel() {
   const W = maxW(), k = state.week;
   const harvest = k >= W;
-  $("week-num").textContent = harvest ? "Harvest" : `Week ${k}`;
-  $("week-of").textContent = harvest ? "" : `of ${W - 1}`;
+  $("week-num").textContent = harvest ? "Harvest" : `Week ${weekNo(k)}`;
+  $("week-of").textContent = harvest ? "" : `/ ${W}`;
   const day = state.days && state.dayStart !== null && !harvest ? state.days[state.dayStart + 7 * k] : null;
   const date = day && day.date ? new Date(`${day.date}T00:00:00`) : null;
   $("week-date").textContent = date && !Number.isNaN(+date)
@@ -238,7 +245,7 @@ function renderWeekLabel() {
 // 3D: one week label; the finale at harvest.
 function render3d() {
   const W = maxW(), k = state.week;
-  $("s3-week").textContent = k >= W ? "Harvest" : `Week ${k}`;
+  $("s3-week").textContent = k >= W ? "Harvest" : `Week ${weekNo(k)} / ${W}`;
   renderFinale();
 }
 
@@ -323,16 +330,39 @@ function renderAgents() {
   $("cfg").querySelectorAll("button").forEach((b) => (b.onclick = () => { state.agentSide = b.dataset.side; renderAgents(); }));
   const run = state.runs[state.agentSide];
   const W = run ? run.W : maxW(), k = Math.min(state.week, W);
-  $("a-week").textContent = k >= W ? "Harvest" : `Week ${k} of ${W - 1}`;
+  $("a-week").textContent = k >= W ? "Harvest" : `Week ${weekNo(k)} / ${W}`;
   const fb = run ? run.fallbackWeeks.length : 0;
   $("a-fb").textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
   $("a-fb").hidden = !fb;
   $("agents-body").innerHTML = chatHtml(run, k);
 }
 
-// Results page: A's dev baselines only. The summary.md "Split: dev" table (config cells in plain labels), then
-// the eval.csv dev rows for the selected season. Hindsight reads "Grid hindsight" (STATE.md data rules).
+// Results page, dev only. First, every config with eval.csv dev rows (results_baseline + agents_a designs): mean
+// profit, N leached and grain, and profit wins vs Farmer practice (farmer_ufga) in the same season, split into
+// tuned (dev 1990-2004) and not-tuned (dev 2005-2009) seasons; configs on the Season page with no eval rows are
+// named. Then A's summary.md "Split: dev" baseline table (config cells in plain labels), then the eval.csv dev rows
+// for the selected season with its tuned / not-tuned tag. Hindsight reads "Grid hindsight" (STATE.md data rules).
 let summaryDev, evalDev;
+const REF = "farmer_ufga";
+
+function mean(xs) {
+  const v = xs.filter(has);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+function configStats(rows) {
+  const ref = Object.fromEntries(rows.filter((r) => r.config === REF).map((r) => [r.task_id, r]));
+  const configs = data.sortConfigs([...new Set(rows.map((r) => r.config))]);
+  return configs.map((c) => {
+    const rs = rows.filter((r) => r.config === c);
+    const wins = (tag) => {
+      const set = rs.filter((r) => data.tuneTag(r.task_id) === tag && ref[r.task_id] && has(r.profit_usd_ha) && has(ref[r.task_id].profit_usd_ha));
+      return { n: set.length, won: set.filter((r) => r.profit_usd_ha > ref[r.task_id].profit_usd_ha).length };
+    };
+    return { config: c, n: rs.length, profit: mean(rs.map((r) => r.profit_usd_ha)), leached: mean(rs.map((r) => r.n_leached)),
+      grain: mean(rs.map((r) => r.grain_kg_ha)), tuned: wins("tuned"), notTuned: wins("not tuned") };
+  });
+}
 
 function plainConfigCell(cell) {
   const config = String(cell).replace(/\s*\(.*\)\s*$/, "").trim();
@@ -344,12 +374,24 @@ async function renderResults() {
   if (state.view !== "results") return;
   const table = (head, rows) => `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>`
     + `<tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i ? "mono" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-  let html = `<div class="res-head"><span class="label">Baselines, all dev seasons</span><span class="badge">dev</span></div>`;
+  const winCell = (st, w) => (st.config === REF ? "—" : w.n ? `${w.won} / ${w.n}` : "—");
+  const stats = configStats(evalDev || []);
+  let html = `<div class="res-head"><span class="label">All configs vs Farmer practice, dev seasons</span><span class="badge">dev</span></div>`;
+  html += stats.length ? table(["config", "seasons", "mean profit $/ha", "mean N leached kg/ha", "mean grain kg/ha", "profit wins, tuned", "profit wins, not tuned"],
+    stats.map((st) => [data.configName(st.config), String(st.n), fmt(st.profit, 2), fmt(st.leached, 2), fmt(st.grain, 0), winCell(st, st.tuned), winCell(st, st.notTuned)]))
+    : `<div class="quiet">No eval.csv dev rows.</div>`;
+  const noRows = Object.keys(state.index || {}).filter((c) => !stats.some((st) => st.config === c));
+  html += `<div class="quiet res-note">Means over each config's eval.csv dev rows. A win: profit_usd_ha above Farmer practice in the same season. `
+    + `Tuned: dev 1990–2004 (prompts tuned on these). Not tuned: dev 2005–2009.`
+    + `${noRows.length ? ` No eval.csv dev rows: ${esc(data.sortConfigs(noRows).map(data.configName).join(", "))}.` : ""}</div>`;
+  html += `<div class="res-head"><span class="label">Baselines, all dev seasons</span><span class="badge">dev</span></div>`;
   html += summaryDev ? table(summaryDev.head, summaryDev.rows.map((r) => [plainConfigCell(r[0]), ...r.slice(1)]))
     : `<div class="quiet">No dev summary: results_baseline/summary.md is missing.</div>`;
   const p = data.parseTaskId(state.task);
   const rows = (evalDev || []).filter((r) => r.task_id === state.task);
-  html += `<div class="res-head"><span class="label">Season ${esc(p ? p.year : state.task || "")}</span><span class="badge">dev</span></div>`;
+  const tag = data.tuneTag(state.task);
+  html += `<div class="res-head"><span class="label">Season ${esc(p ? p.year : state.task || "")}</span><span class="badge">dev</span>`
+    + `${tag ? `<span class="badge tag">${esc(tag)}</span>` : ""}</div>`;
   const cols = ["profit_usd_ha", "grain_kg_ha", "n_applied", "n_leached", "irr_mm", "reward"];
   html += rows.length ? table(["config", ...cols], data.sortConfigs(rows.map((r) => r.config))
     .map((c) => rows.find((r) => r.config === c)).map((r) => [data.configName(r.config), ...cols.map((h) => fmt(r[h], h === "profit_usd_ha" || h === "grain_kg_ha" || h === "n_applied" || h === "irr_mm" ? 0 : 1))]))
@@ -402,21 +444,21 @@ function cardHtml(k, W, names) {
     for (const side of ["right", "left"]) {
       const run = state.runs[side], w = run && k < run.W ? run.weeks[k] : null;
       const m = w && w.chat.find((x) => x.objection);
-      if (m) { obj = m.text || "Objection"; break; }
+      if (m) { obj = mdPlain(m.text) || "Objection"; break; }
     }
   }
   const date = k < W ? dateRange(k) : "";
-  return `<header class="wc-head"><span class="wc-week">${k >= W ? "Harvest" : `Week ${k}`}</span>`
+  return `<header class="wc-head"><span class="wc-week">${k >= W ? "Harvest" : `Week ${weekNo(k)}`}</span>`
     + `${date ? `<span class="wc-date mono">${esc(date)}</span>` : ""}</header>`
     + `<p class="wc-text">${esc(line.text)}</p>`
     + `${line.side ? `<p class="wc-side">${esc(names[line.side])}</p>` : ""}`
     + `${obj ? `<p class="wc-obj" title="${esc(obj)}"><span class="who">Critic</span> ${esc(cut(obj, theme.three.cards.objectionChars))}</p>` : ""}`;
 }
 
-// Card counter: "Week N / last week" (the same numbering as "Week N of M" on the Agents page), "Harvest" last.
+// Card counter: "Week N / W", 1-based (the same numbering as the Agents page), "Harvest" last.
 function cardCounter(i) {
   const W = maxW();
-  return i < W ? { cur: `Week ${i}`, tot: String(W - 1) } : { cur: "Harvest", tot: "" };
+  return i < W ? { cur: `Week ${weekNo(i)}`, tot: String(W) } : { cur: "Harvest", tot: "" };
 }
 
 function renderCards() {

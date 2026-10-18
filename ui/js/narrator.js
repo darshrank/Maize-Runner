@@ -15,7 +15,7 @@
 //   dry         the weather file shows DRY_DAYS or more consecutive days under DRY_MM ending this week
 //   lowWater    obs.soil_water_frac under theme.three.thirst.start in a run (the lower one)
 //   objection   the Critic objected this week (critic message objection: true)
-//   quiet       no N applied in either run and weekly rain under QUIET_MM
+//   quiet       no N applied in either run and weekly rain under QUIET_MM ({week} is 1-based: week index + 1)
 // The line is picked deterministically from task_id + week: (FNV-1a(task_id) + week) mod the template count, so a
 // replay is reproducible and back-to-back weeks with the same trigger never repeat a line. Templates whose
 // placeholders have no value are skipped. Week cards need a line every week: weekLine() falls back to a quiet-week
@@ -230,11 +230,11 @@ export function narrate(ctx) {
   const oside = live.find((s) => weeks[s].objection);
   if (oside) return line("objection", { n: nOf(oside) !== null ? amount(nOf(oside)) : null }, oside);
 
-  if (rain !== null && rain < QUIET_MM && live.every((s) => !(nOf(s) > 0))) return line("quiet", { week: k, rain: amount(rain) });
+  if (rain !== null && rain < QUIET_MM && live.every((s) => !(nOf(s) > 0))) return line("quiet", { week: k + 1, rain: amount(rain) });
   return null;
 }
 
 // Always a line: the trigger's line, else a quiet-week line (harvest without both finals included).
 export function weekLine(ctx) {
-  return narrate(ctx) || { trigger: "quiet", text: pick("quietAny", { week: ctx.k < ctx.W ? ctx.k : null }, ctx.task, ctx.k), side: null };
+  return narrate(ctx) || { trigger: "quiet", text: pick("quietAny", { week: ctx.k < ctx.W ? ctx.k + 1 : null }, ctx.task, ctx.k), side: null };
 }

@@ -4,6 +4,8 @@
 //   B (agent runs)   runs/<config>/<task_id>.jsonl, listed in runs/index.json (fake_* configs ignored)
 //   A (baselines)    results_baseline/runs/<config>/<task_id>.jsonl for BASELINE_CONFIGS, dev task ids only
 //   A (results)      results_baseline/eval.csv rows with split = dev; results_baseline/summary.md "Split: dev" table
+//   A (agent designs) agents_a/designs/<design>/runs/<config>/<task_id>.jsonl, listed in that design's
+//                    runs/index.json (dev ids only), and agents_a/designs/<design>/results/eval.csv rows with split = dev
 // tasks/test.jsonl, test-year logs and test rows are never fetched or parsed: every run path is built from a dev
 // task id, and eval.csv / summary.md are cut to their dev rows before any value is read. results_baseline's
 // runs/index.json is never read (it lists test years). Fake mode is retired: ui/fake/ and
@@ -13,7 +15,9 @@
 // Parsing rules (STATE.md): the line-level week is the decision week (0..W-1); the final line sits at week W
 // (harvest). A coordinator decision wins over the runner's policy/decision line. Critic messages are
 // {text, objection: bool}; other messages {text} or {content}; messages with neither (inference records,
-// proposal records) are not chat. Fallbacks {why} (UI_SPEC) or {text}.
+// proposal records) are not chat. A's design logs keep message text empty and put the content in
+// data.tool_calls[{name, arguments: JSON string}]: report tools become chat (see A_REPORT_TOOLS); a review_plan
+// verdict other than "accept" is a Critic objection. Fallbacks {why} (UI_SPEC) or {text}.
 
 const params = new URLSearchParams(location.search);
 export const LITE = params.get("lite") === "1";
@@ -21,9 +25,20 @@ export const LITE = params.get("lite") === "1";
 // Baseline configs A froze in results_baseline/ (README.md, config.yaml eval.configs). These always load from
 // results_baseline/runs/, never from runs/ (runs/farmer holds local toy-sim runs).
 const BASELINE_CONFIGS = ["farmer_ufga", "farmer", "hindsight", "no_n"];
+// A's agent designs (agents_a/designs/<design>/, committed by A). Each design's runs/index.json names its configs;
+// loadIndex() maps each config to its design folder here.
+const A_DESIGNS = ["d0_single", "d1_multi", "d1b_multi", "d1c_multi"];
+const aDesignOf = {};
+const aRoot = (design) => `../agents_a/designs/${design}`;
+function runRoot(config) {
+  if (aDesignOf[config]) return `${aRoot(aDesignOf[config])}/runs`;
+  return BASELINE_CONFIGS.includes(config) ? "../results_baseline/runs" : "../runs";
+}
 export const paths = {
   index: "../runs/index.json",
-  run: (config, task) => `../${BASELINE_CONFIGS.includes(config) ? "results_baseline/runs" : "runs"}/${config}/${task}.jsonl`,
+  aIndex: (design) => `${aRoot(design)}/runs/index.json`,
+  aEval: (design) => `${aRoot(design)}/results/eval.csv`,
+  run: (config, task) => `${runRoot(config)}/${config}/${task}.jsonl`,
   devTasks: "../tasks/dev.jsonl",
   weather: (site, year) => `../data/weather/${site}_${year}.json`,
   eval: "../results_baseline/eval.csv",
@@ -33,16 +48,19 @@ export const paths = {
 };
 
 export const AGENTS = ["weather", "crop", "planner", "critic", "coordinator"];
-export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator" };
-// Plain labels, in picker order. Unknown configs show their raw name.
+export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator",
+  policy: "Agent" };
+// Plain labels, in picker order. Unknown configs show their raw name. The (D1c) / (B) / (D0) labels hold until
+// the team confirms the official config.
 const CONFIG_NAMES = {
   farmer_ufga: "Farmer practice", farmer: "Fixed split schedule", no_n: "No fertilizer", hindsight: "Grid hindsight",
-  single: "Single agent", multi: "FieldTwin agent team", multi_no_critic: "Team without Critic",
+  a_d1c_multi: "FieldTwin agent team (D1c)", multi: "FieldTwin agent team (B)", a_d0_single: "Single agent (D0)",
+  single: "Single agent", multi_no_critic: "Team without Critic",
   multi_no_weather: "Team without Weather", multi_no_tools: "Team without tools",
 };
 const CONFIG_ORDER = Object.keys(CONFIG_NAMES);
 const LEFT_ORDER = ["farmer_ufga", "farmer"];             // farmer practice = farmer_ufga (a-env config.yaml)
-const LLM_ORDER = ["multi", "single", "multi_no_critic", "multi_no_weather", "multi_no_tools"];
+const LLM_ORDER = ["a_d1c_multi", "multi", "a_d0_single", "single", "multi_no_critic", "multi_no_weather", "multi_no_tools"];
 const RIGHT_ORDER = [...LLM_ORDER, "hindsight"];          // RIGHT: best available LLM config, else grid hindsight
 
 // ---------------------------------------------------------------- fetch helpers
@@ -125,19 +143,33 @@ export function isDev(task) {
   return devTasks.includes(task);
 }
 
-// {config: [dev task ids]}: A's baseline configs for every dev season, plus B's runs/index.json cut to dev
-// seasons. fake_* configs and A's configs listed in runs/index.json (local toy runs) are skipped.
+// Dev sub-split (agents_a/common/splits.py): prompts were tuned on dev 1990-2004 ("tuned"); dev 2005-2009 is the
+// check set they were not tuned on ("not tuned"). null for anything else.
+export function tuneTag(task) {
+  const p = parseTaskId(task);
+  if (!p || !isDev(task)) return null;
+  return p.year >= 1990 && p.year <= 2004 ? "tuned" : p.year >= 2005 && p.year <= 2009 ? "not tuned" : null;
+}
+
+// {config: [dev task ids]}: A's baseline configs for every dev season, B's runs/index.json and each A design's
+// runs/index.json, cut to dev seasons. fake_* configs and A's baseline configs listed in runs/index.json (local
+// toy runs) are skipped. A config listed by an A design reads its logs from that design's folder.
 export async function loadIndex() {
   if (!(await loadDevTasks())) return null;
   const index = Object.fromEntries(BASELINE_CONFIGS.map((c) => [c, seasons()]));
-  const b = await fetchJson(paths.index);
-  if (b && typeof b === "object" && !Array.isArray(b)) {
-    for (const [c, ids] of Object.entries(b)) {
+  const add = (obj, design = null) => {
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+    for (const [c, ids] of Object.entries(obj)) {
       if (c.startsWith("fake_") || BASELINE_CONFIGS.includes(c) || !Array.isArray(ids)) continue;
       const dev = ids.filter(isDev);
-      if (dev.length) index[c] = dev;
+      if (!dev.length) continue;
+      index[c] = dev;
+      if (design) aDesignOf[c] = design;
     }
-  }
+  };
+  add(await fetchJson(paths.index));
+  const designs = await Promise.all(A_DESIGNS.map((d) => fetchJson(paths.aIndex(d))));
+  A_DESIGNS.forEach((d, i) => add(designs[i], d));
   return index;
 }
 
@@ -181,6 +213,37 @@ function num(v) {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+// A's design logs: report tool calls inside a message (data.tool_calls[{name, arguments}], arguments a JSON
+// string) carry the agent's words. Returns {text, objection} or null for retrieval calls (get_weather, ...).
+const A_REPORT_TOOLS = {
+  weather_report: (a) => a.summary,
+  crop_report: (a) => a.summary,
+  propose_plan: (a) => planText(a),
+  review_plan: (a) => (a.verdict === "accept" ? "Accept." : a.objection || `Verdict: ${a.verdict}`),
+  submit_decision: (a) => planText(a),
+};
+
+function planText(a) {
+  const n = num(a.n_kg_ha), irr = num(a.irr_mm);
+  const head = n !== null && irr !== null ? `**${n} kg N/ha, ${irr} mm water.** ` : "";
+  return `${head}${typeof a.reason === "string" ? a.reason : ""}`.trim();
+}
+
+function aToolChat(call) {
+  const f = call && A_REPORT_TOOLS[call.name];
+  if (!f) return null;
+  let args;
+  try {
+    args = typeof call.arguments === "string" ? JSON.parse(call.arguments) : call.arguments;
+  } catch {
+    return null;
+  }
+  if (!args || typeof args !== "object") return null;
+  const text = f(args);
+  if (typeof text !== "string" || !text.trim()) return null;
+  return { text, objection: call.name === "review_plan" && args.verdict !== "accept" };
+}
+
 function emptyWeek(week) {
   return { week, events: [], decision: null, policyDecision: null, chat: [], messages: {}, tools: [],
     fallbacks: [], objection: false, fallback: false, step: null, obs: null, weekly: null, clamped: false,
@@ -221,13 +284,20 @@ export function buildRun(config, task, events) {
         break;
       }
       case "message":
-        if (d.reset || !AGENTS.includes(e.agent)) break;
+        if (d.reset || !(AGENTS.includes(e.agent) || e.agent === "policy")) break;
         {
+          const push = (text, objection) => {
+            const msg = { agent: e.agent, text, objection: e.agent === "critic" && objection, t: e.t };
+            w.chat.push(msg);
+            (w.messages[e.agent] = w.messages[e.agent] || []).push(msg);
+          };
           const text = typeof d.text === "string" && d.text ? d.text : typeof d.content === "string" ? d.content : "";
-          if (!text.trim()) break;   // inference / proposal / review records: not chat
-          const msg = { agent: e.agent, text, objection: e.agent === "critic" && d.objection === true, t: e.t };
-          w.chat.push(msg);
-          (w.messages[e.agent] = w.messages[e.agent] || []).push(msg);
+          if (text.trim() && e.agent !== "policy") push(text, d.objection === true);
+          // A's shape: the words are in report tool calls (a single agent's only report is submit_decision).
+          for (const call of Array.isArray(d.tool_calls) ? d.tool_calls : []) {
+            const c = aToolChat(call);
+            if (c) push(c.text, c.objection);
+          }
         }
         break;
       default: break;
@@ -365,9 +435,11 @@ export function parseDevCsv(text) {
   return rows;
 }
 
+// results_baseline/eval.csv plus each A design's results/eval.csv, dev rows only. null when none loads.
 export async function loadEval() {
-  const text = await fetchText(paths.eval);
-  return text === null ? null : parseDevCsv(text);
+  const texts = await Promise.all([fetchText(paths.eval), ...A_DESIGNS.map((d) => fetchText(paths.aEval(d)))]);
+  if (texts.every((t) => t === null)) return null;
+  return texts.filter((t) => t !== null).flatMap(parseDevCsv);
 }
 
 // results_baseline/summary.md, the "## Split: dev" table only: {head: [...], rows: [[...]]} or null. The text is
