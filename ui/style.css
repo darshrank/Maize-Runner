@@ -402,3 +402,42 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .hiw-tip-role { font-weight: 600; }
 .hiw-tip-msg { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .hiw-part { transition: none; } }
+
+/* ---------------------------------------------------------------- Serving (serving.js): vLLM metrics */
+#serving { overflow-y: auto; }
+.srv-wrap { max-width: 1100px; margin: 0 auto; padding: 8px var(--gutter) 32px; display: grid; gap: 14px; }
+.srv-head { display: flex; align-items: center; gap: 12px; }
+.srv-head h1 { margin: 0; font-size: var(--fs-4); font-weight: 600; }
+.srv-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.srv-h2 { margin: 0; font-size: var(--fs-3); font-weight: 600; }
+.srv-chart-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.srv-plot { position: relative; max-width: 760px; }
+.srv-plot svg { width: 100%; height: auto; display: block; overflow: visible; }
+.srv-grid { stroke: var(--border); stroke-width: 1; }
+.srv-axis { stroke: var(--muted); stroke-width: 1; }
+.srv-tick, .srv-axis-label { font: 400 var(--fs-1) var(--font); font-variant-numeric: tabular-nums; fill: var(--muted); }
+.srv-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.srv-dot { fill: var(--accent); stroke: var(--surface-1); stroke-width: 2; }
+.srv-hit { fill: transparent; }
+.srv-val { font: 600 var(--fs-2) var(--font); font-variant-numeric: tabular-nums; fill: var(--text); pointer-events: none; }
+.srv-pt { cursor: default; outline: none; }
+.srv-pt:focus-visible .srv-dot { stroke: var(--text); }
+.srv-tip {
+  position: absolute; transform: translate(-50%, calc(-100% - 14px)); padding: 6px 10px; white-space: nowrap; pointer-events: none;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; font-size: var(--fs-1); font-variant-numeric: tabular-nums;
+}
+.srv-callout { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 2px 2px; font-size: var(--fs-3); }
+.srv-callout-n { font-size: var(--fs-5); font-weight: 600; color: var(--accent); }
+.srv-callout .quiet { font-size: var(--fs-1); }
+.srv-scroll { overflow-x: auto; }
+.srv-table { border-collapse: collapse; width: 100%; font-size: var(--fs-2); }
+.srv-table th { text-align: left; font-size: var(--fs-1); font-weight: 500; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.srv-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.srv-table tr:last-child td { border-bottom: 0; }
+.srv-table .num { text-align: right; }
+.srv-table th:first-child, .srv-table td:first-child { text-align: left; }
+.srv-table td.na { color: var(--muted); font-size: var(--fs-1); }
+.srv-notes { display: grid; gap: 2px; }
+.srv-notes p { margin: 0; font-size: var(--fs-1); color: var(--muted); }
+.srv-empty { height: 100%; min-height: 60vh; display: grid; place-content: center; gap: 10px; text-align: center; }
+.srv-empty-text { font-size: var(--fs-3); }

@@ -27,6 +27,7 @@ import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
 import { renderHowItWorks, howStep } from "./howitworks.js";
+import { renderServing } from "./serving.js";
 
 export { theme };
 
@@ -38,7 +39,7 @@ const PAGES = [
   { id: "agents", label: "Agents", icon: "chats" },
   { id: "results", label: "Results", icon: "bars" },
   { id: "gym", label: "Gym", icon: "loop", file: "results/iterations.json" },
-  { id: "serving", label: "Serving", icon: "chip", file: "results/vllm_metrics.json" },
+  { id: "serving", label: "Serving", icon: "chip" },
   { id: "how", label: "How it works", icon: "flow" },
 ];
 const VIEWS = PAGES.map((p) => p.id);
@@ -138,6 +139,7 @@ function setView(view) {
   $("agents").hidden = view !== "agents";
   $("results").hidden = view !== "results";
   $("how").hidden = view !== "how";
+  $("serving").hidden = view !== "serving";
   $("placeholder").hidden = !page.file;
   if (page.file) {
     $("placeholder-title").textContent = page.label;
@@ -146,6 +148,7 @@ function setView(view) {
   if (view === "agents") renderAgents();
   if (view === "results") renderResults();
   if (view === "how") renderHowItWorks($("how-body"));
+  if (view === "serving") renderServing($("serving-body"));
   showCards();
 }
 
