@@ -45,7 +45,7 @@ export const theme = {
       edgeOpacity: 0.34, slabRed: 0.9,
       ambient: 0.35, key: 1.1,
     },
-    water: { fill: 0.84, emit: 0.9 },    // inner cyan fill, as a share of the cube (fix1: emit 0.32 -> 0.9, reads as cyan on video)
+    water: { fill: 0.84, emit: 0.5 },    // inner cyan fill, as a share of the cube (fix1: emit 0.32 -> 0.9; fix2b: 0.5, less glare)
     // N and leaching cores (small emissive cubes). soil: cores at the task's max soil_n_kg_ha (perCube slots in
     // each top cube); dose / uptake / leach: counts at the task's max of that value. ?lite=1 halves dose and leach.
     // fix1: size 0.075 -> 0.095 and leach 80 -> 110 so the N cores and leaching drips read on video.
@@ -62,7 +62,7 @@ export const theme = {
     // R5 (browser check): water 0.7 and pool 1.0 washed a full soil profile into solid cyan and the slab into a red
     // haze over the controls; both lowered so the glass and edges stay readable.
     bloom: { strength: 0.6, radius: 0.52, threshold: 0.1 },
-    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.3, core: 1.25, pool: 0.4 },
+    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.18, core: 1.25, pool: 0.4 },   // fix2b: water 0.3 -> 0.18
     // Leaching pulse (each splash adds to it, capped at 1.6, decays): gain on the groundwater fluid's emission and
     // on the slab's red tint. R4 used 1.7 and 0.5; one leaching week saturated the slab.
     leachPulse: { fluid: 0.8, slab: 0.25 },
@@ -77,7 +77,7 @@ export const theme = {
     // sway) would not fit the window width, or when the plant-top anchors (labelY) to the slab bottom would not fit
     // between `top` px (just under the top bar) and `bottom` px above the weather strip (the strips under the fields
     // overlap the slab's front edge a little).
-    fit: { margin: 0.1, top: 72, bottom: 34 },
+    fit: { margin: 0.1, top: 72, bottom: 34, zoom: 0.84 },   // zoom: share of that box the fields fill (fix2b)
   },
   // Mote counts at full scale (each scaled by its value over the max across both fields for this task).
   motes: {

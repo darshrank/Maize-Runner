@@ -374,8 +374,8 @@ export class Season3D {
     const half = T.fieldX + this.fields.left.W / 2 + F.margin + 0.6 * C.dollyX;
     const k = C.dist / this.basePos.distanceTo(this.baseTarget);
     const tanMax = Math.tan(THREE.MathUtils.degToRad(C.fov) / 2);
-    // t = tan(half vertical fov): start where both fields span 96% of the width at the target distance.
-    let t = Math.min(tanMax, (half * h) / (0.96 * w * C.dist)), dy = 0;
+    // t = tan(half vertical fov): start where both fields span 96% x fit.zoom of the width at the target distance.
+    let t = Math.min(tanMax, (half * h) / (0.96 * F.zoom * w * C.dist)), dy = 0;
     const setFov = () => {
       this.camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(t));
       this.camera.updateProjectionMatrix();
@@ -383,13 +383,14 @@ export class Season3D {
     };
     if (this.user) { setFov(); return; }   // the viewer holds the camera
     const anchors = SIDES.map((s) => this.fields[s].anchors());
-    const top = F.top, bottom = Math.max(top + 80, floor - F.bottom);
+    // The fields fill fit.zoom of the box between fit.top and the strip row, centered in it.
+    const top = F.top, bottom = Math.max(top + 80, floor - F.bottom), span = (bottom - top) * F.zoom;
     for (let pass = 0; pass < 4; pass++) {
       setFov();
       this.placeCamera(k, dy);
       const ys = anchors.flatMap((a) => [a.head, ...a.bottom]).map((p) => this.project(p).y);
       const a = Math.min(...ys), b = Math.max(...ys);
-      if (b - a > bottom - top) t = Math.min(tanMax, t * (b - a) / (bottom - top));
+      if (b - a > span) t = Math.min(tanMax, t * (b - a) / span);
       const pxPerUnit = h / (2 * C.dist * t);
       dy += ((a + b) / 2 - (top + bottom) / 2) / pxPerUnit;
     }
