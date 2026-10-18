@@ -1,10 +1,10 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8). R2: pages Season, Agents, Results, Gym,
 // Serving, switched by the dock (dock.js) or keys 1-5; no top bar.
-// Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas. Each field header is a picker
-// of the configs that have a log for the selected season (defaults: LEFT farmer practice, RIGHT the FieldTwin agent
-// team or the best available LLM config), with the model name under it when the log records one. Its only
-// numbers: one week label and, at season end, the profit finale for the two selected fields (season3d.js places
-// both from the projected field anchors). Week cards on the left (carousel.js, cube effect): one card per week
+// Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR
+// (LEFT farmer practice, RIGHT the FieldTwin agent team; no config pickers). Each field header is the config's plain
+// label, with the model name under it when the log records one. The season picker lists only seasons with both
+// logs. Its only numbers: one week label and, at season end, the profit finale for the two fields (season3d.js
+// places both from the projected field anchors). Week cards on the left (carousel.js, cube effect): one card per week
 // plus harvest, synced with the week both ways; each holds the week's dates, the narrator line (narrator.js) and,
 // in Critic objection weeks, the objection in one orange line. Key N toggles the cards. No bottom caption.
 // Season with ?view2d=1 (or after a WebGL / shader failure): the R1 2D side view (fieldSvg.js), kept as the
@@ -45,7 +45,7 @@ const SIDES = ["left", "right"];
 const SPEEDS = [0.5, 1, 2, 4];
 
 const state = {
-  index: null, task: null, configs: [], pair: { left: null, right: null }, runs: { left: null, right: null },
+  index: null, task: null, seasons: [], pair: { ...data.SEASON_PAIR }, runs: { left: null, right: null },
   days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right", cards: true,
 };
 const fields = {};       // 2D FieldViews (view2d only)
@@ -145,8 +145,7 @@ function setView(view) {
 // ---------------------------------------------------------------- chrome
 
 function renderTaskPicker() {
-  const tasks = data.seasons();
-  const html = tasks.map((t) => {
+  const html = state.seasons.map((t) => {
     const p = data.parseTaskId(t), tag = data.tuneTag(t);
     return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>`
       + `${esc(p ? p.year : t)}${tag ? ` · ${esc(tag)}` : ""}</option>`;
@@ -202,19 +201,13 @@ function fieldName(side) {
   return config ? data.configName(config) : "No run for this season";
 }
 
-// Field headers: a picker per side of the configs with a log for this season (plain labels), the model name
-// small under it when the log records one, and a quiet "No run for this season" when the side has no log.
-// The same pickers serve the 3D overlays and the 2D fallback.
+// Field headers: the SEASON_PAIR config's plain label per side, the model name small under it when the log
+// records one, and a quiet "No run for this season" when the side has no log. The same heads serve the 3D
+// overlays and the 2D fallback.
 function renderFieldHeads() {
   for (const side of SIDES) {
     const config = state.pair[side], run = state.runs[side];
-    const opts = state.configs.length ? state.configs : config ? [config] : [];
-    document.querySelectorAll(`select.cfg-pick[data-side="${side}"]`).forEach((sel) => {
-      sel.innerHTML = opts.length
-        ? opts.map((c) => `<option value="${esc(c)}"${c === config ? " selected" : ""}>${esc(data.configName(c))}</option>`).join("")
-        : `<option value="">No run for this season</option>`;
-      sel.disabled = opts.length < 2;
-    });
+    document.querySelectorAll(`.cfg-name[data-side="${side}"]`).forEach((el) => (el.textContent = fieldName(side)));
     const model = run && run.model ? run.model : "";
     document.querySelectorAll(`.cfg-model[data-side="${side}"]`).forEach((el) => {
       el.textContent = model.split("/").pop();
@@ -501,20 +494,9 @@ async function loadPair() {
   setWeek(state.week, { force: true });
 }
 
-// New season: keep each side's config when this season has a log for it, else the default.
+// New season: the pair stays SEASON_PAIR.
 async function selectTask(task) {
   state.task = task;
-  state.configs = await data.availableConfigs(state.index, task);
-  if (task !== state.task) return;
-  const def = data.defaultPair(state.configs);
-  for (const s of SIDES) state.pair[s] = state.configs.includes(state.pair[s]) ? state.pair[s] : def[s];
-  await loadPair();
-}
-
-// Field header picker: show another config on one side. The harvest finale compares whichever two are selected.
-async function selectConfig(side, config) {
-  if (!state.configs.includes(config) || state.pair[side] === config) return;
-  state.pair[side] = config;
   await loadPair();
 }
 
@@ -567,10 +549,6 @@ function stepSpeed(dir) {
 
 function bind() {
   document.querySelectorAll("select.task").forEach((s) => (s.onchange = (e) => selectTask(e.target.value)));
-  document.querySelectorAll("select.cfg-pick").forEach((s) => (s.onchange = (e) => {
-    selectConfig(s.dataset.side, e.target.value);
-    e.target.blur();
-  }));
   $("play").onclick = () => setPlaying(!state.playing);
   $("prev").onclick = () => setWeek(state.week - 1);
   $("next").onclick = () => setWeek(state.week + 1);
@@ -679,9 +657,13 @@ async function main() {
   setView(state.view);
   bind();
   state.index = await data.loadIndex();
-  const task = state.index && data.defaultTask(state.index);
+  const { shown, hidden } = await data.pairSeasons(state.index);
+  state.seasons = shown;
+  if (hidden.length) console.info(`FieldTwin: seasons without both Season logs (hidden): ${hidden.join(", ")}`);
+  const task = shown[0] || null;
   if (!task) {
-    notice("No dev seasons: tasks/dev.jsonl is missing or empty.");
+    notice(state.index ? `No dev season has both ${Object.values(data.SEASON_PAIR).map(data.configName).join(" and ")} logs.`
+      : "No dev seasons: tasks/dev.jsonl is missing or empty.");
     renderFieldHeads();
     setWeek(0, { force: true });
     loaded();

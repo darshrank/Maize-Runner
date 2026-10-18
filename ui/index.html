@@ -28,16 +28,16 @@
   <span id="src" class="badge" hidden title="Data source of every number on screen"></span>
 
   <!-- 1 Season, 3D (default): canvas plus HTML overlays that season3d.js places from the projected field anchors
-       every frame: pickers above each field, the finale in one row under the fields. The only numbers here: one
+       every frame: field names above each field, the finale in one row under the fields. The only numbers here: one
        week label and, at season end, the profit finale. -->
   <div id="stage3d" hidden>
     <div class="s3-anchor" id="s3-head-left"><div class="s3-in up">
-      <select class="s3-name cfg-pick" data-side="left" aria-label="Left field"></select>
+      <div class="s3-name cfg-name" data-side="left"></div>
       <div class="cfg-model quiet mono" data-side="left" hidden></div>
       <div class="cfg-none quiet" data-side="left" hidden>No run for this season</div>
     </div></div>
     <div class="s3-anchor" id="s3-head-right"><div class="s3-in up">
-      <select class="s3-name cfg-pick" data-side="right" aria-label="Right field"></select>
+      <div class="s3-name cfg-name" data-side="right"></div>
       <div class="cfg-model quiet mono" data-side="right" hidden></div>
       <div class="cfg-none quiet" data-side="right" hidden>No run for this season</div>
     </div></div>
@@ -67,7 +67,7 @@
     <div id="fields">
       <section class="field" id="field-left">
         <header class="field-head">
-          <h2><select class="cfg-pick" data-side="left" aria-label="Left field"></select></h2>
+          <h2 class="cfg-name" data-side="left"></h2>
           <span class="cfg-model quiet mono" data-side="left" hidden></span>
           <span class="cfg-none quiet" data-side="left" hidden>No run for this season</span>
           <span id="fb-left" class="badge fallback" hidden></span>
@@ -88,7 +88,7 @@
 
       <section class="field" id="field-right">
         <header class="field-head">
-          <h2><select class="cfg-pick" data-side="right" aria-label="Right field"></select></h2>
+          <h2 class="cfg-name" data-side="right"></h2>
           <span class="cfg-model quiet mono" data-side="right" hidden></span>
           <span class="cfg-none quiet" data-side="right" hidden>No run for this season</span>
           <span id="fb-right" class="badge fallback" hidden></span>

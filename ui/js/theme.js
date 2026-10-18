@@ -93,7 +93,7 @@ export const theme = {
     // Camera refit (season3d.js fitView): the scene centers in the space right of the week cards (gap px past their
     // right edge) and backs off when both fields (plus margin world units and the dolly sway) would not fit that
     // width, or when the label anchors (labelY) to the slab bottom would not fit between `top` px (top bar and
-    // pickers) and `bottom` px above the controls (the finale row).
+    // field names) and `bottom` px above the controls (the finale row).
     fit: { margin: 0.5, gap: 24, top: 124, bottom: 150 },
   },
   // Mote counts at full scale (each scaled by its value over the max across both fields for this task).

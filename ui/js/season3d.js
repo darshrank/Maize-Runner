@@ -1,5 +1,5 @@
 // 3D Season view, three.js 0.160.0 (vendored, import map in index.html). Pure black background, black fog for
-// depth, two floating glass-grid dioramas (diorama3d.js), one config per side (main.js pickers).
+// depth, two floating glass-grid dioramas (diorama3d.js), one config per side (data.SEASON_PAIR).
 //
 //   camera   slow dolly between the two fields; drag to orbit (OrbitControls), double click to reset
 //   light    one ambient and one key light plus a dim room environment, for the glass only (every other material
@@ -14,7 +14,7 @@
 //            along its home direction when both fields would not fit that width or the labels-to-slab height would
 //            not fit between the top bar and the finale row, and the camera moves up or down to center the scene in
 //            that height, so no field slides under the cards or the finale (fitView, theme.three.fit)
-//   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): field pickers
+//   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): field names
 //            centered above their field, the finale in one row under the fields (each field's number centered on
 //            its projected x, the gap centered between them). Labels are pushed apart so none overlaps another,
 //            and the finale row stays between the scene's lowest point and the controls

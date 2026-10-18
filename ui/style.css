@@ -174,24 +174,11 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .s3-in.down { top: 0; }
 .s3-name { font-size: 24px; font-weight: 600; letter-spacing: 0.01em; color: var(--text); }
 #s3-head-right .s3-name { color: var(--accent); }
-/* Field header pickers (3D overlays and the 2D heads): plain text until hovered, a small caret marks them. */
-select.cfg-pick {
-  pointer-events: auto; appearance: none; -webkit-appearance: none; background: transparent; border: 1px solid transparent;
-  padding: 2px 22px 2px 6px; font-family: inherit; font-size: inherit; font-weight: 600; color: inherit; cursor: pointer;
-  text-align: center; field-sizing: content;   /* as wide as the selected label, so the caret sits next to it */
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: calc(100% - 11px) 55%, calc(100% - 6px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
-  transition: border-color var(--ms) var(--ease);
-}
-select.cfg-pick:hover, select.cfg-pick:focus-visible { border-color: var(--hairline-strong); outline: none; }
-select.cfg-pick:disabled { cursor: default; background-image: none; padding-right: 6px; }
-select.cfg-pick option { background: #000; color: var(--text); font-size: 16px; }
-select.cfg-pick.s3-name { font-size: 24px; }
+/* Field header names (3D overlays and the 2D heads): plain labels of data.SEASON_PAIR, no pickers. */
 .cfg-model { font-size: 14px; }
 .cfg-none { font-size: 15px; }
-/* 3D heads: the picker's bottom edge sits on the anchor on both sides; the model line hangs just under it. */
+/* 3D heads: the name's bottom edge sits on the anchor on both sides; the model line hangs just under it. */
 .s3-in.up .cfg-model, .s3-in.up .cfg-none { position: absolute; top: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
-.field-head h2 select.cfg-pick { text-align: left; }
 .fin-profit { display: grid; justify-items: center; animation: rise 600ms var(--ease) both; }
 .fin-profit .v { font-size: clamp(36px, 3.2vw, 60px); font-weight: 600; line-height: 1; }
 .fin-profit .unit { font-size: 14px; color: var(--quiet); letter-spacing: 0.06em; text-transform: uppercase; }

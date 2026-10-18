@@ -50,7 +50,7 @@ export const paths = {
 export const AGENTS = ["weather", "crop", "planner", "critic", "coordinator"];
 export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator",
   policy: "Agent" };
-// Plain labels, in picker order. Unknown configs show their raw name. The (D1c) / (B) / (D0) labels hold until
+// Plain labels, in table order. Unknown configs show their raw name. The (D1c) / (B) / (D0) labels hold until
 // the team confirms the official config.
 const CONFIG_NAMES = {
   farmer_ufga: "Farmer practice", farmer: "Fixed split schedule", no_n: "No fertilizer", hindsight: "Grid hindsight",
@@ -59,9 +59,8 @@ const CONFIG_NAMES = {
   multi_no_weather: "Team without Weather", multi_no_tools: "Team without tools",
 };
 const CONFIG_ORDER = Object.keys(CONFIG_NAMES);
-const LEFT_ORDER = ["farmer_ufga", "farmer"];             // farmer practice = farmer_ufga (a-env config.yaml)
-const LLM_ORDER = ["a_d1c_multi", "multi", "a_d0_single", "single", "multi_no_critic", "multi_no_weather", "multi_no_tools"];
-const RIGHT_ORDER = [...LLM_ORDER, "hindsight"];          // RIGHT: best available LLM config, else grid hindsight
+// The Season page shows this pair and nothing else (R7 pivot, STATE.md); every other config appears on Results only.
+export const SEASON_PAIR = { left: "farmer_ufga", right: "a_d1c_multi" };
 
 // ---------------------------------------------------------------- fetch helpers
 
@@ -99,24 +98,6 @@ export function parseTaskId(id) {
 export function sortConfigs(configs) {
   const rank = (c) => (CONFIG_ORDER.includes(c) ? CONFIG_ORDER.indexOf(c) : CONFIG_ORDER.length);
   return [...configs].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
-}
-
-// Configs the index lists for a task (a log may still be missing: see hasLog).
-export function configsFor(index, task) {
-  return sortConfigs(Object.keys(index || {}).filter((c) => (index[c] || []).includes(task)));
-}
-
-// Default pair for a season among the configs that have a log: LEFT farmer practice, RIGHT the best LLM config.
-export function defaultPair(configs) {
-  const left = LEFT_ORDER.find((c) => configs.includes(c)) || configs[0] || null;
-  const rest = configs.filter((c) => c !== left);
-  const right = RIGHT_ORDER.find((c) => rest.includes(c)) || rest[0] || null;
-  return { left, right };
-}
-
-// First dev season whose index lists both default sides, else the first dev season.
-export function defaultTask(index) {
-  return devTasks.find((t) => { const p = defaultPair(configsFor(index, t)); return p.left && p.right; }) || devTasks[0] || null;
 }
 
 // Dev seasons from tasks/dev.jsonl ({task_id, site, year, split}), in file order. Nothing else is a season here.
@@ -186,11 +167,17 @@ export function hasLog(config, task) {
   return logExists.get(key);
 }
 
-// Configs with a log for this season, in picker order.
-export async function availableConfigs(index, task) {
-  const listed = configsFor(index, task);
-  const ok = await Promise.all(listed.map((c) => hasLog(c, task)));
-  return listed.filter((_, i) => ok[i]);
+// Season picker: dev seasons where the index lists both SEASON_PAIR configs and both logs exist (dev order).
+// hidden: the dev seasons left out. One season at a time: 40 HEAD requests at once make the local http.server reset
+// connections, and the next fetch (e.g. an eval.csv) then fails.
+export async function pairSeasons(index) {
+  const pair = Object.values(SEASON_PAIR), shown = [], hidden = [];
+  for (const t of devTasks) {
+    const ok = pair.every((c) => ((index && index[c]) || []).includes(t))
+      && (await Promise.all(pair.map((c) => hasLog(c, t)))).every(Boolean);
+    (ok ? shown : hidden).push(t);
+  }
+  return { shown, hidden };
 }
 
 // ---------------------------------------------------------------- run log -> weeks model
