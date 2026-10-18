@@ -141,6 +141,8 @@
     "diff": -177.8
    }
   ],
+  "team_mean": 1277.2,
+  "single_mean": 1195.8,
   "fallbacks": {
    "team": 0,
    "single": 30

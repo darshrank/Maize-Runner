@@ -488,3 +488,10 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 }
 @media (max-width: 1000px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mb-cell { grid-column: span min(var(--span, 1), 2); } }
 @media (max-width: 620px) { .bento { grid-template-columns: 1fr; } .mb-cell { grid-column: span 1; } }
+/* team vs single: three side-by-side comparisons */
+.tvs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 4px; }
+.tvs-title { font-size: var(--fs-2); color: var(--text); }
+.tvs-title .quiet { font-size: var(--fs-1); }
+.tvs-unit { font-size: var(--fs-1); color: var(--muted); margin-top: -4px; }
+.chart text.row { font-size: 14px; fill: var(--text); }
+@media (max-width: 900px) { .tvs { grid-template-columns: 1fr; } }

@@ -77,28 +77,34 @@ export function resourceTiles(test, fallbacks) {
     + tile("t-team", `${fallbacks.team}`, "failed decisions (team)", `single agent: ${fallbacks.single}`);
 }
 
-// 4. Team vs single agent, same model and knowledge: one bar per unseen season (team minus single), sorted.
+// 4. Team vs single agent, same model and knowledge: three plain side-by-side comparisons over the seasons
+// neither design was tuned on (average score, seasons won head-to-head, failed decisions).
 export function teamVsSingleChart(tvs) {
-  const W = 1100, H = 240, top = 16, bottom = 16, left = 60, right = 10;
-  const diffs = tvs.per_season.map((s) => s.diff);
-  const lim = Math.max(...diffs.map(Math.abs)) * 1.1;
-  const y = (v) => top + (H - top - bottom) * (1 - (v + lim) / (2 * lim));
-  const slot = (W - left - right) / diffs.length, bw = slot * 0.7;
-  const bars = tvs.per_season.map((s, i) => {
-    const x = left + i * slot + (slot - bw) / 2, y0 = y(0), yv = y(s.diff);
-    return `<rect class="${s.diff >= 0 ? "c-team" : "c-loss"}" x="${x}" y="${Math.min(y0, yv)}" width="${bw}" `
-      + `height="${Math.max(1, Math.abs(yv - y0))}" rx="2"><title>${escapeText(s.task_id)}: ${signed(s.diff)}</title></rect>`;
-  }).join("");
-  const ticks = [lim * 0.8, 0, -lim * 0.8].map((v) => {
-    const r = Math.round(v / 100) * 100;
-    return `<text class="l dim" x="${left - 6}" y="${y(r) + 4}" text-anchor="end">${r ? signed(r) : "0"}</text>`;
-  }).join("");
+  const panels = [
+    { title: "Average score", unit: "$/ha per season", single: tvs.single_mean, team: tvs.team_mean, fmt: money, better: "higher" },
+    { title: "Seasons won", unit: `head-to-head, of ${tvs.seasons}`, single: tvs.seasons - tvs.wins, team: tvs.wins, fmt: (v) => String(v), better: "higher" },
+    { title: "Failed decisions", unit: "weeks the agent gave no valid answer", single: tvs.fallbacks.single, team: tvs.fallbacks.team, fmt: (v) => String(v), better: "lower" },
+  ];
+  const panel = (p) => {
+    const W = 340, H = 150, left = 104, right = 64, barH = 34, gap = 18, top = 30;
+    const max = Math.max(p.single, p.team, 1);
+    const w = (v) => Math.max(v > 0 ? 3 : 0, ((W - left - right) * v) / max);
+    const row = (label, v, cls, i) => {
+      const y = top + i * (barH + gap);
+      return `<text class="l row" x="${left - 10}" y="${y + barH / 2 + 5}" text-anchor="end">${label}</text>`
+        + `<rect class="${cls}" x="${left}" y="${y}" width="${w(v)}" height="${barH}" rx="5"/>`
+        + `<text class="v" x="${left + w(v) + 10}" y="${y + barH / 2 + 6}">${p.fmt(v)}</text>`;
+    };
+    return `<div class="tvs-panel"><div class="tvs-title">${escapeText(p.title)} <span class="quiet">(${p.better} is better)</span></div>`
+      + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeText(p.title)}: single agent vs team">`
+      + row("Single agent", p.single, "c-single", 0) + row("Team", p.team, "c-team", 1) + `</svg>`
+      + `<div class="tvs-unit">${escapeText(p.unit)}</div></div>`;
+  };
   return `<div class="chart-card mb-card"><div class="chart-title">Why a team: same model, same knowledge, one agent vs five</div>`
-    + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Team minus single agent, per unseen season">`
-    + `${ticks}<line class="axis" x1="${left}" x2="${W - right}" y1="${y(0)}" y2="${y(0)}"/>${bars}</svg>`
-    + `<div class="chart-caption">Team minus single agent, each of the ${tvs.seasons} seasons neither was tuned on: `
-    + `team ahead in <b class="t-team">${tvs.wins} of ${tvs.seasons}</b>, <b>${signed(tvs.mean_diff)}/ha</b> on average `
-    + `(95% CI ±${Math.round(tvs.ci95)}), failed decisions <b>${tvs.fallbacks.team}</b> vs <b class="t-warn">${tvs.fallbacks.single}</b></div></div>`;
+    + `<div class="tvs">${panels.map(panel).join("")}</div>`
+    + `<div class="chart-caption">Over the ${tvs.seasons} seasons neither was tuned on, the team scores `
+    + `<b class="t-team">${signed(tvs.mean_diff)}/ha more</b> (95% CI ±${Math.round(tvs.ci95)}), wins ${tvs.wins} of ${tvs.seasons}, `
+    + `and never fails to decide.</div></div>`;
 }
 
 export function headlineResults(demo) {

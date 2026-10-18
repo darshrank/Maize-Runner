@@ -68,6 +68,7 @@ def main() -> None:
         "tifton": site_block("tift_test", "Tifton, GA: new site, never tuned on, 2010-2024"),
         "team_vs_single": {"note": "same model, same knowledge; seasons neither design was tuned on (dev 2005-2009 + test)",
                            **paired(unseen, single), "per_season": per_season,
+                           "team_mean": mean({t: unseen[t] for t in single}), "single_mean": mean({t: single[t] for t in unseen}),
                            "fallbacks": {"team": fallbacks(FINAL), "single": fallbacks(SINGLE)}},
     }
     path = ROOT / "agents_a" / "demo_results.json"
