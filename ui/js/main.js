@@ -598,7 +598,16 @@ async function followLive() {
   const task = state.task;
   if (!state.playing || !data.isLive(task)) { clearInterval(live.timer); live.timer = null; return; }
   const run = await data.loadRun(state.pair.right, task);
-  if (task !== state.task || !run || run instanceof data.LoadError) return;
+  if (task !== state.task) return;
+  if (!(run && run.final)) {   // the run stopped before the harvest: say why (e.g. the model tunnel is down)
+    const st = await fetch("/api/live/status").then((r) => r.json()).catch(() => null);
+    if (st && !st.running && st.returncode !== null) {
+      setPlaying(false);
+      liveNotice(`The live run stopped: ${(st.tail || []).slice(-1)[0] || "see runs/live/console.txt"}`);
+      return;
+    }
+  }
+  if (!run || run instanceof data.LoadError) return;
   let k = 0;
   run.weeks.forEach((w, i) => { if (w.step) k = i; });
   const sig = `${k}:${!!run.final}`;

@@ -14,6 +14,7 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,6 +32,8 @@ def start(task: str = "UFGA-2026"):
     proc = state["proc"]
     if proc is not None and proc.poll() is None:
         return {"status": "running", "task": state["task"]}
+    for old in (ROOT / "runs" / "live").glob(f"*/{task}.jsonl"):
+        old.unlink()                      # an earlier run is never shown, even if this one fails to start
     LOG.parent.mkdir(parents=True, exist_ok=True)
     out = open(LOG, "w")
     state["proc"] = subprocess.Popen([sys.executable, str(ROOT / "scripts" / "live_season.py"), "--task-id", task],
@@ -45,6 +48,15 @@ def status():
     tail = LOG.read_text().splitlines()[-5:] if LOG.exists() else []
     return {"task": state["task"], "running": bool(proc and proc.poll() is None),
             "returncode": None if proc is None else proc.poll(), "tail": tail}
+
+
+@app.get("/runs/live/{config}/{name}")
+def live_log(config: str, name: str):
+    """The live log as it is right now (StaticFiles can fail on a file that grows while it is sent)."""
+    path = ROOT / "runs" / "live" / config / name
+    if path.parent.parent != ROOT / "runs" / "live" or not path.is_file():
+        raise HTTPException(404)
+    return PlainTextResponse(path.read_text(), headers={"Cache-Control": "no-store"})
 
 
 app.mount("/", StaticFiles(directory=ROOT, html=True), name="static")
