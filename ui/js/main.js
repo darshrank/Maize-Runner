@@ -611,7 +611,9 @@ async function followLive() {
 // Week change: fields animate this week's data events (dose, uptake, leaching, storm) when the week moved.
 function setWeek(k, { force = false } = {}) {
   const prev = state.week;
-  state.week = Math.max(0, Math.min(maxW(), k));
+  // Live: the farmer's season is done in seconds, so stop at the team's latest finished week.
+  const cap = data.isLive(state.task) ? liveWeek() : maxW();
+  state.week = Math.max(0, Math.min(cap, k));
   const moved = state.week !== prev || force;
   const spread = Math.min(1.2, (theme.motion.weekSeconds / state.speed) * 0.7);
   const views = {};
