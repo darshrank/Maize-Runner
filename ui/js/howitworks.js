@@ -257,7 +257,7 @@ function agentBox(key) {
 
 function diagramSvg() {
   const B = BOX, hub = center(B.coord);
-  const markers = [["call", C.accent], ["back", C.muted], ["warn", C.warn]]
+  const markers = [["call", C.accent], ["back", C.muted], ["obj", C.text]]
     .map(([id, c]) => `<marker id="hiw-arrow-${id}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7"`
       + ` orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.8 L9 5 L0 9.2 z" style="fill:${c};stroke:none"/></marker>`)
     .join("");
@@ -282,7 +282,7 @@ function diagramSvg() {
   ].join("");
   const objX = 1085;
   const objection = line(`M${pts([[objX, B.critic.y - 4], [objX, B.planner.y + B.planner.h + 9]])}`, "hiw-obj", "obj",
-    { color: C.warn, marker: "warn" });
+    { color: C.text, marker: "obj" });
   const decision = line(`M${pts([[B.coord.x + B.coord.w + 9, hub[1]], [B.field.x - 9, hub[1]]])}`, "hiw-call", "dec",
     { color: C.accent, marker: "call", halo: true });
 
@@ -315,12 +315,12 @@ function diagramSvg() {
 // ---------------------------------------------------------------- page
 
 const ui = { root: null, wk: null, step: 0 };
-// Card side per box: below the top row, above the bottom row; Planner and Critic cards sit to the right so the red
+// Card side per box: below the top row, above the bottom row; Planner and Critic cards sit to the right so the
 // objection arrow between them stays visible.
 const SIDE = { weather: "below", crop: "above", planner: "right", critic: "right", coord: "below", field: "below",
   tools: "below", model: "above" };
-// Card / tip edge: the accent, or --warn for the Critic in an objection week.
-const tint = (key) => (key === "critic" && ui.wk && ui.wk.review && ui.wk.review.verdict === "object" ? C.warn : C.accent);
+// Card / tip edge: the accent, or white (--text) for the Critic in an objection week.
+const tint = (key) => (key === "critic" && ui.wk && ui.wk.review && ui.wk.review.verdict === "object" ? C.text : C.accent);
 
 function cardHtml(c) {
   return [c.head ? `<div class="hiw-card-head">${esc(c.head)}</div>` : "",

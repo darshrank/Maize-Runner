@@ -5,7 +5,7 @@
 
 // style.css token names (kebab case) -> theme.color keys (camel case).
 const TOKENS = ["bg", "surface-1", "surface-2", "border", "text", "muted", "accent",
-  "water", "nitrogen", "plant", "leach", "rain", "warn", "tassel", "thirst"];
+  "water", "nitrogen", "plant", "leach", "rain", "tassel", "thirst"];
 
 export const theme = {
   color: {},                     // filled by readCssTheme() from the style.css tokens

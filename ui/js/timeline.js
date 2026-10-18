@@ -4,7 +4,7 @@
 //              weather file, one bar per week from the log's weekly.rain_mm (labelled as such)
 //   storm weeks (weekly rain > theme.stormMm) drawn brighter
 //   scrubber: week ticks 0..W-1 plus harvest; click or drag to seek
-//   fallback weeks (either run): a short orange mark under the track
+//   fallback weeks (either run): a small white outline pill under the track (.flag-pill, title "Fallback")
 // Dose timing shows in the fields now, so there are no per-config marker rows.
 
 import { theme } from "./theme.js";
@@ -106,7 +106,9 @@ export class Timeline {
       }
     }
     for (const k of m.fallbackWeeks || []) {
-      svg.append(el("line", { class: "fb", x1: x0 + (k + 0.3) * cw, x2: x0 + (k + 0.7) * cw, y1: TRACK_Y + 7, y2: TRACK_Y + 7 }));
+      const fb = el("rect", { class: "fb flag-pill", x: x0 + (k + 0.2) * cw, y: TRACK_Y + 4, width: 0.6 * cw, height: 4.5, rx: 2.25 });
+      fb.append(el("title", {}, "Fallback"));
+      svg.append(fb);
     }
     this.knob = el("circle", { class: "knob", cx: 0, cy: TRACK_Y, r: 5 });
     svg.append(this.knob);

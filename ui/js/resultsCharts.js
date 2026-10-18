@@ -1,7 +1,7 @@
 // Headline charts for the Results page (A's demo results, agents_a/demo_results.json, built by
 // scripts/build_demo_results.py from the committed eval.csv files). Plain SVG strings; colors come from the
 // style.css tokens through CSS classes (farmer = --muted, FieldTwin team = --accent, water = --water,
-// leaching = --leach, failures = --warn), so they follow the theme. Score = the env's reward (USD/ha per season).
+// leaching = --leach), so they follow the theme. Score = the env's reward (USD/ha per season).
 
 const money = (v) => `$${Math.round(v).toLocaleString("en-US")}`;
 const signed = (v) => `${v >= 0 ? "+" : "−"}$${Math.abs(Math.round(v)).toLocaleString("en-US")}`;

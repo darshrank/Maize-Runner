@@ -6,7 +6,7 @@
 // logs. Its only numbers: one week label and, at season end, the profit finale for the two fields (season3d.js
 // places both from the projected field anchors). Week cards on the left (carousel.js, cube effect): one card per week
 // plus harvest, synced with the week both ways; each holds the week's dates, the narrator line (narrator.js) and,
-// in Critic objection weeks, the objection in one orange line. Key N toggles the cards. No bottom caption.
+// in Critic objection weeks, the objection in one line with the Objection pill. Key N toggles the cards. No bottom caption.
 // Season with ?view2d=1 (or after a WebGL / shader failure): the R1 2D side view (fieldSvg.js), kept as the
 // fallback. Agents: the full weekly chat for one run (agents.js). Results: A's dev baselines
 // (results_baseline/summary.md "Split: dev" table, eval.csv dev rows for the season). Gym, Serving: placeholders.
@@ -248,7 +248,7 @@ function renderFieldHeads() {
     document.querySelectorAll(`.cfg-none[data-side="${side}"]`).forEach((el) => (el.hidden = !s3d || !config || !!run));
     if (!s3d) {
       const fb = run ? run.fallbackWeeks.length : 0;
-      $(`fb-${side}`).textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
+      $(`fb-${side}`).textContent = `Fallback · ${fb} week${fb === 1 ? "" : "s"}`;
       $(`fb-${side}`).hidden = !fb;
     }
   }
@@ -355,7 +355,7 @@ function renderAgents() {
   const W = run ? run.W : maxW(), k = Math.min(state.week, W);
   $("a-week").textContent = k >= W ? "Harvest" : `Week ${weekNo(k)} / ${W}`;
   const fb = run ? run.fallbackWeeks.length : 0;
-  $("a-fb").textContent = `${fb} fallback week${fb === 1 ? "" : "s"}`;
+  $("a-fb").textContent = `Fallback · ${fb} week${fb === 1 ? "" : "s"}`;
   $("a-fb").hidden = !fb;
   $("agents-body").innerHTML = chatHtml(run, k);
 }
@@ -458,7 +458,7 @@ function renderTimeline() {
 
 // Week cards (3D Season only): one card per week 0..W-1 plus a harvest card. Each card: "Week N" and its date
 // range from the weather file (when aligned), the narrator line for that week (a quiet-week line when nothing
-// fired), and in Critic objection weeks one orange line with the objection (agent team first), cut to about
+// fired), and in Critic objection weeks one line with the Objection pill and the objection (agent team first), cut to about
 // theme.three.cards.objectionChars characters.
 function dateRange(k) {
   if (!state.days || state.dayStart === null) return "";
@@ -487,7 +487,7 @@ function cardHtml(k, W, names) {
     + `${date ? `<span class="wc-date mono">${esc(date)}</span>` : ""}</header>`
     + `<p class="wc-text">${esc(line.text)}</p>`
     + `${line.side ? `<p class="wc-side">${esc(names[line.side])}</p>` : ""}`
-    + `${obj ? `<p class="wc-obj" title="${esc(obj)}"><span class="who">Critic</span> ${esc(cut(obj, theme.three.cards.objectionChars))}</p>` : ""}`;
+    + `${obj ? `<p class="wc-obj" title="${esc(obj)}"><span class="who">Critic</span> <span class="flag-pill">Objection</span> ${esc(cut(obj, theme.three.cards.objectionChars))}</p>` : ""}`;
 }
 
 // Card counter: "Week N / W", 1-based (the same numbering as the Agents page), "Harvest" last.
