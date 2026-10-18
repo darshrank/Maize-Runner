@@ -27,7 +27,7 @@ import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
 import { renderHowItWorks, howStep } from "./howitworks.js";
-import { headlineResults } from "./resultsCharts.js";
+import { headlineResults, attachBento, introBento } from "./resultsCharts.js";
 
 export { theme };
 
@@ -145,7 +145,7 @@ function setView(view) {
     $("placeholder-file").textContent = `Needs ${page.file}`;
   }
   if (view === "agents") renderAgents();
-  if (view === "results") renderResults();
+  if (view === "results") { introNext = true; renderResults(); }
   if (view === "how") renderHowItWorks($("how-body"));
   showCards();
 }
@@ -363,7 +363,7 @@ function renderAgents() {
 // named. Then A's summary.md "Split: dev" baseline table (config cells in plain labels), then the eval.csv dev rows
 // for the selected season with its tuned / not-tuned tag. Hindsight reads "Grid hindsight" (STATE.md data rules).
 // A config whose eval.csv failed to load keeps its row in both tables, marked "failed to load" (never dropped).
-let summaryDev, evalDev, demoResults;
+let summaryDev, evalDev, demoResults, introNext = true;
 const REF = "farmer_ufga";
 
 function mean(xs) {
@@ -426,6 +426,9 @@ async function renderResults() {
     : `<div class="quiet">No dev summary: results_baseline/summary.md is missing.</div>`;
   html += `</details>`;
   $("results-body").innerHTML = html;
+  attachBento($("results-body"));
+  introBento($("results-body"), introNext);
+  introNext = false;
 }
 
 function renderTimeline() {

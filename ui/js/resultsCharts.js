@@ -34,7 +34,7 @@ export function headlineChart(test) {
     + `<text class="l dim" x="${W - right + 14}" y="${hy + 20}">(best fixed plan,</text>`
     + `<text class="l dim" x="${W - right + 14}" y="${hy + 34}">weather known)</text>`;
   const d = test.team_vs_farmer;
-  return `<div class="chart-card"><div class="chart-title">${escapeText(test.label)}</div>`
+  return `<div class="chart-card mb-card"><div class="chart-title">${escapeText(test.label)}</div>`
     + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mean score per season on held-out test seasons">`
     + `<line class="axis" x1="${left}" x2="${W - right + 8}" y1="${y(0)}" y2="${y(0)}"/>${svgBars}${ceiling}</svg>`
     + `<div class="chart-caption"><b class="t-team">${signed(d.mean_diff)}/ha</b> vs farmer practice `
@@ -57,7 +57,7 @@ export function sitesChart(sites) {
       + `<text class="l" x="${gx}" y="${H - 28}" text-anchor="middle">${escapeText(s.short)}</text>`
       + `<text class="l dim" x="${gx}" y="${H - 12}" text-anchor="middle">${escapeText(s.note)}</text>`;
   }).join("");
-  return `<div class="chart-card"><div class="chart-title">Works at a site it never saw</div>`
+  return `<div class="chart-card mb-card"><div class="chart-title">Works at a site it never saw</div>`
     + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Farmer practice vs FieldTwin team at two sites">`
     + `<line class="axis" x1="${left}" x2="${W - right}" y1="${y(0)}" y2="${y(0)}"/>${body}</svg>`
     + `<div class="chart-caption legend"><span class="key c-farmer"></span>Farmer practice <span class="key c-team"></span>FieldTwin team</div></div>`;
@@ -66,15 +66,15 @@ export function sitesChart(sites) {
 // 3. Resource tiles: water and leaching vs farmer practice, plus failed decisions.
 export function resourceTiles(test, fallbacks) {
   const pct = (a, b) => Math.round((100 * (b - a)) / a);
-  const tile = (cls, big, label, sub) => `<div class="tile ${cls}"><div class="big">${big}</div>`
-    + `<div class="tl">${escapeText(label)}</div><div class="ts">${escapeText(sub)}</div></div>`;
-  return `<div class="tiles">`
+  const tile = (cls, big, label, sub) => `<div class="mb-cell"><div class="tile mb-card ${cls}"><div class="big">${big}</div>`
+    + `<div class="tl">${escapeText(label)}</div><div class="ts">${escapeText(sub)}</div></div></div>`;
+  const d = test.team_vs_farmer;
+  return tile("t-team", `${d.wins}/${d.seasons}`, "test seasons won vs farmer practice", `${signed(d.mean_diff)}/ha on average`)
     + tile("t-water", `${pct(test.water_mm.farmer, test.water_mm.team)}%`, "irrigation water",
       `${Math.round(test.water_mm.farmer)} → ${Math.round(test.water_mm.team)} mm per season`)
     + tile("t-leach", `${pct(test.leached_kg_ha.farmer, test.leached_kg_ha.team)}%`, "nitrate leached to groundwater",
       `${test.leached_kg_ha.farmer.toFixed(1)} → ${test.leached_kg_ha.team.toFixed(1)} kg N/ha`)
-    + tile("t-team", `${fallbacks.team}`, "failed decisions (team)", `single agent: ${fallbacks.single}`)
-    + `</div>`;
+    + tile("t-team", `${fallbacks.team}`, "failed decisions (team)", `single agent: ${fallbacks.single}`);
 }
 
 // 4. Team vs single agent, same model and knowledge: one bar per unseen season (team minus single), sorted.
@@ -93,7 +93,7 @@ export function teamVsSingleChart(tvs) {
     const r = Math.round(v / 100) * 100;
     return `<text class="l dim" x="${left - 6}" y="${y(r) + 4}" text-anchor="end">${r ? signed(r) : "0"}</text>`;
   }).join("");
-  return `<div class="chart-card"><div class="chart-title">Why a team: same model, same knowledge, one agent vs five</div>`
+  return `<div class="chart-card mb-card"><div class="chart-title">Why a team: same model, same knowledge, one agent vs five</div>`
     + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Team minus single agent, per unseen season">`
     + `${ticks}<line class="axis" x1="${left}" x2="${W - right}" y1="${y(0)}" y2="${y(0)}"/>${bars}</svg>`
     + `<div class="chart-caption">Team minus single agent, each of the ${tvs.seasons} seasons neither was tuned on: `
@@ -109,10 +109,79 @@ export function headlineResults(demo) {
   const ablation = demo.test.ablation_d1d
     ? `<div class="quiet res-note">Next design (ablation, not the submitted one): independent Nitrogen and Water agents `
       + `score ${money(demo.test.ablation_d1d)} on the same test seasons.</div>` : "";
+  const cell = (span, html) => `<div class="mb-cell" style="--span:${span}">${html}</div>`;
   return `<div class="res-head"><span class="label">Headline results</span><span class="badge">held-out</span></div>`
-    + `<div class="charts">${headlineChart(demo.test)}${sitesChart(sites)}</div>`
+    + `<div class="bento">${cell(2, headlineChart(demo.test))}${cell(2, sitesChart(sites))}`
     + resourceTiles(demo.test, demo.team_vs_single.fallbacks)
-    + teamVsSingleChart(demo.team_vs_single)
+    + `${cell(4, teamVsSingleChart(demo.team_vs_single))}</div>`
     + `<div class="quiet res-note">Score = profit minus a $2.44/kg penalty for nitrate leached (USD/ha per season). `
     + `Final design: ${escapeText(demo.final_design)}.</div>${ablation}`;
+}
+
+// MagicBento-style lights (ported from React Bits MagicBento to plain JS): a spotlight inside the hovered card,
+// a border glow on card edges near the cursor (neighbors too), a ring of light from a click, a staggered intro.
+// The CSS reads --mb-x/--mb-y (cursor in card coords), --mb-near, --mb-hot and the click-wave vars.
+export function attachBento(root) {
+  if (root.dataset.bento) return;          // the listeners live on the persistent results container
+  root.dataset.bento = "1";
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let raf = 0, pointer = null, wave = null;
+  const cards = () => [...root.querySelectorAll(".bento .mb-card")];
+  const paint = (now) => {
+    raf = 0;
+    const list = cards();
+    const grid = root.querySelector(".bento");
+    if (!grid) return;
+    const g = grid.getBoundingClientRect();
+    const near = pointer && pointer.x > g.left - 150 && pointer.x < g.right + 150 && pointer.y > g.top - 150 && pointer.y < g.bottom + 150;
+    let waveR = 0, waveA = 0;
+    if (wave) {
+      const t = Math.min(1, (now - wave.t0) / 1100);
+      waveR = wave.reach * (1 - Math.pow(1 - t, 2.2));
+      waveA = Math.pow(1 - t, 1.3);
+      if (t >= 1) wave = null;
+    }
+    for (const card of list) {
+      const r = card.getBoundingClientRect();
+      const x = pointer ? pointer.x - r.left : -999, y = pointer ? pointer.y - r.top : -999;
+      const inside = pointer && x >= 0 && y >= 0 && x <= r.width && y <= r.height;
+      card.style.setProperty("--mb-x", `${x}px`);
+      card.style.setProperty("--mb-y", `${y}px`);
+      card.style.setProperty("--mb-near", near ? "1" : "0");
+      card.style.setProperty("--mb-hot", inside ? "1" : "0");
+      if (wave || waveA === 0) {
+        card.style.setProperty("--mb-wx", `${wave ? wave.x - r.left : -999}px`);
+        card.style.setProperty("--mb-wy", `${wave ? wave.y - r.top : -999}px`);
+        card.style.setProperty("--mb-wr", `${waveR}px`);
+        card.style.setProperty("--mb-wa", `${waveA}`);
+      }
+    }
+    if (wave) raf = requestAnimationFrame(paint);
+  };
+  const wake = () => { if (!raf) raf = requestAnimationFrame(paint); };
+  root.addEventListener("pointermove", (e) => { pointer = { x: e.clientX, y: e.clientY }; wake(); }, { passive: true });
+  root.addEventListener("pointerleave", () => { pointer = null; wake(); });
+  window.addEventListener("scroll", wake, { passive: true, capture: true });
+  root.addEventListener("click", (e) => {
+    if (reduced || !e.target.closest(".bento .mb-card")) return;
+    const g = root.querySelector(".bento").getBoundingClientRect();
+    const reach = Math.max(...[[g.left, g.top], [g.right, g.top], [g.left, g.bottom], [g.right, g.bottom]]
+      .map(([cx, cy]) => Math.hypot(e.clientX - cx, e.clientY - cy))) + 140;
+    wave = { x: e.clientX, y: e.clientY, t0: performance.now(), reach };
+    wake();
+  });
+}
+
+// Staggered rise-in when the Results page is opened (animate = true); re-renders show the cards at once.
+export function introBento(root, animate = true) {
+  const cells = root.querySelectorAll(".bento .mb-cell");
+  if (!animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    cells.forEach((cell) => cell.classList.add("mb-in"));
+    return;
+  }
+  cells.forEach((cell, i) => {
+    cell.style.setProperty("--mb-delay", `${i * 80}ms`);
+    cell.classList.remove("mb-in");
+    requestAnimationFrame(() => requestAnimationFrame(() => cell.classList.add("mb-in")));
+  });
 }
