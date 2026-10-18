@@ -1,0 +1,15 @@
+ UFGA-1999  reward   1802.2  grain   11676  N   207  irr  140  leached  11.7  llm 159  fallbacks 0  1234s
+# FieldTwin eval summary
+
+Mean ± 95% CI (normal approx). Farmer practice = `farmer_ufga` (config.yaml eval.farmer_practice). gap closed = (reward - farmer practice) / (hindsight - farmer practice). Hindsight knows the future: it is an unreachable ceiling.
+
+## Split: dev-tune
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d1c_multi | 2 | 1081.5 ± 1412.6 | 1104.4 ± 1423.5 | 8173.6 ± 6864.5 | 213.5 ± 12.7 | 9.4 ± 4.5 | 1.77 | -33% |
+| farmer | 2 | 774.8 ± 721.0 | 794.0 ± 718.4 | 5892.5 ± 3220.1 | 160.0 ± 0.0 | 7.9 ± 1.1 | -0.43 | -44% |
+| farmer_ufga (farmer practice) | 2 | 835.4 ± 897.7 | 869.8 ± 930.1 | 6277.6 ± 4819.0 | 116.0 ± 0.0 | 14.1 ± 13.3 | 0.00 | +0% |
+| no_n | 2 | 160.4 ± 219.9 | 174.2 ± 223.5 | 902.8 ± 1157.9 | 0.0 ± 0.0 | 5.7 ± 1.5 | -4.85 | -60% |
+| hindsight (unreachable ceiling) | 2 | 974.6 ± 1063.0 | 994.4 ± 1067.0 | 6733.5 ± 5169.8 | 120.0 ± 0.0 | 8.1 ± 1.6 | 1.00 | -43% |
+

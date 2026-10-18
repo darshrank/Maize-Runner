@@ -1,0 +1,27 @@
+running 12 seasons: UFGA-1990, UFGA-1992, UFGA-1993, UFGA-1994, UFGA-1995, UFGA-1996, UFGA-1997, UFGA-2000, UFGA-2001, UFGA-2002, UFGA-2003, UFGA-2004
+ UFGA-1997  reward   1391.7  grain    9672  N   221  irr  110  leached  18.9  llm 156  fallbacks 0  1265s
+ UFGA-1990  reward   1221.6  grain    8818  N   222  irr  183  leached   3.4  llm 153  fallbacks 0  1292s
+ UFGA-1993  reward   1203.6  grain    8682  N   220  irr  164  leached   5.8  llm 172  fallbacks 0  1458s
+ UFGA-2000  reward   1274.9  grain    9240  N   210  irr  283  leached   0.0  llm 161  fallbacks 0  1469s
+ UFGA-1996  reward   1652.8  grain   11336  N   220  irr  115  leached  43.0  llm 174  fallbacks 0  1590s
+ UFGA-1995  reward   1456.5  grain    9889  N   159  irr  218  leached  26.6  llm 163  fallbacks 0  1616s
+ UFGA-1994  reward   1445.8  grain    9190  N   152  irr  109  leached   5.7  llm 168  fallbacks 0  1634s
+ UFGA-1992  reward   1609.3  grain   10773  N   221  irr  140  leached   9.8  llm 175  fallbacks 0  1658s
+ UFGA-2001  reward   1713.0  grain   11723  N   226  irr  222  leached  20.1  llm 168  fallbacks 0  1091s
+ UFGA-2002  reward   1513.4  grain   10474  N   226  irr  195  leached   9.3  llm 153  fallbacks 0  1090s
+ UFGA-2004  reward   1308.2  grain    9071  N   192  irr  188  leached   7.2  llm 152  fallbacks 0  927s
+ UFGA-2003  reward   1652.9  grain   10979  N   191  irr  130  leached  30.9  llm 152  fallbacks 0  1004s
+# FieldTwin eval summary
+
+Mean ± 95% CI (normal approx). Farmer practice = `farmer_ufga` (config.yaml eval.farmer_practice). gap closed = (reward - farmer practice) / (hindsight - farmer practice). Hindsight knows the future: it is an unreachable ceiling.
+
+## Split: dev-tune
+
+| config | n | reward | profit_usd_ha | grain_kg_ha | n_applied | n_leached | gap closed | leaching vs farmer |
+|---|---|---|---|---|---|---|---|---|
+| a_d1c_multi | 15 | 1402.9 ± 172.4 | 1442.6 ± 179.8 | 9732.2 ± 877.1 | 205.8 ± 11.9 | 16.3 ± 7.1 | 1.45 | -19% |
+| farmer | 15 | 1088.2 ± 128.3 | 1122.6 ± 137.2 | 7524.5 ± 653.4 | 160.0 ± 0.0 | 14.1 ± 7.9 | -0.30 | -30% |
+| farmer_ufga (farmer practice) | 15 | 1142.4 ± 126.3 | 1191.5 ± 129.1 | 7944.1 ± 669.0 | 116.0 ± 0.0 | 20.1 ± 5.8 | 0.00 | +0% |
+| no_n | 15 | 153.1 ± 40.1 | 175.6 ± 39.7 | 909.6 ± 205.7 | 0.0 ± 0.0 | 9.2 ± 4.0 | -5.50 | -54% |
+| hindsight (unreachable ceiling) | 15 | 1322.2 ± 139.3 | 1352.9 ± 143.9 | 8664.5 ± 731.2 | 143.2 ± 18.7 | 12.6 ± 5.6 | 1.00 | -37% |
+
