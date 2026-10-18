@@ -54,8 +54,9 @@ export const theme = {
     labelY: 2.7,                  // top of the frame fit, above the back row's tallest plant + tassel (names sit in the strips now)
     // fix1: camera closer (z 16.2 -> 13), smaller sideways sway (2.2 -> 1.2). fix2: pos / target give only the
     // direction; the camera sits `dist` from the target (about fix1's fitted distance, so the black fog dims the
-    // fields as before) and fitView zooms with the field of view (at most `fov`) to fill the window. Sway 0.6.
-    camera: { fov: 38, pos: [0, 2.1, 13.0], target: [0, -1.2, 0], dist: 20, dollyX: 0.6, dollyPeriod: 44 },
+    // fields as before) and fitView zooms with the field of view (at most `fov`) to fill the window. Sway 1.4 at
+    // dist 20 = fix1's 1.2 at about 17 (same angle).
+    camera: { fov: 38, pos: [0, 2.1, 13.0], target: [0, -1.2, 0], dist: 20, dollyX: 1.4, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
     // Bloom between R2 (1.0 / 0.0) and R3 (0.5 / 0.15). Selective: plants (rim), water fill, N and leach cores,
     // groundwater fluid, lightning bolt. glow: per-kind gain in the bloom pass only (the scene itself is unchanged).
