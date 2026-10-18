@@ -78,7 +78,7 @@ export class Season3D {
       this.shaderErrors++;
       this.lastError = [gl.getProgramInfoLog(program), gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs)]
         .map((s) => (s || "").trim()).filter(Boolean).join("\n");
-      console.error("FieldTwin 3D: shader failed to compile\n", this.lastError);
+      console.error("Maize Runner 3D: shader failed to compile\n", this.lastError);
     };
 
     this.scene = new THREE.Scene();

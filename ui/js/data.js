@@ -63,7 +63,7 @@ export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner
 // Plain labels, in table order (no design ids on screen). Unknown configs show their raw name.
 const CONFIG_NAMES = {
   farmer_ufga: "Farmer practice", farmer: "Fixed split schedule", no_n: "No fertilizer", hindsight: "Grid hindsight",
-  a_d1c_multi: "FieldTwin team", multi: "Team, earlier build (B)", a_d0_single: "Single agent",
+  a_d1c_multi: "Maize Runner team", multi: "Team, earlier build (B)", a_d0_single: "Single agent",
   a_d1_multi: "Team, design 1", a_d1b_multi: "Team, design 1b",
   single: "Single agent", multi_no_critic: "Team without Critic",
   multi_no_weather: "Team without Weather", multi_no_tools: "Team without tools",

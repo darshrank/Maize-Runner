@@ -1,5 +1,5 @@
-/* FieldTwin UI theme (every page): near-black background with soft depth, frosted-glass cards, white and muted text,
-   one accent (NVIDIA green = FieldTwin). Every color in ui/ is a token in the :root block below; js/theme.js copies
+/* Maize Runner UI theme (every page): near-black background with soft depth, frosted-glass cards, white and muted text,
+   one accent (NVIDIA green = Maize Runner). Every color in ui/ is a token in the :root block below; js/theme.js copies
    them into JS at boot (theme.color) for the SVG fields, the mote canvas and the 3D scene. Data colors encode values
    only. One font (vendored Inter, tabular numbers on every figure that changes) and one type scale (--fs-*).
    Demo target 1920 x 1080 on video: body text 16px minimum, hero numbers 48px minimum, nothing essential on hover.
@@ -23,7 +23,7 @@
   --border: #2e2e34;      /* hairlines inside cards, tables */
   --text: #ffffff;
   --muted: #a1a1aa;       /* labels, meta, the Farmer side */
-  --accent: #76b900;      /* NVIDIA green: active state, the FieldTwin side */
+  --accent: #76b900;      /* NVIDIA green: active state, the Maize Runner side */
   /* Glass cards and depth */
   --glass: rgba(255, 255, 255, 0.035);          /* card fill on the plain background */
   --glass-scene: rgba(14, 14, 16, 0.62);        /* card fill over the 3D scene (keeps text legible) */
@@ -198,7 +198,7 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .field { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; min-height: 0; min-width: 0; }
 .field-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .field-head h2 { margin: 0; font-size: var(--fs-4); font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Farmer practice (left) is muted gray, the FieldTwin team (right) green, on every page. */
+/* Farmer practice (left) is muted gray, the Maize Runner team (right) green, on every page. */
 #field-left .field-head h2 { color: var(--muted); }
 #field-right .field-head h2 { color: var(--accent); }
 .plot { position: relative; min-height: 0; }
@@ -315,7 +315,7 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 /* The right field earned the same or less: muted text, no accent, no rise. */
 .fin-delta.behind { animation: none; }
 .fin-delta.behind .v { font-size: var(--fs-4); font-weight: 500; color: var(--muted); }
-/* Counters under each field: Farmer (muted) vs FieldTwin (white), leaching red on both. */
+/* Counters under each field: Farmer (muted) vs Maize Runner (white), leaching red on both. */
 .ctr { display: flex; gap: 16px; }
 .ctr .c { display: grid; justify-items: center; gap: 0; }
 .ctr .k { font-size: var(--fs-1); color: var(--muted); }

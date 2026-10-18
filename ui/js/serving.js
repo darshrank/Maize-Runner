@@ -145,7 +145,7 @@ function empty(el) {
     + `<span class="srv-empty-text">No serving metrics found. Run lanec/scripts/vllm_metrics.py.</span></div>`;
 }
 
-// liveRun: the FieldTwin team's live run (main.js), or null.
+// liveRun: the Maize Runner team's live run (main.js), or null.
 export async function renderServing(el, liveRun = null) {
   const m = cached || await data.loadVllmMetrics();
   if (!m || m instanceof data.LoadError || !Array.isArray(m.rows)) return empty(el);

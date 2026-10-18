@@ -1,4 +1,4 @@
-// How it works (page 6): a step-by-step walkthrough of one real week of the FieldTwin agent team (a_d1c_multi).
+// How it works (page 6): a step-by-step walkthrough of one real week of the Maize Runner agent team (a_d1c_multi).
 // The week: the first Critic objection week of UFGA-2006 (dev), else of the first dev season (tasks/dev.jsonl order)
 // that has one. Every value shown comes from that week's log lines (data.loadRun, dev seasons only); a value the log
 // lacks is left out, never filled in. Steps (Back / Next, arrow keys):
@@ -320,7 +320,7 @@ function diagramSvg() {
     + label(b.x + b.w / 2, b.y + 62, "one model behind all five agents", "hiw-label-sm"));
 
   return `<svg class="hiw-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img"
-    aria-label="One week of the FieldTwin agent team, step by step">
+    aria-label="One week of the Maize Runner agent team, step by step">
     <defs>${markers}
       <!-- Soft accent glow around the active boxes (the box's alpha, blurred, filled with --accent). userSpaceOnUse:
            a bounding-box filter region would clip the halo. -->

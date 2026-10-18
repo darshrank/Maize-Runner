@@ -9,7 +9,7 @@
 // gestures left to the page, rubber band past the ends (max 0.3), release by position plus velocity
 // (round(p + v * 0.2), a flick of |v| > 0.8 or a drag over 0.18 of a card moves one), horizontal wheel that
 // settles 120 ms after it stops, arrow keys / Home / End on the root, reduced motion (jumps).
-// Changes for FieldTwin: no arrows, no autoplay, no loop; only the current card is visible at rest (the others
+// Changes for Maize Runner: no arrows, no autoplay, no loop; only the current card is visible at rest (the others
 // are hidden, not stacked); setIndex() from outside moves the deck without calling onChange, so playback and
 // the deck stay in sync both ways without echo; counter(index, n) -> {cur, tot} replaces the "07 / 20" text
 // (an empty tot hides the slash).

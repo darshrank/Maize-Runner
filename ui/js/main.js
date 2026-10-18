@@ -6,7 +6,7 @@
 // to Season) and the split badge of the current tab. Each tab has one headline saying what it proves.
 //
 // Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR (LEFT
-// farmer practice, RIGHT the FieldTwin team). Under each field: running counters (nitrogen, water, leaching) and, at
+// farmer practice, RIGHT the Maize Runner team). Under each field: running counters (nitrogen, water, leaching) and, at
 // harvest, the profit. Week cards on the left (carousel.js): one card per week, the team's decision in plain words,
 // the Critic's verdict pill (Objection, Accept, No verdict) and the Coordinator's one-line reason. The scrubber marks
 // objection and fallback weeks. Picker: live seasons first ("<year> live"), then Gainesville seasons by year; a
@@ -342,12 +342,12 @@ function renderSeasonHead() {
   const s = season();
   const site = s && s.site ? SITE_NAMES[s.site] || s.site : "";
   if (!s) {
-    $("season-h1").textContent = "FieldTwin vs farmer, same weather";
+    $("season-h1").textContent = "Maize Runner vs farmer, same weather";
     $("season-sub").textContent = "";
     return;
   }
   if (!s.live) {
-    $("season-h1").textContent = "FieldTwin vs farmer, same weather";
+    $("season-h1").textContent = "Maize Runner vs farmer, same weather";
     const what = splitWord(s.split) === "test" ? (s.site === "UFGA" ? "held-out test season" : "test season at a new site")
       : s.split ? `${s.split} season` : "split unknown";
     $("season-sub").textContent = `${site} · ${s.year} · ${what}`;
@@ -444,7 +444,7 @@ function decisionHtml(d) {
 
 // ---------------------------------------------------------------- Agents page
 
-// One week of the FieldTwin team: the decision with the Critic's verdict and the Coordinator's reason on top, then one
+// One week of the Maize Runner team: the decision with the Critic's verdict and the Coordinator's reason on top, then one
 // card per agent with its tool calls and its messages (Planner: proposal and, after an objection, the revision;
 // Critic: verdict and objection; Coordinator: decision and reason, plus any fallback). The week is Season's week; at
 // harvest the last decision week. Click a card to read its full text.
@@ -457,7 +457,7 @@ function renderAgents() {
     $("a-week").textContent = "Week —";
     $("agents-body").innerHTML = `<div class="ag-empty card" style="padding:24px">${isLiveTask()
       ? "The team's messages appear here week by week once the live season starts."
-      : "No FieldTwin team run for this season."}</div>`;
+      : "No Maize Runner team run for this season."}</div>`;
     return;
   }
   const last = Math.max(0, run.W - 1);
@@ -580,7 +580,7 @@ async function renderResults() {
 
 // ---------------------------------------------------------------- Gym page
 
-// FieldTwin packaged as a NeMo Gym environment. Facts only from gym_env/ (cited per line); the dataset counts are
+// Maize Runner packaged as a NeMo Gym environment. Facts only from gym_env/ (cited per line); the dataset counts are
 // counted from the dataset files themselves.
 let gymBuilt = false;
 async function renderGym() {
@@ -593,7 +593,7 @@ async function renderGym() {
   const n = (v) => (v === null ? "not found" : String(v));
   el.innerHTML = `<header class="page-head"><div class="head"><h1>Packaged as a NeMo Gym environment</h1>`
     // gym_env/README.md:3 "FieldTwin wrapped for NeMo Gym (tested with nemo-gym==0.7.0)"
-    + `<p class="sub">FieldTwin wrapped for NVIDIA NeMo Gym, tested with nemo-gym 0.7.0 · the same verifier scores the team and a single agent</p></div></header>`
+    + `<p class="sub">Maize Runner wrapped for NVIDIA NeMo Gym, tested with nemo-gym 0.7.0 · the same verifier scores the team and a single agent</p></div></header>`
     + `<section class="gym-grid">`
     + `<div class="gym-hero card"><div><div class="v big-num">${n(dev)}</div><div class="k">dev seasons <span class="badge split">dev</span></div></div>`
     + `<div><div class="v big-num">${n(test)}</div><div class="k">held-out test seasons <span class="badge split">test</span></div></div>`
@@ -601,7 +601,7 @@ async function renderGym() {
     + `<p class="gym-hero-text">Real Gainesville seasons as a NeMo Gym dataset, one row per season. One rollout = one season: `
     + `the model calls read tools and submits one decision per week until the crop matures.</p></div>`
     // gym_env/README.md:10 Resources server
-    + `<div class="gym-card card"><h2>Resources server</h2><p>A thin adapter over the FieldTwin env server on port 9000.</p><p class="quiet">resources_servers/fieldtwin/app.py</p></div>`
+    + `<div class="gym-card card"><h2>Resources server</h2><p>A thin adapter over the Maize Runner env server on port 9000.</p><p class="quiet">resources_servers/fieldtwin/app.py</p></div>`
     // gym_env/README.md:11 Tools
     + `<div class="gym-card card"><h2>Tools</h2><p>The env server's read tools plus submit_decision, one schema file for both.</p><p class="quiet">agents/tools.json</p></div>`
     // gym_env/README.md:12 Verifier
@@ -660,13 +660,13 @@ function cardHtml(k, W) {
   if (k >= W) {
     const l = state.runs.left && state.runs.left.final, r = run && run.final;
     const line = l && r && has(l.profit_usd_ha) && has(r.profit_usd_ha)
-      ? `FieldTwin ${money(r.profit_usd_ha)} vs farmer ${money(l.profit_usd_ha)} profit per hectare.` : "Season over.";
+      ? `Maize Runner ${money(r.profit_usd_ha)} vs farmer ${money(l.profit_usd_ha)} profit per hectare.` : "Season over.";
     return `<header class="wc-head"><span class="wc-week">Harvest</span></header><p class="wc-dec">Season done</p><p class="wc-text">${esc(line)}</p>`;
   }
   const w = run && k < run.W ? run.weeks[k] : null;
   const date = dateRange(k);
   const head = `<header class="wc-head"><span class="wc-week">Week ${weekNo(k)}</span>${date ? `<span class="wc-date mono">${esc(date)}</span>` : ""}</header>`;
-  if (!w) return `${head}<p class="wc-text quiet">No FieldTwin decision this week.</p>`;
+  if (!w) return `${head}<p class="wc-text quiet">No Maize Runner decision this week.</p>`;
   const verdict = data.weekVerdict(run, k);
   const reason = w.fallback ? (w.fallbacks[0] && w.fallbacks[0].why) : w.decision && w.decision.reason;
   return head
@@ -778,7 +778,7 @@ function liveWeek() {
   return k;
 }
 
-// The FieldTwin team's live run for the Serving page's "This run" panel, or null.
+// The Maize Runner team's live run for the Serving page's "This run" panel, or null.
 function liveRun() {
   return isLiveTask() && liveActive() ? state.runs.right : null;
 }
@@ -864,7 +864,7 @@ function renderLivePanels() {
   renderSeasonHead();
 }
 
-// Season-end card: Farmer vs FieldTwin from the live logs' final lines (profit, water, nitrogen, leaching) and the
+// Season-end card: Farmer vs Maize Runner from the live logs' final lines (profit, water, nitrogen, leaching) and the
 // team's run time from its log timestamps. A value the logs do not hold reads "not in log" (and is reported once in
 // the console); nothing is computed in its place.
 function renderSeasonEnd() {
@@ -886,10 +886,10 @@ function renderSeasonEnd() {
   const s = season();
   const delta = fl && fr && has(fl.profit_usd_ha) && has(fr.profit_usd_ha) ? fr.profit_usd_ha - fl.profit_usd_ha : null;
   $("seasonend").innerHTML = `<div class="se-head"><h2>${s ? s.year : ""} season result</h2><span class="badge split">${s ? s.year : ""} live · one run</span></div>`
-    + `<div class="se-grid"><span></span><span class="col farmer">Farmer practice</span><span class="col team">FieldTwin team</span>`
+    + `<div class="se-grid"><span></span><span class="col farmer">Farmer practice</span><span class="col team">Maize Runner team</span>`
     + rows.map(([label, key, d, cls]) => `<span class="k">${label}</span>${cell(fl, key, d, cls, "farmer")}${cell(fr, key, d, cls, "team")}`).join("")
     + `</div><div class="se-foot"><span>Total run time <b class="mono">${runTime || "not in log"}</b></span>`
-    + `${delta !== null ? `<span>FieldTwin vs farmer <b class="mono">${gapMoney(delta)}</b> profit</span>` : ""}`
+    + `${delta !== null ? `<span>Maize Runner vs farmer <b class="mono">${gapMoney(delta)}</b> profit</span>` : ""}`
     + `<span>Gainesville weather, gym-DSSAT, five Nemotron agents</span></div>`;
 }
 
@@ -1095,7 +1095,7 @@ function notice(text) {
 
 // A WebGL or shader failure hands over to the R1 2D view: same page with ?view2d=1.
 function fallback2D(err) {
-  console.error("FieldTwin: 3D Season unavailable, falling back to ?view2d=1.", err);
+  console.error("Maize Runner: 3D Season unavailable, falling back to ?view2d=1.", err);
   const url = new URL(location.href);
   url.searchParams.set("view2d", "1");
   location.replace(url.href);
@@ -1154,7 +1154,7 @@ async function main() {
   });
   state.seasons = [...liveSeasons, ...(await data.seasonList(await data.loadSeasonSplits()))];
   const unavailable = state.seasons.filter((s) => !s.available).map((s) => s.task);
-  if (unavailable.length) console.info(`FieldTwin: seasons missing a Season log (unavailable): ${unavailable.join(", ")}`);
+  if (unavailable.length) console.info(`Maize Runner: seasons missing a Season log (unavailable): ${unavailable.join(", ")}`);
   // Default: Gainesville 2024, else the newest available Gainesville season, else any available recorded season.
   const rec = state.seasons.filter((s) => s.available && !s.live);
   const first = rec.find((s) => s.site === DEFAULT_SITE && s.year === DEFAULT_YEAR)
