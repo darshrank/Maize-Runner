@@ -15,3 +15,5 @@ Farmer practice = `farmer_ufga`. Baselines are averaged over the same seasons as
 | d0b_single | dev-tune | 15 | 1396 | 1142 | 1322 | 1.41 | 13/15 | 217 | 166 | 19.4 | 15 |
 | d0b_single | dev-check | 5 | 1069 | 1040 | 1165 | 0.24 | 2/5 | 244 | 163 | 33.7 | 4 |
 | d0b_single | test | 15 | 1238 | 1074 | 1265 | 0.86 | 12/15 | 212 | 157 | 21.2 | 11 |
+| d1d_multi | dev-tune | 3 | 1225 | 925 | 1161 | 1.27 | 3/3 | 214 | 160 | 20.1 | 0 |
+| d1d_multi | test | 15 | 1368 | 1074 | 1265 | 1.54 | 13/15 | 211 | 173 | 18.4 | 0 |

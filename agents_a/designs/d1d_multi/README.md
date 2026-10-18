@@ -44,3 +44,19 @@ Smoke test (3 contrasting tune seasons):
 
 0 fallbacks, ~200 model calls per season, ~12 min per season (GPU not shared). The Water agent irrigated more in
 the driest season and beat hindsight there; wet-season leaching is barely changed.
+
+## Held-out test (2010-2024, 15 seasons): ablation run; d1c_multi stays the final design
+
+Decided before running: d1c_multi (frozen before any test run) remains the final design; d1d_multi is reported as an
+ablation, so the test set is not used to choose between designs.
+
+| | mean reward | vs farmer practice | fallbacks | irrigation mm | leached kg/ha |
+|---|---|---|---|---|---|
+| **d1d_multi** | **1,368** | +294 | 0 | 173 | 18.4 |
+| d1c_multi (final) | 1,306 | +232 | 0 | 170 | 19.7 |
+| d0b_single | 1,238 | +164 | 11 | 157 | 21.2 |
+| farmer practice | 1,074 | | | 264 | 23.0 |
+| hindsight | 1,265 | | | 124 | 12.9 |
+
+d1d minus d1c: +62 USD/ha (95% CI +-81), d1d ahead in 11/15: splitting the Planner into independent Nitrogen and
+Water agents (with the water-balance tool) points to a further gain, not yet statistically certain. Not run on dev.

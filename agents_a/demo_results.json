@@ -1,0 +1,149 @@
+{
+ "score": "reward = profit minus 2.44 USD per kg N leached, USD/ha per season",
+ "final_design": "d1c_multi (five-role Nemotron team), frozen before any test run",
+ "test": {
+  "label": "Gainesville, FL: held-out test 2010-2024",
+  "seasons": 15,
+  "farmer": 1074.1,
+  "team": 1306.3,
+  "hindsight": 1265.2,
+  "team_vs_farmer": {
+   "seasons": 15,
+   "mean_diff": 232.1,
+   "ci95": 116.8,
+   "wins": 12
+  },
+  "water_mm": {
+   "farmer": 264.0,
+   "team": 170.2
+  },
+  "leached_kg_ha": {
+   "farmer": 23.0,
+   "team": 19.7
+  },
+  "fallbacks": {
+   "team": 0
+  },
+  "single": 1238.0,
+  "ablation_d1d": 1367.8,
+  "farmer_split": 1096.2
+ },
+ "tifton": {
+  "label": "Tifton, GA: new site, never tuned on, 2010-2024",
+  "seasons": 15,
+  "farmer": 1062.9,
+  "team": 1297.3,
+  "hindsight": 1270.8,
+  "team_vs_farmer": {
+   "seasons": 15,
+   "mean_diff": 234.4,
+   "ci95": 114.2,
+   "wins": 12
+  },
+  "water_mm": {
+   "farmer": 264.0,
+   "team": 157.1
+  },
+  "leached_kg_ha": {
+   "farmer": 21.8,
+   "team": 17.9
+  },
+  "fallbacks": {
+   "team": 0
+  },
+  "farmer_split": 1137.2
+ },
+ "team_vs_single": {
+  "note": "same model, same knowledge; seasons neither design was tuned on (dev 2005-2009 + test)",
+  "seasons": 20,
+  "mean_diff": 81.3,
+  "ci95": 60.8,
+  "wins": 15,
+  "per_season": [
+   {
+    "task_id": "UFGA-2015",
+    "diff": 379.5
+   },
+   {
+    "task_id": "UFGA-2016",
+    "diff": 342.8
+   },
+   {
+    "task_id": "UFGA-2008",
+    "diff": 258.5
+   },
+   {
+    "task_id": "UFGA-2023",
+    "diff": 232.6
+   },
+   {
+    "task_id": "UFGA-2006",
+    "diff": 180.6
+   },
+   {
+    "task_id": "UFGA-2009",
+    "diff": 118.7
+   },
+   {
+    "task_id": "UFGA-2013",
+    "diff": 102.3
+   },
+   {
+    "task_id": "UFGA-2005",
+    "diff": 97.2
+   },
+   {
+    "task_id": "UFGA-2021",
+    "diff": 83.8
+   },
+   {
+    "task_id": "UFGA-2010",
+    "diff": 42.9
+   },
+   {
+    "task_id": "UFGA-2022",
+    "diff": 41.8
+   },
+   {
+    "task_id": "UFGA-2019",
+    "diff": 30.3
+   },
+   {
+    "task_id": "UFGA-2012",
+    "diff": 15.9
+   },
+   {
+    "task_id": "UFGA-2018",
+    "diff": 11.1
+   },
+   {
+    "task_id": "UFGA-2017",
+    "diff": 6.6
+   },
+   {
+    "task_id": "UFGA-2014",
+    "diff": -18.0
+   },
+   {
+    "task_id": "UFGA-2011",
+    "diff": -26.1
+   },
+   {
+    "task_id": "UFGA-2020",
+    "diff": -43.1
+   },
+   {
+    "task_id": "UFGA-2007",
+    "diff": -52.9
+   },
+   {
+    "task_id": "UFGA-2024",
+    "diff": -177.8
+   }
+  ],
+  "fallbacks": {
+   "team": 0,
+   "single": 30
+  }
+ }
+}
