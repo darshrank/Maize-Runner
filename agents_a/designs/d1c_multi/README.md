@@ -69,3 +69,19 @@ weak spot: leaching in wet seasons (55.8 kg N/ha).
 Paired difference vs farmer practice: **+232 USD/ha, 95% CI +-117**. 36% less water and 14% less N leached than
 farmer practice. Losses: 2010 (902 vs 1,177, under-irrigated), 2016 (1,093 vs 1,115), 2019 (947 vs 965).
 Test (gap closed 1.21) matches dev-check (1.20): the design generalizes. Per-season rows: `results/eval.csv`.
+
+## Second site: Tifton, GA (15 seasons 2010-2024, never used for tuning)
+
+Frozen d1c_multi (same prompts as the A4 run) at Tifton: NASA POWER weather, planted Mar 15 (UGA Extension window),
+same UFGA soil and hybrid ("the same field in another climate").
+
+| | mean reward | gap closed | N kg/ha | irrigation mm | leached kg/ha | fallbacks |
+|---|---|---|---|---|---|---|
+| **d1c_multi** | **1,297** | **1.13** | 206 | 157 | 17.9 | 0 |
+| farmer practice (`farmer_ufga`) | 1,063 | 0.00 | 116 | 264 | 21.8 | |
+| farmer split (`farmer`, better locally) | 1,137 | | 160 | 98 | 15.4 | |
+| hindsight (best fixed plan) | 1,271 | 1.00 | | 140 | 14.0 | |
+
+vs farmer practice: +234 USD/ha (95% CI +-114), 12/15 wins; vs the 60/60/40 split: +160 USD/ha (+-120), 11/15 wins.
+Losses vs farmer practice: 2019, 2022, 2024. Nearly the same margin as the Gainesville test (+232): the design
+transfers to a new climate and planting date without retuning.
