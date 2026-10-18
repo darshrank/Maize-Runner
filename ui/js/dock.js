@@ -56,6 +56,9 @@ export const DOCK_ICONS = {
   chip: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.4"/><rect x="9.5" y="9.5" width="5" height="5" rx="0.6"/>'
     + '<path d="M9.5 3.5v3M12 3.5v3M14.5 3.5v3M9.5 17.5v3M12 17.5v3M14.5 17.5v3'
     + 'M3.5 9.5h3M3.5 12h3M3.5 14.5h3M17.5 9.5h3M17.5 12h3M17.5 14.5h3"/>',
+  flow: '<rect x="9" y="9.5" width="6" height="5" rx="1"/><rect x="2.5" y="3" width="5" height="4" rx="0.8"/>'
+    + '<rect x="16.5" y="3" width="5" height="4" rx="0.8"/><rect x="2.5" y="17" width="5" height="4" rx="0.8"/>'
+    + '<rect x="16.5" y="17" width="5" height="4" rx="0.8"/><path d="M7.5 6.5 9.5 9.5M16.5 6.5l-2 3M7.5 17.5l2-3M16.5 17.5l-2-3"/>',
 };
 
 // One damped spring toward `target`, semi-implicit Euler in fixed substeps (stable for these constants).

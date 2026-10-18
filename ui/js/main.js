@@ -1,5 +1,5 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8). R2: pages Season, Agents, Results, Gym,
-// Serving, switched by the dock (dock.js) or keys 1-5; no top bar.
+// Serving, How it works, switched by the dock (dock.js) or keys 1-6; no top bar.
 // Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR
 // (LEFT farmer practice, RIGHT the FieldTwin agent team; no config pickers). Each field header is the config's plain
 // label, with the model name under it when the log records one. The season picker lists only seasons with both
@@ -26,17 +26,19 @@ import { weekLines, chatHtml, esc, mdPlain } from "./agents.js";
 import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
+import { renderHowItWorks } from "./howitworks.js";
 
 export { theme };
 
 const $ = (id) => document.getElementById(id);
-// "How it works" moved to the deck (R2). Each placeholder names the data file its page will read.
+// Each placeholder names the data file its page will read. How it works: one static diagram (howitworks.js), no data.
 const PAGES = [
   { id: "season", label: "Season", icon: "sprout" },
   { id: "agents", label: "Agents", icon: "chats" },
   { id: "results", label: "Results", icon: "bars" },
   { id: "gym", label: "Gym", icon: "loop", file: "results/iterations.json" },
   { id: "serving", label: "Serving", icon: "chip", file: "results/vllm_metrics.json" },
+  { id: "how", label: "How it works", icon: "flow" },
 ];
 const VIEWS = PAGES.map((p) => p.id);
 const params = new URLSearchParams(location.search);
@@ -134,6 +136,7 @@ function setView(view) {
   showScene();
   $("agents").hidden = view !== "agents";
   $("results").hidden = view !== "results";
+  $("how").hidden = view !== "how";
   $("placeholder").hidden = !page.file;
   if (page.file) {
     $("placeholder-title").textContent = page.label;
@@ -141,6 +144,7 @@ function setView(view) {
   }
   if (view === "agents") renderAgents();
   if (view === "results") renderResults();
+  if (view === "how") renderHowItWorks($("how-body"));
   showCards();
 }
 
@@ -598,7 +602,7 @@ function bind() {
   document.querySelectorAll(".speed button").forEach((b) => (b.onclick = () => setSpeed(+b.dataset.speed)));
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("select, input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key >= "1" && e.key <= "5") { setView(VIEWS[+e.key - 1]); return; }
+    if (e.key >= "1" && e.key <= String(VIEWS.length)) { setView(VIEWS[+e.key - 1]); return; }
     if (state.view === "agents") {
       if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }

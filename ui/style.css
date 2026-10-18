@@ -329,3 +329,29 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .bubble .md li { margin: 2px 0; }
 .bubble .md b { font-weight: 600; }
 .res-note { font-size: 14px; }
+
+/* ---------------------------------------------------------------- How it works (howitworks.js): one static SVG */
+.hiw-wrap { height: 100%; max-width: 1500px; margin: 0 auto; padding: 4px var(--gutter) 8px; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
+.hiw-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.hiw-head h1 { margin: 0; font-size: 22px; font-weight: 600; }
+.hiw-head p { margin: 0; font-size: 15px; }
+.hiw-svg { width: 100%; height: 100%; display: block; }
+.hiw-svg text { font-family: var(--sans); }
+.hiw-svg .hiw-name { font-size: 18px; font-weight: 600; }
+.hiw-svg .hiw-sub { font-size: 15px; fill: var(--quiet); }
+.hiw-svg .hiw-mono { font: 500 14px var(--mono); fill: var(--quiet); }
+.hiw-svg .hiw-num { font: 700 15px var(--mono); }
+.hiw-svg .hiw-obj-label { font-size: 15px; font-weight: 600; }
+.hiw-svg .hiw-box { fill: #000; stroke-width: 2; }
+.hiw-svg .hiw-plain { stroke: var(--hairline-strong); }
+.hiw-svg .hiw-badge circle { fill: #000; stroke-width: 2; }
+.hiw-svg .hiw-icon { fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.hiw-svg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.hiw-svg .hiw-call { stroke-width: 2.4; }
+.hiw-svg .hiw-back { stroke: var(--quiet); stroke-width: 1.4; }
+.hiw-svg .hiw-obj { stroke-width: 2.4; }
+.hiw-svg .hiw-tool { stroke: var(--text); stroke-opacity: 0.55; stroke-width: 1.4; }
+.hiw-svg .hiw-model { stroke: var(--quiet); stroke-opacity: 0.55; stroke-width: 1; }
+.hiw-svg .hiw-halo { stroke: #000; stroke-width: 10; stroke-linecap: butt; }
+.hiw-svg .neon { filter: url(#hiw-glow); }
+.lite .hiw-svg .neon { filter: none; }
