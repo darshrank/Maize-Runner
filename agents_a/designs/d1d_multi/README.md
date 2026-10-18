@@ -33,4 +33,14 @@ by one agent) and under-irrigation in some seasons (water sized from crop water 
 
 ## Results
 
-(smoke test running: 1998 dry, 1999 median, 1991 wet)
+Smoke test (3 contrasting tune seasons):
+
+| season | d1d_multi | d1c_multi | d0b_single | farmer practice | hindsight |
+|---|---|---|---|---|---|
+| 1998 (driest) | **511** (N 217, irr 323) | 361 (irr 280) | 435 | 377 | 432 |
+| 1999 (median) | 1,717 (N 221, irr 151) | **1,802** | 1,728 | 1,293 | 1,517 |
+| 1991 (wettest) | **1,448** (N 205, irr 7, leached 41.0) | 1,437 (leached 44.6) | 935 | 1,104 | 1,533 |
+| mean | **1,225** | 1,200 | 1,032 | 925 | 1,161 |
+
+0 fallbacks, ~200 model calls per season, ~12 min per season (GPU not shared). The Water agent irrigated more in
+the driest season and beat hindsight there; wet-season leaching is barely changed.
