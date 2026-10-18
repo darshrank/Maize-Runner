@@ -10,14 +10,14 @@
 //            per-kind glow gains; then the two passes are mixed
 //   storm    a week with logged rain over theme.stormMm: rain streaks, strong lean (dioramas), one lightning
 //            flash (cubes lit through uFlash, one bloomed bolt) when the week is entered
-//   fit      the scene centers in the space right of the week cards (a camera view offset), the camera backs off
-//            along its home direction when both fields would not fit that width or the labels-to-slab height would
-//            not fit between the top bar and the finale row, and the camera moves up or down to center the scene in
-//            that height, so no field slides under the cards or the finale (fitView, theme.three.fit)
-//   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): field names
-//            centered above their field, the finale in one row under the fields (each field's number centered on
-//            its projected x, the gap centered between them). Labels are pushed apart so none overlaps another,
-//            and the finale row stays between the scene's lowest point and the controls
+//   fit      the two fields fill the window: the camera backs off along its home direction only as far as both
+//            fields need to fit the full width and the plant-top-to-slab height fits between fit.top and the strip
+//            row above the weather strip, and moves up or down to center the scene there (fitView, theme.three.fit).
+//            Every other element is a frosted overlay on top of the fields (fix2)
+//   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): one strip
+//            under each field (name + counters), the harvest profit just above it, the gap between the profits in
+//            the middle. Strips are pushed apart so none overlaps another, stay right of the week cards and inside
+//            the window, and sit between the scene's lowest point and the weather strip
 //   ?lite=1  no bloom, no transmission (plain translucent glass), no fog, no environment
 //   shaders  a compile failure is retried once with fresh programs; a second failure calls onFail (main.js
 //            then reloads with ?view2d=1)
@@ -105,8 +105,7 @@ export class Season3D {
     this.basePos = this.home.pos.clone();
     this.baseTarget = this.home.target.clone();
     this.camera.position.copy(this.home.pos);
-    this.reserve = { target: 0, cur: 0, fitted: -1, floor: null };   // px on the left kept free for the week cards
-    this.finExtra = 0;   // px reserved under the fields beyond fit.bottom when the finale gap drops a line
+    this.fitted = { w: 0, h: 0, floor: null };   // window size and strip row the camera was last fitted to
     this.pv = new THREE.Vector3();
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.target.copy(this.home.target);
@@ -259,12 +258,11 @@ export class Season3D {
 
   // ------------------------------------------------------------ overlays
 
-  // heads: {left, right} elements centered above each field (bottom edge at the anchor); fins: {left, right} the
-  // finale under each field (top edge on the row); mid: the gap between them; floor: the element whose top edge
-  // the finale row must stay above (the controls).
-  // side: the element on the left the scene must stay clear of (the week cards).
-  setOverlays({ heads, fins, mid, floor, side = null }) {
-    this.ov = { heads, fins, mid, floor, side, floorY: null, floorAge: 0 };
+  // fins: {left, right} the strip + profit under each field (bottom edge on the row); mid: the gap between the
+  // profits; floor: the element whose top edge the strip row must stay above (the weather strip); side: the element
+  // on the left the strips must stay clear of (the week cards).
+  setOverlays({ fins, mid, floor, side = null }) {
+    this.ov = { fins, mid, floor, side, floorY: null, sideX: 0, floorAge: 0 };
     this.anchors = Object.fromEntries(SIDES.map((s) => [s, this.fields[s].anchors()]));
   }
 
@@ -282,7 +280,7 @@ export class Season3D {
   placeOverlays(dt) {
     const o = this.ov;
     if (!o) return;
-    const PAD = 24, TOP = T.fit.headTop, place = (el, x, y) => (el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`);
+    const PAD = 16, place = (el, x, y) => (el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`);
     // Reads first (sizes), then writes, so the layout is computed once per frame.
     o.floorAge -= dt;
     if (o.floor && (o.floorY === null || o.floorAge <= 0)) {
@@ -290,47 +288,37 @@ export class Season3D {
       o.floorY = o.floor.getBoundingClientRect().top - top.top;
       o.floorAge = 0.5;
       const r = o.side && !o.side.hidden ? o.side.getBoundingClientRect() : null;
-      this.reserve.target = r && r.width ? Math.max(0, r.right - top.left + T.fit.gap) : 0;
+      o.sideX = r && r.width ? r.right - top.left : 0;
     }
     // Each overlay is a zero-size anchor; its one child (.s3-in) holds the content and carries the size.
     const size = (el) => { const c = el.firstElementChild || el; return { w: c.offsetWidth, h: c.offsetHeight }; };
-    const hs = { left: size(o.heads.left), right: size(o.heads.right) };
     const fs = { left: size(o.fins.left), right: size(o.fins.right) }, ms = size(o.mid);
+    const strip = (s) => { const e = o.fins[s].querySelector(".fstrip"); return e ? e.offsetHeight : 0; };
+    const prof = (s) => { const e = o.fins[s].querySelector(".fin-profit"); return e && !e.hidden ? e.offsetWidth : 0; };
+    const sh = Math.max(strip("left"), strip("right")), pw = { left: prof("left"), right: prof("right") };
     const at = {};
     for (const s of SIDES) {
       const a = this.anchors[s];
       at[s] = { head: this.project(a.head), center: this.project(a.center),
         bottom: Math.max(...a.bottom.map((p) => this.project(p).y)) };
     }
-    // Heads: centered above each field, never above the top bar and headline (fit.headTop), never on top of each other.
-    const [hl, hr] = Season3D.apart({ x: at.left.head.x, w: hs.left.w }, { x: at.right.head.x, w: hs.right.w }, PAD);
-    const hy = (s) => Math.max(TOP + hs[s].h, at[s].head.y);
-    place(o.heads.left, hl, hy("left"));
-    place(o.heads.right, hr, hy("right"));
-    // Finale row: under the lowest point of both fields, above the controls; the gap on the same row between the
-    // two numbers when it fits, else one line lower.
-    let [fl, fr] = Season3D.apart({ x: at.left.center.x, w: fs.left.w }, { x: at.right.center.x, w: fs.right.w }, PAD);
-    const rowH = Math.max(fs.left.h, fs.right.h);
-    const mx = (fl + fr) / 2;
-    const fits = ms.w === 0 || (mx - ms.w / 2 >= fl + fs.left.w / 2 + PAD && mx + ms.w / 2 <= fr - fs.right.w / 2 - PAD);
-    const total = fits ? Math.max(rowH, ms.h) : rowH + 8 + ms.h;
-    // When the gap drops a line, fitView reserves that line too (finExtra px). Kept until the finale hides, so
-    // the refit cannot flip it back and forth.
-    const extra = ms.w === 0 ? 0 : fits ? this.finExtra : ms.h + 8;
-    if (extra !== this.finExtra) {
-      this.finExtra = extra;
-      this.fitView();
-    }
-    let y = Math.max(at.left.bottom, at.right.bottom) + 18;
-    if (o.floorY !== null) y = Math.min(y, o.floorY - 8 - total);
+    // Strips: centered under each field, right of the week cards, inside the window, never on top of each other.
+    const W = this.root.clientWidth;
+    let fl = Math.max(at.left.center.x, o.sideX + PAD + fs.left.w / 2);
+    let fr = Math.min(at.right.center.x, W - PAD - fs.right.w / 2);
+    [fl, fr] = Season3D.apart({ x: fl, w: fs.left.w }, { x: fr, w: fs.right.w }, PAD);
+    // Row (bottom edge of the strips): just under the lowest point of both fields, above the weather strip.
+    let y = Math.max(at.left.bottom, at.right.bottom) + 12 + sh;
+    if (o.floorY !== null) y = Math.min(y, o.floorY - 10);
     place(o.fins.left, fl, y);
     place(o.fins.right, fr, y);
-    place(o.mid, mx, fits ? y : y + rowH + 8);
+    // The gap: between the fields on the profit row (just above the strips) when it fits between the two profits,
+    // else one line higher.
+    const mx = (fl + fr) / 2;
+    const fits = ms.w === 0 || (mx - ms.w / 2 >= fl + pw.left / 2 + PAD && mx + ms.w / 2 <= fr - pw.right / 2 - PAD);
+    place(o.mid, mx, fits ? y - sh - 8 : y - Math.max(fs.left.h, fs.right.h) - 8);
     const hide = (s) => at[s].head.behind || at[s].center.behind;
-    for (const s of SIDES) {
-      o.heads[s].style.visibility = hide(s) ? "hidden" : "";
-      o.fins[s].style.visibility = hide(s) ? "hidden" : "";
-    }
+    for (const s of SIDES) o.fins[s].style.visibility = hide(s) ? "hidden" : "";
   }
 
   // ------------------------------------------------------------ camera
@@ -371,27 +359,24 @@ export class Season3D {
     this.active = on;
   }
 
-  // Center the scene in the free width right of the reserve (a wider virtual frame, rendered from its left part),
-  // then back the camera off until both fields fit that width and the label anchors to the slab bottom fit between
-  // fit.top and the finale row, and move it up or down to center them there. Projection-based, a few passes.
+  // Back the camera off until both fields fit the window width and the plant-top anchors to the slab bottom fit
+  // between fit.top and the strip row (fit.bottom px above the weather strip), and move it up or down to center
+  // them there. Projection-based, a few passes.
   fitView() {
     const w = this.root.clientWidth, h = this.root.clientHeight;
     if (!w || !h) return;
-    const L = this.reserve.cur, free = Math.max(1, w - L), C = T.camera, F = T.fit;
+    const C = T.camera, F = T.fit;
     const floor = this.ov && this.ov.floorY !== null ? this.ov.floorY : h - 120;
-    this.reserve.fitted = L;
-    this.reserve.floor = floor;
-    this.camera.aspect = (w + L) / h;
-    if (L > 0.5) this.camera.setViewOffset(w + L, h, 0, 0, w, h);
-    else this.camera.clearViewOffset();
+    this.fitted = { w, h, floor };
+    this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     const half = T.fieldX + this.fields.left.W / 2 + F.margin + 0.6 * C.dollyX;
     const d0 = this.basePos.distanceTo(this.baseTarget);
     const tanV = Math.tan(THREE.MathUtils.degToRad(C.fov) / 2);
-    let k = Math.max(1, (half * h) / (0.92 * free * tanV) / d0), dy = 0;
-    if (this.user) return;   // the viewer holds the camera; the frame still follows the cards
+    let k = Math.max(1, (half * h) / (0.96 * w * tanV) / d0), dy = 0;
+    if (this.user) return;   // the viewer holds the camera
     const anchors = SIDES.map((s) => this.fields[s].anchors());
-    const top = F.top, bottom = Math.max(top + 80, floor - F.bottom - this.finExtra);
+    const top = F.top, bottom = Math.max(top + 80, floor - F.bottom);
     for (let pass = 0; pass < 4; pass++) {
       this.placeCamera(k, dy);
       const ys = anchors.flatMap((a) => [a.head, ...a.bottom]).map((p) => this.project(p).y);
@@ -457,10 +442,8 @@ export class Season3D {
       this.fields[s].flash(f);
     }
     this.tickRain(this.reduce ? 0 : dt);
-    const R = this.reserve;
-    R.cur = this.reduce ? R.target : R.cur + (R.target - R.cur) * Math.min(1, dt * 6);
     const floorY = this.ov ? this.ov.floorY : null;
-    if (Math.abs(R.cur - R.fitted) > 0.5 || (floorY !== null && Math.abs(floorY - (R.floor ?? -1)) > 1)) this.fitView();
+    if (floorY !== null && Math.abs(floorY - (this.fitted.floor ?? -1)) > 1) this.fitView();
     this.tickCamera(dt);
     this.ambient.intensity = T.glass.ambient * (1 + 2 * f);
     this.render();
