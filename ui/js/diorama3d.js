@@ -431,13 +431,11 @@ export class Diorama {
   leach(count, spread, share) {
     this.pulse = Math.min(1.6, this.pulse + 0.15 * share);
     if (this.reduce) return;
-    // fix2: drips start at the grid's bottom face, so they fall through the dark gap above the slab and read red
-    // (inside the bottom layer the water bloom washed them white).
-    const bottom = this.cy(G.layers - 1) - this.s * 0.5;
+    const bottom = this.cy(G.layers - 1);
     for (let i = 0; i < count; i++) {
       const ix = Math.floor(Math.random() * G.cols), iz = Math.floor(Math.random() * G.rows), h = this.s * 0.3;
-      this.motes.push({ kind: "leach", x: this.cx(ix) + rand(-h, h), y: bottom - rand(0, 0.05), z: this.cz(iz) + rand(-h, h),
-        vy: -rand(0.2, 0.6), delay: 0.25 + spread * 0.3 + rand(0, spread * 1.2), size: K.size * K.drip * (0.8 + 0.5 * share), share, trail: [] });
+      this.motes.push({ kind: "leach", x: this.cx(ix) + rand(-h, h), y: bottom + rand(-h, h), z: this.cz(iz) + rand(-h, h),
+        vy: -rand(0.2, 0.6), delay: 0.25 + spread * 0.3 + rand(0, spread * 1.2), size: K.size * (0.8 + 0.5 * share), share, trail: [] });
     }
   }
 
@@ -476,7 +474,7 @@ export class Diorama {
         case "leach":
           m.trail.unshift(m.y);
           if (m.trail.length > 6) m.trail.pop();
-          m.vy -= 1.6 * dt; m.y += m.vy * dt;   // slow enough to read as drips on video (fix2: 3 -> 1.6)
+          m.vy -= 3 * dt; m.y += m.vy * dt;   // slow enough to read as drips on video
           if (m.y <= this.slabTop) {
             keep.push({ kind: "splash", x: m.x, y: this.slabTop, z: m.z, t: 0, life: 0.6, size: m.size });
             this.pulse = Math.min(1.6, this.pulse + 0.03 * (0.6 + m.share));

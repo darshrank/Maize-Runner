@@ -49,13 +49,13 @@ export const theme = {
     // N and leaching cores (small emissive cubes). soil: cores at the task's max soil_n_kg_ha (perCube slots in
     // each top cube); dose / uptake / leach: counts at the task's max of that value. ?lite=1 halves dose and leach.
     // fix1: size 0.075 -> 0.095 and leach 80 -> 110 so the N cores and leaching drips read on video.
-    // fix2 (camera closer): size 0.105; drip = leaching drip size over `size` (1.6), so the red drips read on video.
-    cores: { perCube: 3, size: 0.105, drip: 1.6, dose: 36, uptake: 18, leach: 110, capN: 360, capLeach: 720 },
+    cores: { perCube: 3, size: 0.095, dose: 36, uptake: 18, leach: 110, capN: 360, capLeach: 720 },
     plants: { maxH: 2.1, sprout: 0.1 },   // fix1: 2.4 -> 2.1, more of the frame for the soil grid
     labelY: 2.7,                  // top of the frame fit, above the back row's tallest plant + tassel (names sit in the strips now)
-    // fix1: camera closer (z 16.2 -> 13), smaller sideways sway (2.2 -> 1.2). fix2: home 9.5 from the target (same
-    // direction, was 13.4) and sway 0.6, so fitView alone sets the distance: as close as the full window allows.
-    camera: { fov: 38, pos: [0, 1.14, 9.2], target: [0, -1.2, 0], dollyX: 0.6, dollyPeriod: 44 },
+    // fix1: camera closer (z 16.2 -> 13), smaller sideways sway (2.2 -> 1.2). fix2: pos / target give only the
+    // direction; the camera sits `dist` from the target (about fix1's fitted distance, so the black fog dims the
+    // fields as before) and fitView zooms with the field of view (at most `fov`) to fill the window. Sway 0.6.
+    camera: { fov: 38, pos: [0, 2.1, 13.0], target: [0, -1.2, 0], dist: 20, dollyX: 0.6, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
     // Bloom between R2 (1.0 / 0.0) and R3 (0.5 / 0.15). Selective: plants (rim), water fill, N and leach cores,
     // groundwater fluid, lightning bolt. glow: per-kind gain in the bloom pass only (the scene itself is unchanged).

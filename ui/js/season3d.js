@@ -10,10 +10,11 @@
 //            per-kind glow gains; then the two passes are mixed
 //   storm    a week with logged rain over theme.stormMm: rain streaks, strong lean (dioramas), one lightning
 //            flash (cubes lit through uFlash, one bloomed bolt) when the week is entered
-//   fit      the two fields fill the window: the camera backs off along its home direction only as far as both
-//            fields need to fit the full width and the plant-top-to-slab height fits between fit.top and the strip
-//            row above the weather strip, and moves up or down to center the scene there (fitView, theme.three.fit).
-//            Every other element is a frosted overlay on top of the fields (fix2)
+//   fit      the two fields fill the window: the camera stays camera.dist from the target along its home direction
+//            (fix1's distance, so the fog depth and the look stay as before) and the field of view narrows until
+//            both fields fit the full width and the plant-top-to-slab height fits between fit.top and the strip row
+//            above the weather strip; the camera moves up or down to center the scene there (fitView,
+//            theme.three.fit). Every other element is a frosted overlay on top of the fields (fix2)
 //   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): one strip
 //            under each field (name + counters), the harvest profit just above it, the gap between the profits in
 //            the middle. Strips are pushed apart so none overlaps another, stay right of the week cards and inside
@@ -359,9 +360,10 @@ export class Season3D {
     this.active = on;
   }
 
-  // Back the camera off until both fields fit the window width and the plant-top anchors to the slab bottom fit
-  // between fit.top and the strip row (fit.bottom px above the weather strip), and move it up or down to center
-  // them there. Projection-based, a few passes.
+  // Zoom (narrow the field of view, camera fixed at camera.dist) until both fields fit the window width and the
+  // plant-top anchors to the slab bottom fit between fit.top and the strip row (fit.bottom px above the weather
+  // strip), and move the camera up or down to center them there. Never wider than camera.fov. Projection-based,
+  // a few passes.
   fitView() {
     const w = this.root.clientWidth, h = this.root.clientHeight;
     if (!w || !h) return;
@@ -369,22 +371,29 @@ export class Season3D {
     const floor = this.ov && this.ov.floorY !== null ? this.ov.floorY : h - 120;
     this.fitted = { w, h, floor };
     this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
     const half = T.fieldX + this.fields.left.W / 2 + F.margin + 0.6 * C.dollyX;
-    const d0 = this.basePos.distanceTo(this.baseTarget);
-    const tanV = Math.tan(THREE.MathUtils.degToRad(C.fov) / 2);
-    let k = Math.max(1, (half * h) / (0.96 * w * tanV) / d0), dy = 0;
-    if (this.user) return;   // the viewer holds the camera
+    const k = C.dist / this.basePos.distanceTo(this.baseTarget);
+    const tanMax = Math.tan(THREE.MathUtils.degToRad(C.fov) / 2);
+    // t = tan(half vertical fov): start where both fields span 96% of the width at the target distance.
+    let t = Math.min(tanMax, (half * h) / (0.96 * w * C.dist)), dy = 0;
+    const setFov = () => {
+      this.camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(t));
+      this.camera.updateProjectionMatrix();
+      this.shared.uPx.value = (h * this.renderer.getPixelRatio()) / (2 * t);
+    };
+    if (this.user) { setFov(); return; }   // the viewer holds the camera
     const anchors = SIDES.map((s) => this.fields[s].anchors());
     const top = F.top, bottom = Math.max(top + 80, floor - F.bottom);
     for (let pass = 0; pass < 4; pass++) {
+      setFov();
       this.placeCamera(k, dy);
       const ys = anchors.flatMap((a) => [a.head, ...a.bottom]).map((p) => this.project(p).y);
       const a = Math.min(...ys), b = Math.max(...ys);
-      if (b - a > bottom - top) k *= (b - a) / (bottom - top);
-      const pxPerUnit = h / (2 * d0 * k * tanV);
+      if (b - a > bottom - top) t = Math.min(tanMax, t * (b - a) / (bottom - top));
+      const pxPerUnit = h / (2 * C.dist * t);
       dy += ((a + b) / 2 - (top + bottom) / 2) / pxPerUnit;
     }
+    setFov();
     this.placeCamera(k, dy);
   }
 
@@ -408,9 +417,8 @@ export class Season3D {
     const w = this.root.clientWidth, h = this.root.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
-    this.fitView();
+    this.fitView();   // also sets the field of view and uPx
     const pr = this.renderer.getPixelRatio();
-    this.shared.uPx.value = (h * pr) / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
     if (this.bloomComposer) {
       for (const c of [this.bloomComposer, this.finalComposer]) {
         c.setPixelRatio(pr);
