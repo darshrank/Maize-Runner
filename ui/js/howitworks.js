@@ -15,9 +15,11 @@ import { DOCK_ICONS } from "./dock.js";
 import * as data from "./data.js";
 
 const CONFIG = "a_d1c_multi";
-// Live mode (?live=UFGA-2026): follow a season that scripts/live_season.py is playing right now. The page polls the
-// live log, lights each box as that agent answers and moves on week by week. Nothing is precomputed.
-const LIVE = new URLSearchParams(location.search).get("live");
+// Live mode (?live=UFGA-2026, or picking the live season on the Season page): follow a season that
+// scripts/live_season.py is playing right now. The page polls the live log, lights each box as that agent answers
+// and moves on week by week. Nothing is precomputed.
+let LIVE = new URLSearchParams(location.search).get("live");
+let liveTimer = null;
 const POLL_MS = 600, STAGE_MS = 1800, HOLD_MS = 3500;   // poll; min time per stage; hold the finished week
 const PREFERRED = "UFGA-2006";
 const W = 1400, H = 770;
@@ -411,13 +413,15 @@ function liveStep(wk) {
   return 0;
 }
 
-const live = { k: -1, step: -1, shownAt: 0, done: false };
+let live = { k: -1, step: -1, shownAt: 0, done: false };
 
 async function livePoll() {
-  const run = await data.loadLiveRun(CONFIG, LIVE);
+  const task = LIVE;
+  const run = await data.loadLiveRun(CONFIG, task);
+  if (task !== LIVE || !ui.root) return;   // switched seasons while loading
   const sub = ui.root.querySelector(".hiw-sub");
   if (!run || run instanceof data.LoadError) {
-    sub.textContent = `LIVE · ${LIVE} · waiting for the season to start (scripts/live_season.py --task-id ${LIVE})`;
+    sub.textContent = `LIVE · ${LIVE} · waiting for the season to start (press Play on the Season page)`;
     return;
   }
   let k = run.weeks.reduce((m, w, i) => (w.events.length ? i : m), 0);
@@ -504,5 +508,20 @@ function renderLive(root) {
   });
   new ResizeObserver(layout).observe(root.querySelector(".hiw-stage"));
   livePoll();
-  setInterval(livePoll, POLL_MS);
+  liveTimer = setInterval(livePoll, POLL_MS);
+}
+
+// The Season page picked a season: a live one (task id) turns live mode on, null turns it off. The page is rebuilt
+// on the next visit, or right away when it is already built.
+export function setLiveTask(task) {
+  if (task === LIVE) return;
+  LIVE = task;
+  clearInterval(liveTimer);
+  liveTimer = null;
+  live = { k: -1, step: -1, shownAt: 0, done: false };
+  const root = ui.root;
+  if (!root || !root.dataset.built) return;
+  delete root.dataset.built;
+  ui.wk = null; ui.step = 0;
+  if (!root.closest("[hidden]")) renderHowItWorks(root);
 }

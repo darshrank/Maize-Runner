@@ -113,14 +113,18 @@ def main() -> None:
     task = find_task(args.task_id, "live") if args.task_id in ("UFGA-2025", "UFGA-2026") else find_task(args.task_id)
     env = EnvClient(cfg["env"]["url"])
 
-    farmer = play_season(make_policy("farmer_ufga"), task, env, RunLogger("farmer_ufga", task["task_id"]))
+    config = f"a_{args.design}"
+    log = LiveLogger(config, task["task_id"], args.weeks)     # clears the team's live log first
+    farmer_log = RunLogger("farmer_ufga", task["task_id"])
+    farmer = play_season(make_policy("farmer_ufga"), task, env, farmer_log)   # fixed schedule, ~2 s, no model calls
+    farmer_path = ROOT / "runs" / "live" / "farmer_ufga" / f"{task['task_id']}.jsonl"
+    farmer_path.parent.mkdir(parents=True, exist_ok=True)
+    farmer_path.write_text("".join(json.dumps(e) + "\n" for e in farmer_log.events))
     say(f"{C['bold']}FieldTwin live season: {task['task_id']}{C['off']} (Gainesville, FL; planted Feb 26; real NASA POWER "
         f"weather; gym-DSSAT; five Nemotron agents on vLLM)")
     say(f"{C['dim']}Farmer practice on this season: ${farmer['reward']:,.0f}/ha, grain {farmer['grain_kg_ha']:,.0f} kg/ha, "
         f"water {farmer['irr_mm']:.0f} mm{C['off']}")
 
-    config = f"a_{args.design}"
-    log = LiveLogger(config, task["task_id"], args.weeks)
     final = play_season(LivePolicy(make_policy(config), task), task, env, log)
     gain = final["reward"] - farmer["reward"]
     say(f"\n{C['bold']}Season done.{C['off']} FieldTwin team ${final['reward']:,.0f}/ha "

@@ -128,10 +128,20 @@ export function isDev(task) {
   return devTasks.includes(task);
 }
 
+// Live seasons (tasks/live.jsonl): listed in the Season picker after the dev seasons. Their logs exist only while
+// scripts/live_season.py plays them (runs/live/); nothing is stored ahead of time. ?livetask=UFGA-2025 swaps in
+// another live season (for testing without touching 2026).
+export const LIVE_TASKS = [params.get("livetask") || "UFGA-2026"];
+
+export function isLive(task) {
+  return LIVE_TASKS.includes(task);
+}
+
 // Dev sub-split (agents_a/common/splits.py): prompts were tuned on dev 1990-2004 ("tuned"); dev 2005-2009 is the
 // check set they were not tuned on ("not tuned"). null for anything else.
 export function tuneTag(task) {
   const p = parseTaskId(task);
+  if (p && isLive(task)) return "live";
   if (!p || !isDev(task)) return null;
   return p.year >= 1990 && p.year <= 2004 ? "tuned" : p.year >= 2005 && p.year <= 2009 ? "not tuned" : null;
 }
@@ -197,6 +207,7 @@ export async function pairSeasons(index) {
 
 // The run model, null (missing or empty log), or a LoadError.
 export async function loadRun(config, task) {
+  if (isLive(task)) return loadLiveRun(config, task);
   if (!isDev(task)) return null;   // never open a non-dev log
   const text = await fetchText(paths.run(config, task));
   if (text === null || text instanceof LoadError) return text;
@@ -456,10 +467,15 @@ export async function loadEval() {
 // results_baseline/summary.md, the "## Split: dev" table only: {head: [...], rows: [[...]]} or null. The text is
 // cut at the next "## " heading before the table is read. A LoadError when the file failed to load.
 // A live season: scripts/live_season.py appends runs/live/<config>/<task>.jsonl event by event while it runs.
-// Nothing is stored ahead of time; null until the run has started.
+// Nothing is stored ahead of time; null until the run has started. Plain fetch, not request(): a read that races a
+// write (or a 404 before the run starts) is just retried on the next poll, never shown as a load failure.
 export async function loadLiveRun(config, task) {
-  const text = await fetchText(`../runs/live/${config}/${task}.jsonl`);
-  if (text === null || text instanceof LoadError) return text;
+  let text = null;
+  try {
+    const res = await fetch(`../runs/live/${config}/${task}.jsonl`, { cache: "no-store" });
+    if (res.ok) text = await res.text();
+  } catch { /* next poll */ }
+  if (!text) return null;
   const events = [];
   for (const line of text.split("\n")) {
     if (!line.trim()) continue;

@@ -499,3 +499,6 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .live-badge { color: var(--leach); border-color: var(--leach); margin-left: 10px; vertical-align: middle; animation: live-pulse 1.6s ease-in-out infinite; }
 @keyframes live-pulse { 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .live-badge { animation: none; } }
+
+/* Live season: only 1x (the weeks come as fast as the team decides) */
+.speed button:disabled { opacity: 0.35; cursor: not-allowed; }
