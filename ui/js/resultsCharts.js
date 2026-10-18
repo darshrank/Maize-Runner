@@ -10,7 +10,7 @@ function escapeText(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-// 1. Held-out test, one site: vertical bars (farmer, single agent, team) and the hindsight ceiling as a dashed line.
+// 1. Held-out test, one site: vertical bars (farmer, single agent, team) and grid hindsight as a dashed reference line.
 export function headlineChart(test) {
   const bars = [
     { label: "Farmer practice", value: test.farmer, cls: "c-farmer" },
@@ -29,16 +29,16 @@ export function headlineChart(test) {
       + `<text class="l" x="${x + bw / 2}" y="${H - 18}" text-anchor="middle">${escapeText(b.label)}</text>`;
   }).join("");
   const hy = y(test.hindsight);
-  const ceiling = `<line class="ceiling" x1="${left}" x2="${W - right + 8}" y1="${hy}" y2="${hy}"/>`
-    + `<text class="l" x="${W - right + 14}" y="${hy + 4}">Hindsight ${money(test.hindsight)}</text>`
+  const ref = `<line class="ref" x1="${left}" x2="${W - right + 8}" y1="${hy}" y2="${hy}"/>`
+    + `<text class="l" x="${W - right + 14}" y="${hy + 4}">Grid hindsight ${money(test.hindsight)}</text>`
     + `<text class="l dim" x="${W - right + 14}" y="${hy + 20}">(best fixed plan,</text>`
     + `<text class="l dim" x="${W - right + 14}" y="${hy + 34}">weather known)</text>`;
   const d = test.team_vs_farmer;
   return `<div class="chart-card mb-card"><div class="chart-title">${escapeText(test.label)}</div>`
     + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mean score per season on held-out test seasons">`
-    + `<line class="axis" x1="${left}" x2="${W - right + 8}" y1="${y(0)}" y2="${y(0)}"/>${svgBars}${ceiling}</svg>`
+    + `<line class="axis" x1="${left}" x2="${W - right + 8}" y1="${y(0)}" y2="${y(0)}"/>${svgBars}${ref}</svg>`
     + `<div class="chart-caption"><b class="t-team">${signed(d.mean_diff)}/ha</b> vs farmer practice `
-    + `(95% CI ±${Math.round(d.ci95)}) · ahead in <b>${d.wins} of ${d.seasons}</b> seasons · above the hindsight ceiling</div></div>`;
+    + `(95% CI ±${Math.round(d.ci95)}) · ahead in <b>${d.wins} of ${d.seasons}</b> seasons · above grid hindsight</div></div>`;
 }
 
 // 2. Two sites: farmer vs team, grouped bars with the gain on top.
@@ -190,4 +190,59 @@ export function introBento(root, animate = true) {
     cell.classList.remove("mb-in");
     requestAnimationFrame(() => requestAnimationFrame(() => cell.classList.add("mb-in")));
   });
+}
+
+// ---------------------------------------------------------------- Results page (demo layout)
+// One headline, one hero (team score gain over farmer practice on Gainesville held-out test seasons, seasons won,
+// 95% CI, the farmer / team means with grid hindsight as a labeled reference line), then four tiles: water,
+// leaching, team vs single agent (fallbacks counted), Tifton. Every number is read from agents_a/demo_results.json
+// and shown with the file's own precision (one decimal), so the page matches the file exactly. Each tile carries
+// its split. Percentages are computed from the two values beside them.
+const one = (v) => v.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const usd1 = (v) => `$${one(v)}`;
+const sgn1 = (v) => `${v >= 0 ? "+" : "−"}$${one(Math.abs(v))}`;
+const pctOf = (a, b) => Math.round((100 * (b - a)) / a);
+const pctTxt = (p) => `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(p)}%`;
+
+// Grid hindsight wording follows eval/hindsight.py (grid search over fixed schedules per season, weather known).
+function heroBars(t) {
+  const max = Math.max(t.farmer, t.team, t.hindsight) * 1.04;
+  const w = (v) => `${((100 * v) / max).toFixed(2)}%`;
+  const bar = (cls, label, v) => `<div class="res-bar ${cls}"><span class="k">${escapeText(label)}</span>`
+    + `<div class="track"><div class="fill ${cls}" style="width:${w(v)}">${usd1(v)}</div>`
+    + `<div class="res-ref" style="left:${w(t.hindsight)}"></div></div></div>`;
+  return `<div class="res-bars"><div class="res-bar"><span></span><div class="res-ref-label" style="width:${w(t.hindsight)}">`
+    + `<span>Grid hindsight ${usd1(t.hindsight)}</span><span class="quiet">reference</span></div></div>`
+    + bar("farmer", "Farmer practice", t.farmer) + bar("team", "FieldTwin team", t.team)
+    + `<div class="res-bar"><span></span><span class="res-note">Mean score per season ($/ha). Grid hindsight: the best fixed schedule from a grid search run after the season, weather known.</span></div></div>`;
+}
+
+function tile(title, split, value, cls, sub) {
+  return `<div class="res-tile card"><div class="top"><span class="t">${escapeText(title)}</span><span class="badge split">${escapeText(split)}</span></div>`
+    + `<div class="v ${cls}">${value}</div><div class="s">${sub}</div></div>`;
+}
+
+export function resultsPage(demo) {
+  const t = demo.test, d = t.team_vs_farmer, g = demo.tifton, s = demo.team_vs_single;
+  const score = typeof demo.score === "string" ? demo.score.replace(/^reward\s*=\s*/i, "") : "";
+  const water = pctOf(t.water_mm.farmer, t.water_mm.team), leach = pctOf(t.leached_kg_ha.farmer, t.leached_kg_ha.team);
+  return `<header class="page-head"><div class="head"><h1>Team beats farmer on unseen seasons</h1>`
+    + `<p class="sub">${escapeText(t.label)} · ${d.seasons} seasons${score ? ` · score = ${escapeText(score)}` : ""}</p></div></header>`
+    + `<section class="res-hero card"><div>`
+    + `<div class="res-big big-num">${sgn1(d.mean_diff)}<span class="u">/ha per season</span></div>`
+    + `<div class="res-what">Score gain over farmer practice</div>`
+    + `<div class="res-facts"><div class="res-fact"><span class="v">${d.wins} of ${d.seasons}</span><span class="k">seasons won</span></div>`
+    + `<div class="res-fact"><span class="v">±${usd1(d.ci95)}</span><span class="k">95% CI</span></div>`
+    + `<div class="res-fact"><span class="v">${t.fallbacks.team}</span><span class="k">fallbacks (team)</span></div></div></div>`
+    + heroBars(t) + `</section>`
+    + `<section class="res-tiles">`
+    + tile("Water (mm)", "test", pctTxt(water), "water",
+      `<b>${one(t.water_mm.farmer)}</b> → <b>${one(t.water_mm.team)}</b> mm per season, farmer → team`)
+    + tile("Leaching (kg/ha)", "test", pctTxt(leach), "leach",
+      `<b>${one(t.leached_kg_ha.farmer)}</b> → <b>${one(t.leached_kg_ha.team)}</b> kg N/ha, farmer → team`)
+    + tile("Team vs single agent", "dev + test", `${sgn1(s.mean_diff)}`, "team",
+      `won <b>${s.wins} of ${s.seasons}</b> · fallbacks <b>${s.fallbacks.team}</b> vs <b>${s.fallbacks.single}</b> · same model`)
+    + tile("Tifton, GA (new site)", "test", `${sgn1(g.team_vs_farmer.mean_diff)}`, "team",
+      `won <b>${g.team_vs_farmer.wins} of ${g.team_vs_farmer.seasons}</b> vs farmer · never tuned there`)
+    + `</section>`;
 }

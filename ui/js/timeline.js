@@ -1,17 +1,19 @@
-// Season timeline (R1), hand-written SVG: one thin strip of rain bars plus a week scrubber. R2: `bare` mode for
-// the 3D Season view draws the same bars and scrubber with no text (no labels, no week numbers).
+// Season timeline (R1), hand-written SVG: one strip of rain bars plus a week scrubber. The 3D Season view uses the
+// same geometry as the 2D fallback: "Rain (mm)" and "Week" labels, 1-based week numbers ("H" = harvest), and a
+// legend for the marks on the right.
 //   rain bars: one per day from the weather file, aligned to week 0 by data.seasonStart; without a matching
 //              weather file, one bar per week from the log's weekly.rain_mm (labelled as such)
 //   storm weeks (weekly rain > theme.stormMm) drawn brighter
 //   scrubber: week ticks 0..W-1 plus harvest; click or drag to seek
-//   fallback weeks (either run): a small white outline pill under the track (.flag-pill, title "Fallback")
+//   Critic objection weeks (FieldTwin run): a white outline pill above the track (the Objection pill's look)
+//   fallback weeks (either run): a small white outline pill under the track (.flag-pill)
+//   live: weeks after `cap` (not decided yet) keep their observed rain, dimmed
 // Dose timing shows in the fields now, so there are no per-config marker rows.
 
 import { theme } from "./theme.js";
 
 const NS = "http://www.w3.org/2000/svg";
-const FULL = { H: 78, LABEL_W: 132, RIGHT_PAD: 16, RAIN_TOP: 4, RAIN_H: 28, TRACK_Y: 48 };
-const BARE = { H: 34, LABEL_W: 0, RIGHT_PAD: 0, RAIN_TOP: 2, RAIN_H: 16, TRACK_Y: 25 };
+const FULL = { H: 86, LABEL_W: 104, RIGHT_PAD: 132, RAIN_TOP: 4, RAIN_H: 34, TRACK_Y: 56 };
 
 function el(name, attrs = {}, text) {
   const e = document.createElementNS(NS, name);
@@ -21,10 +23,9 @@ function el(name, attrs = {}, text) {
 }
 
 export class Timeline {
-  constructor(svg, { onSeek, bare = false }) {
+  constructor(svg, { onSeek }) {
     this.svg = svg;
-    this.bare = bare;
-    this.g = bare ? BARE : FULL;
+    this.g = FULL;
     this.onSeek = onSeek;
     this.model = null;
     this.week = 0;
@@ -45,7 +46,8 @@ export class Timeline {
     new ResizeObserver(() => this.draw()).observe(svg);
   }
 
-  // model: {W, days: [mm|null] (W*7 daily values) | null, weeklyRain: [mm|null], rainNote, fallbackWeeks: [k]}
+  // model: {W, days: [mm|null] (W*7 daily values) | null, weeklyRain: [mm|null], rainNote, fallbackWeeks: [k],
+  //         objectionWeeks: [k], cap: last decided week (live) or null}
   setModel(model) {
     this.model = model;
     this.draw();
@@ -84,35 +86,40 @@ export class Timeline {
     values.forEach((mm, i) => {
       if (mm === null || mm <= 0) return;
       const h = Math.max(1, (RAIN_H * mm) / max);
+      const wk = Math.floor(i / per);
       svg.append(el("rect", {
-        class: `rain${storms.has(Math.floor(i / per)) ? " storm" : ""}`,
+        class: `rain${storms.has(wk) ? " storm" : ""}${m.cap !== null && m.cap !== undefined && wk > m.cap ? " ahead" : ""}`,
         x: x0 + i * bw + (daily ? 0.5 : bw * 0.25), y: RAIN_TOP + RAIN_H - h,
         width: Math.max(1, daily ? bw - 1 : bw * 0.5), height: h,
       }));
     });
-    if (!this.bare) {
-      svg.append(el("text", { class: "axis-label", x: 0, y: RAIN_TOP + 14 }, daily ? "Rain / day" : "Rain / week"));
-      if (m.rainNote) svg.append(el("text", { class: "axis-sub", x: 0, y: RAIN_TOP + 30 }, m.rainNote));
-    }
+    svg.append(el("text", { class: "axis-label", x: 0, y: RAIN_TOP + 22 }, "Rain (mm)"));
+    if (m.rainNote) svg.append(el("text", { class: "axis-sub", x: x0 + 8, y: RAIN_TOP + 22 }, m.rainNote));
 
     svg.append(el("line", { class: "track", x1: x0, x2: x0 + cells * cw, y1: TRACK_Y, y2: TRACK_Y }));
     this.progress = el("line", { class: "track-on", x1: x0, x2: x0, y1: TRACK_Y, y2: TRACK_Y });
     svg.append(this.progress);
     for (let k = 0; k < cells; k++) {
       svg.append(el("line", { class: "tick", x1: x0 + k * cw, x2: x0 + k * cw, y1: TRACK_Y - 3, y2: TRACK_Y + 3 }));
-      if (!this.bare) {
-        svg.append(el("text", { class: "wk", "data-week": k, x: x0 + (k + 0.5) * cw, y: TRACK_Y + 22, "text-anchor": "middle" },
-          k === W ? "H" : String(k)));
-      }
+      svg.append(el("text", { class: "wk", "data-week": k, x: x0 + (k + 0.5) * cw, y: TRACK_Y + 24, "text-anchor": "middle" },
+        k === W ? "H" : String(k + 1)));
     }
-    for (const k of m.fallbackWeeks || []) {
-      const fb = el("rect", { class: "fb flag-pill", x: x0 + (k + 0.2) * cw, y: TRACK_Y + 4, width: 0.6 * cw, height: 4.5, rx: 2.25 });
-      fb.append(el("title", {}, "Fallback"));
-      svg.append(fb);
+    const pill = (cls, k, y, h) => el("rect", { class: cls, x: x0 + (k + 0.18) * cw, y, width: 0.64 * cw, height: h, rx: h / 2 });
+    for (const k of m.objectionWeeks || []) svg.append(pill("obj", k, TRACK_Y - 14, 9));
+    for (const k of m.fallbackWeeks || []) svg.append(pill("fb flag-pill", k, TRACK_Y + 4, 5));
+    // Legend for the marks that are on the strip (right of the track).
+    const lx = x0 + cells * cw + 16;
+    if ((m.objectionWeeks || []).length) {
+      svg.append(el("rect", { class: "obj", x: lx, y: TRACK_Y - 14, width: 22, height: 9, rx: 4.5 }));
+      svg.append(el("text", { class: "legend", x: lx + 30, y: TRACK_Y - 5 }, "Objection"));
+    }
+    if ((m.fallbackWeeks || []).length) {
+      svg.append(el("rect", { class: "fb flag-pill", x: lx, y: TRACK_Y + 4, width: 22, height: 5, rx: 2.5 }));
+      svg.append(el("text", { class: "legend", x: lx + 30, y: TRACK_Y + 12 }, "Fallback"));
     }
     this.knob = el("circle", { class: "knob", cx: 0, cy: TRACK_Y, r: 5 });
     svg.append(this.knob);
-    if (!this.bare) svg.append(el("text", { class: "axis-label", x: 0, y: TRACK_Y + 5 }, "Week"));
+    svg.append(el("text", { class: "axis-label", x: 0, y: TRACK_Y + 6 }, "Week"));
     this.setWeek(this.week);
   }
 }

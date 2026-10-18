@@ -71,9 +71,10 @@ export const theme = {
     cards: { objectionChars: 100, stiffness: 150, damping: 24 },   // week cards (carousel.js)
     // Camera refit (season3d.js fitView): the scene centers in the space right of the week cards (gap px past their
     // right edge) and backs off when both fields (plus margin world units and the dolly sway) would not fit that
-    // width, or when the label anchors (labelY) to the slab bottom would not fit between `top` px (top bar and
-    // field names) and `bottom` px above the controls (the finale row).
-    fit: { margin: 0.5, gap: 24, top: 124, bottom: 150 },
+    // width, or when the label anchors (labelY) to the slab bottom would not fit between `top` px (top bar, Season
+    // headline and field names) and `bottom` px above the controls (counters and the finale row). headTop: field names
+    // never sit above this y (px).
+    fit: { margin: 0.5, gap: 24, top: 204, bottom: 176, headTop: 170 },
   },
   // Mote counts at full scale (each scaled by its value over the max across both fields for this task).
   motes: {

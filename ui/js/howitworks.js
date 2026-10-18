@@ -23,18 +23,31 @@ let liveTimer = null;
 let liveGo = !!LIVE;   // picked on the Season page: nothing shows until Play there (liveStarted)
 const POLL_MS = 600, STAGE_MS = 1800, HOLD_MS = 3500;   // poll; min time per stage; hold the finished week
 const PREFERRED = "UFGA-2006";
+const HEADLINE = "Five agents, one model, one field";
+
+// "Gainesville, FL 2006" from a task id (no site codes on screen).
+function seasonWords(task) {
+  const p = data.parseTaskId(task);
+  return p ? `${data.SITE_NAMES[p.site] || p.site} ${p.year}` : String(task);
+}
+
+// "2026 live" for the live season.
+function liveWords() {
+  const p = data.parseTaskId(LIVE);
+  return p ? `${p.year} live` : "live";
+}
 const W = 1400, H = 770;
 const C = theme.color;
 
 const BOX = {
-  tools:   { x: 180,  y: 24,  w: 860, h: 64 },
+  tools:   { x: 180,  y: 16,  w: 860, h: 80 },
   weather: { x: 100,  y: 170, w: 230, h: 80 },
   crop:    { x: 100,  y: 498, w: 230, h: 80 },
   coord:   { x: 500,  y: 330, w: 220, h: 100 },
   planner: { x: 890,  y: 170, w: 230, h: 80 },
   critic:  { x: 890,  y: 498, w: 230, h: 80 },
   field:   { x: 1180, y: 300, w: 150, h: 160 },
-  model:   { x: 180,  y: 680, w: 860, h: 64 },
+  model:   { x: 180,  y: 672, w: 860, h: 80 },
 };
 
 const ROLE = {
@@ -43,7 +56,7 @@ const ROLE = {
   planner: "Proposes nitrogen and irrigation.",
   critic: "Checks the plan: accepts or objects.",
   coord: "Makes the final call for the week.",
-  tools: "Env server, port 9000: the read tools agents call.",
+  tools: "Env server, port 9000: the read tools agents call. NeMo Gym wraps the same server (gym_env/).",
   model: "The one model behind every agent.",
   field: "gym-DSSAT maize simulation: one step per weekly decision.",
 };
@@ -297,11 +310,14 @@ function diagramSvg() {
   const fc = B.field.x + B.field.w / 2;
   const field = box("field", "gym-DSSAT field", (b) => rect(b, "hiw-field")
     + `<g class="hiw-icon" transform="translate(${fc - 24} ${b.y + 26}) scale(2)">${DOCK_ICONS.sprout}</g>`
-    + label(fc, b.y + 106, "gym-DSSAT") + label(fc, b.y + 132, "field", "hiw-label-sm"));
-  const toolBox = box("tools", "Tools", (b) => rect(b)
-    + label(b.x + b.w / 2, b.y + b.h / 2 + 7, "Tools · env server, port 9000"));
+    + label(fc, b.y + 106, "gym-DSSAT") + label(fc, b.y + 132, "crop simulator", "hiw-label-sm"));
+  // Env server: the tools every agent reads; gym_env/README.md: NeMo Gym's resources server is a thin adapter over it.
+  const toolBox = box("tools", "Env server", (b) => rect(b)
+    + label(b.x + b.w / 2, b.y + 36, "Env server · port 9000")
+    + label(b.x + b.w / 2, b.y + 62, "read tools for every agent · wrapped as a NeMo Gym environment", "hiw-label-sm"));
   const modelBox = box("model", "Nemotron 3.5 Lightning on vLLM", (b) => rect(b)
-    + label(b.x + b.w / 2, b.y + b.h / 2 + 7, "Nemotron 3.5 Lightning on vLLM"));
+    + label(b.x + b.w / 2, b.y + 36, "Nemotron 3.5 Lightning on vLLM")
+    + label(b.x + b.w / 2, b.y + 62, "one model behind all five agents", "hiw-label-sm"));
 
   return `<svg class="hiw-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img"
     aria-label="One week of the FieldTwin agent team, step by step">
@@ -422,7 +438,7 @@ async function livePoll() {
   if (task !== LIVE || !ui.root) return;   // switched seasons while loading
   const sub = ui.root.querySelector(".hiw-sub");
   if (!run || run instanceof data.LoadError) {
-    sub.textContent = `LIVE · ${LIVE} · waiting for the season to start (press Play on the Season page)`;
+    sub.textContent = `${liveWords()} · waiting for Start live season on the Season tab`;
     return;
   }
   let k = run.weeks.reduce((m, w, i) => (w.events.length ? i : m), 0);
@@ -448,9 +464,9 @@ async function livePoll() {
   }
   const f = run.final;
   sub.textContent = f
-    ? `LIVE · ${LIVE} · season done: score $${Math.round(f.reward).toLocaleString("en-US")}/ha, grain ${Math.round(f.grain_kg_ha).toLocaleString("en-US")} kg/ha, `
-      + `water ${Math.round(f.irr_mm)} mm, N ${Math.round(f.n_applied)} kg/ha`
-    : `LIVE · ${LIVE} · Week ${k + 1} · ${wk.modelCalls} model calls this week so far`;
+    ? `${liveWords()} · season done · score $${Math.round(f.reward).toLocaleString("en-US")}/ha · grain ${Math.round(f.grain_kg_ha).toLocaleString("en-US")} kg/ha · `
+      + `water ${Math.round(f.irr_mm)} mm · N ${Math.round(f.n_applied)} kg/ha`
+    : `${liveWords()} · week ${k + 1} · ${wk.modelCalls} model calls this week so far`;
   if (f && !live.done) live.done = true;
 }
 
@@ -460,7 +476,7 @@ export async function renderHowItWorks(root) {
   root.dataset.built = "1";
   ui.root = root;
   if (LIVE) return renderLive(root);
-  root.innerHTML = `<header class="hiw-head"><h1>How it works</h1><p class="hiw-sub">Loading the week…</p></header>`;
+  root.innerHTML = `<header class="hiw-head"><div class="head"><h1>${HEADLINE}</h1><p class="sub hiw-sub">Loading a real logged week…</p></div></header>`;
   const pick = await pickWeek();
   if (pick.error) {
     root.querySelector(".hiw-sub").textContent = pick.error;
@@ -468,10 +484,10 @@ export async function renderHowItWorks(root) {
   }
   ui.wk = readWeek(pick.run, pick.k);
   if (ui.wk.missing.length) console.info("How it works: not in the log:", ui.wk.missing.join(", "));
-  root.innerHTML = `<header class="hiw-head">
-      <h1>How it works</h1>
-      <p class="hiw-sub mono">${esc(ui.wk.split || "dev")} · ${esc(ui.wk.task)} · Week ${ui.wk.k + 1}</p>
-    </header>
+  root.innerHTML = `<header class="hiw-head"><div class="head">
+      <h1>${HEADLINE}</h1>
+      <p class="sub hiw-sub">A real logged week · ${esc(seasonWords(ui.wk.task))}, week ${ui.wk.k + 1} · ${esc(ui.wk.split || "dev")}</p>
+    </div></header>
     <div class="hiw-bar">
       <button class="btn hiw-back" aria-label="Previous step">&lsaquo; Back</button>
       <span class="hiw-count mono"></span><span class="hiw-step-label"></span>
@@ -493,10 +509,10 @@ export async function renderHowItWorks(root) {
 }
 
 function renderLive(root) {
-  root.innerHTML = `<header class="hiw-head">
-      <h1>How it works <span class="badge live-badge">LIVE</span></h1>
-      <p class="hiw-sub mono">LIVE · ${esc(LIVE)} · connecting…</p>
-    </header>
+  root.innerHTML = `<header class="hiw-head"><div class="head">
+      <h1>${HEADLINE}</h1>
+      <p class="sub hiw-sub">${esc(liveWords())} · connecting…</p>
+    </div><span class="hiw-live"><i class="live-dot"></i>Following the live season</span></header>
     <div class="hiw-bar">
       <span class="hiw-count mono"></span><span class="hiw-step-label"></span>
       <button class="btn hiw-back" hidden></button><button class="btn hiw-next" hidden></button>

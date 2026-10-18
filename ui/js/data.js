@@ -21,7 +21,8 @@
 // {text, objection: bool}; other messages {text} or {content}; messages with neither (inference records,
 // proposal records) are not chat. A's design logs keep message text empty and put the content in
 // data.tool_calls[{name, arguments: JSON string}]: report tools become chat (see A_REPORT_TOOLS); a review_plan
-// verdict other than "accept" is a Critic objection. Fallbacks {why} (UI_SPEC) or {text}.
+// verdict other than "accept" is a Critic objection. Fallbacks {why} (UI_SPEC), {reason} (A's runner, live_season.py) or
+// {text}.
 
 import { request, fail, LoadError, loadFailures, onLoadFailures } from "./net.js";
 
@@ -59,17 +60,19 @@ export const paths = {
 export const AGENTS = ["weather", "crop", "planner", "critic", "coordinator"];
 export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator",
   policy: "Agent" };
-// Plain labels, in table order. Unknown configs show their raw name. The (D1c) / (B) / (D0) labels hold until
-// the team confirms the official config.
+// Plain labels, in table order (no design ids on screen). Unknown configs show their raw name.
 const CONFIG_NAMES = {
   farmer_ufga: "Farmer practice", farmer: "Fixed split schedule", no_n: "No fertilizer", hindsight: "Grid hindsight",
-  a_d1c_multi: "FieldTwin agent team (D1c)", multi: "FieldTwin agent team (B)", a_d0_single: "Single agent (D0)",
+  a_d1c_multi: "FieldTwin team", multi: "Team, earlier build (B)", a_d0_single: "Single agent",
+  a_d1_multi: "Team, design 1", a_d1b_multi: "Team, design 1b",
   single: "Single agent", multi_no_critic: "Team without Critic",
   multi_no_weather: "Team without Weather", multi_no_tools: "Team without tools",
 };
 const CONFIG_ORDER = Object.keys(CONFIG_NAMES);
 // The Season page shows this pair and nothing else (R7 pivot, STATE.md); every other config appears on Results only.
 export const SEASON_PAIR = { left: "farmer_ufga", right: "a_d1c_multi" };
+// Site codes -> plain names (env/weather.py SITES comments: UFGA Gainesville, FL; TIFT Tifton, GA). Codes never show.
+export const SITE_NAMES = { UFGA: "Gainesville, FL", TIFT: "Tifton, GA" };
 
 // ---------------------------------------------------------------- fetch helpers
 
@@ -337,7 +340,7 @@ export function buildRun(config, task, events) {
         if (e.agent === "policy") w.policyDecision = d;
         else if (e.agent === "coordinator" || !w.decision) w.decision = d;
         break;
-      case "fallback": w.fallbacks.push({ agent: e.agent, why: d.why || d.text || JSON.stringify(d) }); break;
+      case "fallback": w.fallbacks.push({ agent: e.agent, why: d.why || d.reason || d.text || JSON.stringify(d) }); break;
       case "tool_call": {
         const call = { agent: e.agent, name: d.name, args: d.args, result: undefined };
         w.tools.push(call);
@@ -406,9 +409,13 @@ export function buildRun(config, task, events) {
     if (typeof m === "string" && m) { model = m; break; }
   }
 
+  // Log timestamps (ISO strings -> ms): first event, last event, the final line, each week's step_result.
+  const ms = (e) => (e && typeof e.t === "string" && !Number.isNaN(Date.parse(e.t)) ? Date.parse(e.t) : null);
   const parsed = parseTaskId(task);
   return {
     config, task, W, weeks, final,
+    t0: ms(events[0]), tLast: ms(events[events.length - 1]), tFinal: ms(finalEvent),
+    stepT: weeks.map((w) => ms(w.events.find((e) => e.kind === "step_result"))),
     site: meta.site || (parsed && parsed.site) || null,
     year: num(meta.year) || (parsed && parsed.year) || null,
     split: meta.split || (isDev(task) ? "dev" : null),
@@ -436,6 +443,47 @@ export function weekEvents(run, k, stormMm) {
   const uptake = w.weekly ? num(w.weekly.n_uptake) : null;
   if (uptake !== null && uptake > 0.5) events.push({ kind: "uptake", amount: uptake });
   return events;
+}
+
+// The Critic's verdict for week k: "object", "accept", or null (no review_plan verdict that week: shown as
+// "no verdict", never as accept). A's logs carry it in review_plan tool calls; B's in critic {objection: bool}.
+export function weekVerdict(run, k) {
+  const w = run && run.weeks[k];
+  if (!w || w.harvest) return null;
+  for (const e of w.events) {
+    if (e.agent !== "critic" || e.kind !== "message" || !e.data) continue;
+    for (const c of Array.isArray(e.data.tool_calls) ? e.data.tool_calls : []) {
+      if (!c || c.name !== "review_plan") continue;
+      let a = null;
+      try { a = typeof c.arguments === "string" ? JSON.parse(c.arguments) : c.arguments; } catch { /* unreadable */ }
+      if (a && typeof a.verdict === "string") return a.verdict === "accept" ? "accept" : "object";
+    }
+    if (typeof e.data.objection === "boolean") return e.data.objection ? "object" : "accept";
+  }
+  return null;
+}
+
+// Repo facts the live season needs before its log exists, read from the files that set them (null when missing):
+//   weeksPerSeason  config.yaml env.weeks_per_season (env/server.py ends the season after that many weeks)
+//   plantingDoy     env/weather.py SITES[site].planting_doy (both simulators plant on that day)
+let factsP = null;
+export function loadSeasonFacts() {
+  if (!factsP) {
+    factsP = Promise.all([fetchText("../config.yaml"), fetchText("../env/weather.py")]).then(([cfg, wx]) => {
+      const m = typeof cfg === "string" ? /^\s*weeks_per_season:\s*(\d+)/m.exec(cfg) : null;
+      const plantingDoy = {};
+      if (typeof wx === "string") for (const s of wx.matchAll(/"([A-Z]+)":\s*\{\s*"planting_doy":\s*(\d+)/g)) plantingDoy[s[1]] = +s[2];
+      return { weeksPerSeason: m ? +m[1] : null, plantingDoy };
+    });
+  }
+  return factsP;
+}
+
+// NeMo Gym dataset rows (gym_env/environments/fieldtwin/data/<split>.jsonl, built by gym_env/prepare.py): the
+// number of non-empty lines, null when missing.
+export async function countGymRows(split) {
+  const text = await fetchText(`../gym_env/environments/fieldtwin/data/${split}.jsonl`);
+  return typeof text === "string" ? text.split("\n").filter((l) => l.trim()).length : null;
 }
 
 // ---------------------------------------------------------------- weather

@@ -282,7 +282,7 @@ export class Season3D {
   placeOverlays(dt) {
     const o = this.ov;
     if (!o) return;
-    const PAD = 24, TOP = 56, place = (el, x, y) => (el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`);
+    const PAD = 24, TOP = T.fit.headTop, place = (el, x, y) => (el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`);
     // Reads first (sizes), then writes, so the layout is computed once per frame.
     o.floorAge -= dt;
     if (o.floor && (o.floorY === null || o.floorAge <= 0)) {
@@ -302,7 +302,7 @@ export class Season3D {
       at[s] = { head: this.project(a.head), center: this.project(a.center),
         bottom: Math.max(...a.bottom.map((p) => this.project(p).y)) };
     }
-    // Heads: centered above each field, never above the top bar, never on top of each other.
+    // Heads: centered above each field, never above the top bar and headline (fit.headTop), never on top of each other.
     const [hl, hr] = Season3D.apart({ x: at.left.head.x, w: hs.left.w }, { x: at.right.head.x, w: hs.right.w }, PAD);
     const hy = (s) => Math.max(TOP + hs[s].h, at[s].head.y);
     place(o.heads.left, hl, hy("left"));
