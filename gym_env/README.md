@@ -8,7 +8,7 @@ FieldTwin wrapped for [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) (tested wit
 | Resources server | `resources_servers/fieldtwin/app.py` (`GymnasiumServer`): a thin adapter over the FieldTwin env server on port 9000 |
 | Tools | the env server's 5 read tools + `submit_decision` (schemas from `agents/tools.json`) |
 | Verifier | the env's final `reward` (profit minus 2.44 USD/kg nitrate leached, USD/ha; prices in `config.yaml`) when the season ends; 0 on every other step |
-| Agent | NeMo Gym's built-in `gymnasium_agent` (`max_steps: 300`) |
+| Agents | `fieldtwin_gymnasium_agent`: NeMo Gym's built-in `gymnasium_agent`, one model with all tools (`max_steps: 300`) <br> `fieldtwin_team_agent`: **our multi-agent team** (`responses_api_agents/fieldtwin_team/`, the `d1c_multi` design) |
 
 One rollout = one season: the model calls read tools and `submit_decision` once per week until the crop matures
 (18-20 weeks). A response without a tool call gets a reminder; a season that hits `max_steps` is truncated with reward 0.
@@ -37,16 +37,35 @@ uv run uvicorn env.server:app --port 9000
 # 2. NeMo Gym servers (from gym_env/). Real policy: Nemotron on vLLM
 cd gym_env && .venv/bin/gym env start --environment fieldtwin --search-dir . \
     --model-type vllm_model --model <served model name> --model-url http://localhost:8000/v1 --model-api-key dummy
-# wait for "All 4 / 4 servers ready!"
+# wait for "All 6 / 6 servers ready!"
 
-# 3. Collect rollouts and score (from gym_env/)
+# 3. Collect rollouts and score (from gym_env/): the team, or the single built-in agent
+cd gym_env && .venv/bin/gym eval run --no-serve --agent fieldtwin_team_agent \
+    --input environments/fieldtwin/data/dev.jsonl --output results/dev_team_rollouts.jsonl
 cd gym_env && .venv/bin/gym eval run --no-serve --agent fieldtwin_gymnasium_agent \
-    --input environments/fieldtwin/data/dev.jsonl --output results/dev_rollouts.jsonl
+    --input environments/fieldtwin/data/dev.jsonl --output results/dev_single_rollouts.jsonl
 ```
 
 `gym eval run` prints the key metrics (`mean/reward`, `mean/terminated`, `mean/truncated`, tokens) and writes
 `results/<name>_rollouts.jsonl` (one season per line; `info.final` holds grain, N applied, leaching, profit, reward)
 and `results/<name>_rollouts_aggregate_metrics.json`.
+
+## The multi-agent team as a NeMo Gym agent
+
+`responses_api_agents/fieldtwin_team/app.py` runs the FieldTwin team (the `d1c_multi` design, see
+`agents_a/designs/d1c_multi/ARCHITECTURE.md`) as a native NeMo Gym agent server:
+
+- each role (Weather, Crop, Planner, Critic, Coordinator) calls the policy model through NeMo Gym's model server
+  (`/v1/responses`); every role is the same Nemotron model with its own prompt, tools and answer schema;
+- every simulator tool call and the weekly `submit_decision` go through the `fieldtwin` resources server's `/step`,
+  so the team is scored by exactly the same verifier as the single built-in agent;
+- week flow: Weather + Crop in parallel -> Planner -> Critic -> revise once if it objects -> Coordinator ->
+  code guard (clamp) -> `submit_decision`; a failed Planner falls back to the farmer-practice action
+  (counted in `info.fallbacks`);
+- prompts, answer schemas and the fallback schedule are imported from the repo (`agents_a/`), so the NeMo Gym team
+  and the evaluated design cannot drift apart. The dataset row's single-agent prompt is ignored by the team.
+
+`info` in each rollout carries `final` (grain, N, water, leaching, profit, reward), `llm_calls` and `fallbacks`.
 
 ## Dummy policy (no GPU)
 

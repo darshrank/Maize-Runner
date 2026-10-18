@@ -2,7 +2,7 @@
 fieldtwin:
   resources_servers:
     fieldtwin:
-      allowed_agents: [gymnasium_agent]
+      allowed_agents: [gymnasium_agent, fieldtwin_team]
       entrypoint: app.py
       domain: agent          # allowed: math, coding, agent, knowledge, games, ... (no agriculture)
       verified: false
@@ -32,6 +32,22 @@ fieldtwin_gymnasium_agent:
         type: validation
         jsonl_fpath: environments/fieldtwin/data/test.jsonl
         license: TBD
+
+fieldtwin_team_agent:   # the multi-agent team (d1c_multi): gym_env/responses_api_agents/fieldtwin_team
+  responses_api_agents:
+    fieldtwin_team:
+      entrypoint: app.py
+      resources_server:
+        type: resources_servers
+        name: fieldtwin
+      model_server:
+        type: responses_api_models
+        name: policy_model
+      max_weeks: 30
+      datasets:
+      - name: example
+        type: example
+        jsonl_fpath: environments/fieldtwin/data/example.jsonl
 
 fieldtwin_environment_server:
   environment_servers:

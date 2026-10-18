@@ -56,3 +56,16 @@ Note: d0_single used the first prompt; the fair single-agent comparison (same so
 Gap closed 1.20 (tune: 1.45), 4/5 wins, N 220, irrigation 170 mm, 0 fallbacks. Slightly lower than on tune, as
 expected for unseen seasons, still above farmer practice and the fixed-plan ceiling. The loss (2005) is the known
 weak spot: leaching in wet seasons (55.8 kg N/ha).
+
+## Final result: held-out test (2010-2024, 15 seasons, run once; frozen at commit 48343d5)
+
+| | mean reward | gap closed | wins vs farmer practice | N kg/ha | irrigation mm | leached kg/ha | fallbacks |
+|---|---|---|---|---|---|---|---|
+| **d1c_multi** | **1,306** | **1.21** | **12/15** | 204 | 170 | 19.7 | 0 |
+| farmer practice (`farmer_ufga`) | 1,074 | 0.00 | | 116 | 264 | 23.0 | |
+| farmer split (`farmer`) | 1,096 | | | 160 | | | |
+| hindsight (best fixed plan) | 1,265 | 1.00 | | | 124 | 12.9 | |
+
+Paired difference vs farmer practice: **+232 USD/ha, 95% CI +-117**. 36% less water and 14% less N leached than
+farmer practice. Losses: 2010 (902 vs 1,177, under-irrigated), 2016 (1,093 vs 1,115), 2019 (947 vs 965).
+Test (gap closed 1.21) matches dev-check (1.20): the design generalizes. Per-season rows: `results/eval.csv`.
