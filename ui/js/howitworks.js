@@ -395,7 +395,7 @@ function hideTip() {
 
 // Back / Next and the arrow keys (main.js) call this.
 export function howStep(delta) {
-  if (!ui.wk) return;
+  if (!ui.wk || LIVE) return;   // live: the steps follow the running season
   const next = Math.max(0, Math.min(STEPS.length - 1, ui.step + delta));
   if (next === ui.step) return;
   ui.step = next;
