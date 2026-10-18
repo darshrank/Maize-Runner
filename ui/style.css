@@ -402,3 +402,39 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .hiw-tip-role { font-weight: 600; }
 .hiw-tip-msg { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .hiw-part { transition: none; } }
+
+/* ---- Results: headline charts (resultsCharts.js; A's demo_results.json). Colors are the theme tokens. ---- */
+.results-wrap .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
+.chart-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 12px; background: rgba(255, 255, 255, 0.02); }
+.chart-title { font-size: var(--fs-2); color: var(--text); margin-bottom: 6px; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--font); fill: var(--text); }
+.chart text.v { font-size: 15px; font-weight: 600; }
+.chart text.l { font-size: 12px; fill: var(--muted); }
+.chart text.dim { opacity: 0.7; }
+.chart text.gain { font-size: 16px; font-weight: 700; fill: var(--accent); }
+.chart .axis { stroke: var(--border); stroke-width: 1; }
+.chart .ceiling { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 6 5; opacity: 0.8; }
+.chart .c-farmer, .key.c-farmer { fill: var(--muted); background: var(--muted); opacity: 0.5; }
+.chart .c-single { fill: var(--text); opacity: 0.85; }
+.chart text.v.in { fill: var(--bg); }
+.chart .c-team, .key.c-team { fill: var(--accent); background: var(--accent); }
+.chart .c-loss { fill: var(--leach); opacity: 0.8; }
+.chart-caption { font-size: var(--fs-1); color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.chart-caption b { color: var(--text); }
+.chart-caption .t-team { color: var(--accent); }
+.chart-caption .t-warn { color: var(--warn); }
+.chart-caption.legend { display: flex; align-items: center; gap: 8px; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tile { border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.tile .big { font-size: 40px; font-weight: 700; line-height: 1.1; }
+.tile .tl { font-size: var(--fs-2); color: var(--text); margin-top: 4px; }
+.tile .ts { font-size: var(--fs-1); color: var(--muted); margin-top: 2px; }
+.tile.t-water .big { color: var(--water); }
+.tile.t-leach .big { color: var(--leach); }
+.tile.t-team .big { color: var(--accent); }
+.res-more { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 10px; }
+.res-more > summary { cursor: pointer; color: var(--muted); font-size: var(--fs-2); }
+.res-more[open] > summary { color: var(--text); }
+@media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } .results-wrap .charts { grid-template-columns: 1fr; } }
