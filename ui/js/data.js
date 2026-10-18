@@ -1,13 +1,15 @@
 // Loaders and the log -> weeks model (UI_SPEC.md section 3). Everything else in the UI reads these structures.
 //
-// Real sources only, dev seasons only (task ids from tasks/dev.jsonl, UFGA-1990..2009):
+// Real sources only. Season (tab 1) lists seasons from SEASON_MIN_YEAR (2010) on, from every task file (A's test
+// run is final; the dev-only rule is lifted, per the user, Sun Oct 18), each labelled with its split from the Season
+// agent run's eval.csv. Everything else stays dev only (task ids from tasks/dev.jsonl, UFGA-1990..2009):
 //   B (agent runs)   runs/<config>/<task_id>.jsonl, listed in runs/index.json (fake_* configs ignored)
 //   A (baselines)    results_baseline/runs/<config>/<task_id>.jsonl for BASELINE_CONFIGS, dev task ids only
 //   A (results)      results_baseline/eval.csv rows with split = dev; results_baseline/summary.md "Split: dev" table
 //   A (agent designs) agents_a/designs/<design>/runs/<config>/<task_id>.jsonl, listed in that design's
 //                    runs/index.json (dev ids only), and agents_a/designs/<design>/results/eval.csv rows with split = dev
-// tasks/test.jsonl, test-year logs and test rows are never fetched or parsed: every run path is built from a dev
-// task id, and eval.csv / summary.md are cut to their dev rows before any value is read. results_baseline's
+// Outside Season's list, every run path is built from a dev task id, and eval.csv / summary.md are cut to their
+// dev rows before any value is read (loadSeasonSplits reads only the config, task_id and split cells). results_baseline's
 // runs/index.json is never read (it lists test years). Fake mode is retired: ui/fake/ and
 // lanec/scripts/fake_logs.py stay on disk, unused.
 // Every request goes through net.js (at most 4 in flight, network errors / resets retried). A missing file (HTTP
@@ -46,6 +48,7 @@ export const paths = {
   aEval: (design) => `${aRoot(design)}/results/eval.csv`,
   run: (config, task) => `${runRoot(config)}/${config}/${task}.jsonl`,
   devTasks: "../tasks/dev.jsonl",
+  taskFiles: ["../tasks/dev.jsonl", "../tasks/test.jsonl", "../tasks/tift_test.jsonl"],
   weather: (site, year) => `../data/weather/${site}_${year}.json`,
   eval: "../results_baseline/eval.csv",
   summary: "../results_baseline/summary.md",
@@ -128,6 +131,34 @@ export function isDev(task) {
   return devTasks.includes(task);
 }
 
+// Every season in the task files ({task_id, site, year, split}), in file order (dev, test, tift_test). The year is
+// the task file's year field; an entry without a numeric year is skipped, never guessed from the id.
+export const SEASON_MIN_YEAR = 2010;
+const allTasks = [];
+let allTasksLoaded = false;
+
+async function loadAllTasks() {
+  if (allTasksLoaded) return;
+  allTasksLoaded = true;
+  const texts = await Promise.all(paths.taskFiles.map(fetchText));
+  for (const text of texts) {
+    if (typeof text !== "string") continue;   // missing (404) or failed (listed on the load card)
+    for (const line of text.split("\n")) {
+      try {
+        const t = JSON.parse(line);
+        if (t && typeof t.task_id === "string" && Number.isInteger(t.year) && !allTasks.some((x) => x.task_id === t.task_id)) {
+          allTasks.push({ task_id: t.task_id, site: t.site || null, year: t.year });
+        }
+      } catch { /* blank or broken line */ }
+    }
+  }
+}
+
+// A season the UI may open: a dev task, or any task-file season once Season's list has loaded them.
+function isTask(task) {
+  return isDev(task) || allTasks.some((t) => t.task_id === task);
+}
+
 // Dev sub-split (agents_a/common/splits.py): prompts were tuned on dev 1990-2004 ("tuned"); dev 2005-2009 is the
 // check set they were not tuned on ("not tuned"). null for anything else.
 export function tuneTag(task) {
@@ -163,11 +194,11 @@ export async function loadIndex() {
 }
 
 // Does the log file exist? HEAD request, cached: true, false (404), or a LoadError (not cached, so a later call
-// asks again). Dev seasons only.
+// asks again). Task-file seasons only.
 const logExists = new Map();
 
 export function hasLog(config, task) {
-  if (!isDev(task)) return Promise.resolve(false);
+  if (!isTask(task)) return Promise.resolve(false);
   const key = `${config}/${task}`;
   if (!logExists.has(key)) {
     const p = request(paths.run(config, task), { method: "HEAD" }).then((r) => {
@@ -179,25 +210,49 @@ export function hasLog(config, task) {
   return logExists.get(key);
 }
 
-// Season picker: dev seasons where the index lists both SEASON_PAIR configs and both logs exist (dev order).
-// hidden: the dev seasons left out. One season at a time: 40 HEAD requests at once make the local http.server reset
-// connections, and the next fetch (e.g. an eval.csv) then fails. A HEAD that fails after its retries (LoadError)
-// keeps the season: only a 404 hides it, and loading that season shows the load-failure card if the log fails too.
-export async function pairSeasons(index) {
-  const pair = Object.values(SEASON_PAIR), shown = [], hidden = [];
-  for (const t of devTasks) {
-    const ok = pair.every((c) => ((index && index[c]) || []).includes(t))
-      && (await Promise.all(pair.map((c) => hasLog(c, t)))).every((r) => r !== false);
-    (ok ? shown : hidden).push(t);
+// Season's split per season, from the eval.csv of the Season agent run (agents_a/designs/<design>/results/eval.csv,
+// rows of SEASON_PAIR.right; run loadIndex first so the design is known): {task_id: split}. Only the config,
+// task_id and split cells are read. {} when there is no such file (or it failed: listed on the load card).
+export async function loadSeasonSplits() {
+  const config = SEASON_PAIR.right, design = aDesignOf[config];
+  if (!design) return {};
+  const text = await fetchText(paths.aEval(design));
+  if (typeof text !== "string") return {};
+  const lines = text.split(/\r?\n/).filter((l) => l.trim() && !l.startsWith("#"));
+  const cut = (l) => l.split(",").map((c) => c.trim());
+  const head = lines.length ? cut(lines[0]) : [];
+  const [ci, ti, si] = ["config", "task_id", "split"].map((h) => head.indexOf(h));
+  const splits = {};
+  if (ci < 0 || ti < 0 || si < 0) return splits;
+  for (const l of lines.slice(1)) {
+    const c = cut(l);
+    if (c[ci] === config && c[ti] && c[si]) splits[c[ti]] = c[si];
   }
-  return { shown, hidden };
+  return splits;
+}
+
+// Season picker: every task-file season from SEASON_MIN_YEAR on, in file order: [{task, site, year, split, available}].
+// split from loadSeasonSplits (null = not in that eval.csv: "split unknown"). available: both SEASON_PAIR logs
+// exist. A 404 on either marks the season unavailable (listed, never hidden). A HEAD that fails after its retries
+// (LoadError) counts as available; loading that season then shows the load-failure card. One season at a time:
+// 40 HEAD requests at once make the local http.server reset connections.
+export async function seasonList(splits = {}) {
+  await loadAllTasks();
+  const pair = Object.values(SEASON_PAIR), list = [];
+  for (const t of allTasks) {
+    if (t.year < SEASON_MIN_YEAR) continue;
+    const logs = await Promise.all(pair.map((c) => hasLog(c, t.task_id)));
+    list.push({ task: t.task_id, site: t.site, year: t.year, split: splits[t.task_id] || null,
+      available: logs.every((r) => r !== false) });
+  }
+  return list;
 }
 
 // ---------------------------------------------------------------- run log -> weeks model
 
 // The run model, null (missing or empty log), or a LoadError.
 export async function loadRun(config, task) {
-  if (!isDev(task)) return null;   // never open a non-dev log
+  if (!isTask(task)) return null;   // only task-file seasons
   const text = await fetchText(paths.run(config, task));
   if (text === null || text instanceof LoadError) return text;
   const events = [];

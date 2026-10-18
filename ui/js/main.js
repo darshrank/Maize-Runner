@@ -2,8 +2,8 @@
 // Serving, How it works, switched by the dock (dock.js) or keys 1-6; no top bar.
 // Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR
 // (LEFT farmer practice, RIGHT the FieldTwin agent team; no config pickers). Each field header is the config's plain
-// label, with the model name under it when the log records one. The season picker lists only seasons with both
-// logs. Its only numbers: one week label and, at season end, the profit finale for the two fields (season3d.js
+// label, with the model name under it when the log records one. The season picker lists every task-file season
+// from 2010 on (data.seasonList) with its eval.csv split; a season missing either log is listed as unavailable. Its only numbers: one week label and, at season end, the profit finale for the two fields (season3d.js
 // places both from the projected field anchors). Week cards on the left (carousel.js, cube effect): one card per week
 // plus harvest, synced with the week both ways; each holds the week's dates, the narrator line (narrator.js) and,
 // in Critic objection weeks, the objection in one line with the Objection pill. Key N toggles the cards. No bottom caption.
@@ -146,6 +146,7 @@ function setView(view) {
     $("placeholder-title").textContent = page.label;
     $("placeholder-file").textContent = `Needs ${page.file}`;
   }
+  renderBadges();
   if (view === "agents") renderAgents();
   if (view === "results") { introNext = true; renderResults(); }
   if (view === "how") renderHowItWorks($("how-body"));
@@ -175,20 +176,22 @@ function renderLoadCard() {
 // ---------------------------------------------------------------- chrome
 
 function renderTaskPicker() {
-  const html = state.seasons.map((t) => {
-    const p = data.parseTaskId(t), tag = data.tuneTag(t);
-    return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>`
-      + `${esc(p ? p.year : t)}${tag ? ` · ${esc(tag)}` : ""}</option>`;
+  const html = state.seasons.map((s) => {
+    const label = `${s.site ? `${s.site} ` : ""}${s.year} · ${s.split || "split unknown"}${s.available ? "" : " · unavailable"}`;
+    return `<option value="${esc(s.task)}" title="${esc(s.task)}"${s.task === state.task ? " selected" : ""}`
+      + `${s.available ? "" : " disabled"}>${esc(label)}</option>`;
   }).join("");
   document.querySelectorAll("select.task").forEach((s) => (s.innerHTML = html));
 }
 
-// One source label top right: the split from the runs on screen (always dev here).
+// One source label top right: the season's split from eval.csv ("split unknown" when it has no row there), on the
+// two views that show the Season runs (Season, Agents) only.
 function renderBadges() {
   const runs = SIDES.map((s) => state.runs[s]).filter(Boolean);
-  const label = (runs.find((r) => r.split) || {}).split || null;
+  const season = state.seasons.find((s) => s.task === state.task);
+  const label = runs.length && season ? season.split || "split unknown" : null;
   $("src").textContent = label || "";
-  $("src").hidden = !label;
+  $("src").hidden = !label || !["season", "agents"].includes(state.view);
   const fin = document.querySelector("#s3-fin-mid .fin-src");
   fin.textContent = label || "";
   fin.hidden = !label;
@@ -710,14 +713,17 @@ async function main() {
   setView(state.view);
   bind();
   state.index = await data.loadIndex();
-  const { shown, hidden } = await data.pairSeasons(state.index);
-  state.seasons = shown;
-  if (hidden.length) console.info(`FieldTwin: seasons without both Season logs (hidden): ${hidden.join(", ")}`);
-  const task = shown[0] || null;
+  state.seasons = await data.seasonList(await data.loadSeasonSplits());
+  const unavailable = state.seasons.filter((s) => !s.available).map((s) => s.task);
+  if (unavailable.length) console.info(`FieldTwin: seasons missing a Season log (unavailable): ${unavailable.join(", ")}`);
+  // Default: the earliest available season (by year; file order breaks ties).
+  const first = state.seasons.filter((s) => s.available).sort((a, b) => a.year - b.year)[0];
+  const task = first ? first.task : null;
   if (state.index instanceof data.LoadError) state.index = null;   // tasks/dev.jsonl failed: the load card says why
-  else if (!task) {
-    notice(state.index ? `No dev season has both ${Object.values(data.SEASON_PAIR).map(data.configName).join(" and ")} logs.`
-      : "No dev seasons: tasks/dev.jsonl is missing or empty.");
+  if (!task) {
+    notice(state.seasons.length
+      ? `No season from ${data.SEASON_MIN_YEAR} on has both ${Object.values(data.SEASON_PAIR).map(data.configName).join(" and ")} logs.`
+      : `No seasons from ${data.SEASON_MIN_YEAR} on in the task files.`);
   }
   if (!task) {
     renderFieldHeads();
