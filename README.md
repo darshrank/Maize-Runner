@@ -10,6 +10,16 @@ Every week it decides how much nitrogen (kg N/ha) and irrigation (mm) to apply, 
 minus a nitrate-leaching penalty. The crop is simulated by **gym-DSSAT** (the DSSAT CERES-Maize model) on
 **real NASA POWER weather**, one real year per task. The agents are Nemotron on vLLM (person B).
 
+**Demo video:** https://www.youtube.com/watch?v=gxpolRO2nEU
+
+## Team
+
+| Name | Role | GitHub |
+|---|---|---|
+| Darsh Rank | Simulator, env server, NeMo Gym environment, baselines, evaluation | [darshrank](https://github.com/darshrank) |
+| Anandteertha Rao | Nemotron on vLLM, agent team, prompts, ablations | [anandteertha](https://github.com/anandteertha) |
+| Sakhi Patel | UI, vLLM serving metrics, demo and submission | [sakhi20](https://github.com/sakhi20) |
+
 ## What is real today
 
 | Part | Status | Owner |
@@ -18,10 +28,48 @@ minus a nitrate-leaching penalty. The crop is simulated by **gym-DSSAT** (the DS
 | Weather | **real**: NASA POWER daily data, UFGA 1990-2024 (`data/`, see `data/README.md`) | A |
 | Prices and reward | **real**, each value cited in `config.yaml` | A |
 | Env server (HTTP, port 9000) | **real**, frozen contract below | A |
-| Baselines | **done** for all 35 seasons, frozen in `results_baseline/`: `no_n`, `farmer` (60/60/40 split), `farmer_ufga` (UF experiment schedule = farmer practice), `hindsight` (ceiling) | A |
+| Baselines | **done** for all 35 seasons, frozen in `results_baseline/`: `no_n`, `farmer` (60/60/40 split), `farmer_ufga` (UF experiment schedule = farmer practice), `hindsight` (grid hindsight: best fixed plan per season, weather known; not an upper bound) | A |
 | NeMo Gym environment | **real**: `gym_env/` (tasks, tools, verifier = final reward), see `gym_env/README.md` | A |
-| Agents | single, five-agent multi and three ablations; real Nemotron integration verified on toy, DSSAT dev evaluation in progress | **B** |
-| UI | working replay viewer (`ui/`), to be restyled | C |
+| Agents | **done**: five-agent team (d1c_multi) evaluated on dev, test and tift_test; results below | B |
+| UI | **done**: Season (3D replay and the live 2026 season), How it works, Results, Serving, Agents, Gym (`ui/`) | C |
+
+## Tech stack
+
+| Layer | What we use |
+|---|---|
+| Model | `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16`, one checkpoint shared by all five roles |
+| Serving | vLLM 0.27.1, OpenAI-compatible API, automatic tool calling, prefix caching (`scripts/serve_vllm.sh`) |
+| Agents | Python: Weather, Crop, Planner, Critic, Coordinator (`agents_a/designs/d1c_multi/`), code guard on every action |
+| Crop simulator | gym-DSSAT (DSSAT CERES-Maize), UFGA8201 maize experiment, behind a FastAPI env server (`env/server.py`) |
+| Weather | NASA POWER daily data (`data/`) |
+| RL environment | NVIDIA NeMo Gym wrapper around the env server (`gym_env/`) |
+| UI | Plain JavaScript + three.js (vendored), served by `scripts/demo_server.py` (FastAPI / uvicorn) |
+| Tooling | uv, pytest |
+
+Weekly decision flow (from [ARCHITECTURE.md](ARCHITECTURE.md), section 1):
+
+```mermaid
+flowchart TD
+    START["Load one dev task: site and year"] --> RESET["Runner resets a DSSAT episode"]
+    RESET --> OBS["Current weekly observation and remaining N"]
+    OBS --> W["Weather agent: weather report"]
+    OBS --> C["Crop agent: crop report"]
+    W --> P["Planner: propose nitrogen and irrigation"]
+    C --> P
+    P --> K["Critic: review proposal and evidence"]
+    K --> OK{"Accept proposal?"}
+    OK -->|Yes| CO["Coordinator: produce final action"]
+    OK -->|No| REV["Planner: one revision using the objection"]
+    REV --> CO
+    CO --> GUARD["Code guard: weekly and seasonal limits"]
+    FAIL["A role invocation fails or exhausts its response budget"] --> FB["Visible farmer fallback"]
+    FB --> GUARD
+    GUARD --> STEP["Runner calls DSSAT /step once"]
+    STEP --> LOG["Record decision, step result and metrics"]
+    LOG --> DONE{"DSSAT done or 20-week control limit?"}
+    DONE -->|No| OBS
+    DONE -->|Yes| FINAL["Finalize with zero further inputs if needed; record result"]
+```
 
 ## Quick start
 
@@ -34,6 +82,27 @@ uv run python -m agents.run --policy farmer --task-id UFGA-1995      # 2. play o
 uv run python -m eval.run_eval --split dev --configs no_n,farmer,hindsight [--limit 3]   # 3. eval -> results/
 python -m http.server 8080                       # 4. UI at http://localhost:8080/ui/ (from the repo root)
 ```
+
+Run the final agent team (needs the env server above and a Nemotron endpoint):
+
+```bash
+bash scripts/serve_vllm.sh                                   # on the GPU host: vLLM + Nemotron on port 8000
+cp .env.example .env                                         # then set VLLM_MODEL (and VLLM_BASE_URL if not local)
+uv run python -m agents_a.run_design --design d1c_multi --split dev --limit 1   # one dev season
+```
+
+`run_design` writes into `agents_a/designs/d1c_multi/runs/` and `.../results/{eval.csv,summary.md}`, which hold the
+committed results. Run it in a fresh clone, or discard the changes afterwards (`git checkout -- agents_a/designs/`).
+
+Live demo (plays the 2026 season live in the UI):
+
+```bash
+uv run python scripts/demo_server.py      # serves the UI at http://localhost:8080/ui/ and starts live runs
+```
+
+Open the Season page, pick 2026 and press Play. It needs the env server (port 9000) and vLLM (port 8000, or a
+tunnel to it) running. Plain `python -m http.server` only replays recorded seasons and shows "Live server offline".
+For the Brev GPU setup used by the team, see [RUN_ON_BREV.md](RUN_ON_BREV.md).
 
 Checks: `uv run pytest` (contract tests on both simulators) and `bash scripts/smoke.sh` (prints PASS/FAIL).
 
@@ -59,6 +128,14 @@ A task is a real (site, year): `tasks/dev.jsonl` = UFGA 1990-2009 (20 seasons), 
 
 **Never tune on `test`.** Tune on `dev`; `test` is run once at the end by A (milestone A4).
 
+- `tasks/tift_test.jsonl`: Tifton, GA 2010-2024 (15 seasons, split `tift_test`), a second site never used for tuning.
+- `tasks/live.jsonl`: UFGA-2025 and UFGA-2026 (split `live`), played only live in the demo.
+- `data/dssat_wth/*.WTH`: the DSSAT weather files built from NASA POWER, one per site and year (72 files, UFGA and TIFT),
+  written by `scripts/fetch_power.py`.
+- Forecast noise (agents' `get_weather` outlook only; the simulator uses the observed weather): rain x (1 + e) with
+  e ~ Normal(0, sd 0.4), floored at 0; daily max and min temperature + Normal(0, sd 2.0 °C); seeded per season and
+  week so every policy sees the same outlook (`env/sim_base.py` `noisy_outlook`, `config.yaml` `env.outlook_noise`).
+
 ## A season, as the agent sees it
 
 - Planting is Feb 26 (day of year 57, same as gym-DSSAT's UFGA experiment). Week 0 starts the day after planting.
@@ -78,7 +155,7 @@ A task is a real (site, year): `tasks/dev.jsonl` = UFGA 1990-2009 (20 seasons), 
 | `biomass_kg_ha` | above-ground dry matter |
 | `weekly.n_gas` / `final.n_gas` | denitrification + ammonia volatilization |
 | `final.*` totals | counted from week 0 (pre-planting losses excluded), so they equal the sum of the weekly values |
-| `get_weather` | `history` = last 14 observed days; `outlook` = the real next 7 days plus noise (rain ±40%, temperature ±2 °C), seeded `year * 1000 + week` so every policy sees the same outlook |
+| `get_weather` | `history` = last 14 observed days; `outlook` = the real next 7 days plus noise (rain x (1 + Normal(0, sd 0.4)), temperature + Normal(0, sd 2.0 °C)), seeded `year * 1000 + week` so every policy sees the same outlook |
 
 ## Reward and prices (fixed; do not tune)
 
@@ -99,16 +176,60 @@ Baselines on gym-DSSAT, mean reward (USD/ha), frozen in `results_baseline/`:
 | `no_n` | 153 | 199 |
 | `farmer` (60/60/40 kg N split + 25 mm when dry) | 1,024 | 1,096 |
 | `farmer_ufga` = **farmer practice** (UF 1982 experiment schedule: 116 kg N, 264 mm) | 1,117 | 1,074 |
-| `hindsight` (best of 56 fixed plans with the weather known; unreachable ceiling) | 1,283 | 1,265 |
+| `hindsight` = **grid hindsight** (best of 56 fixed plans with the weather known; not an upper bound) | 1,283 | 1,265 |
+
+Grid hindsight picks the best of 56 fixed calendars with the weather known, but it cannot change a plan during the
+season. The team adapts each week's nitrogen and water to the crop it observes and the forecast, so it can beat the
+best fixed plan: on test it does in 10 of 15 seasons.
 
 Farmer practice is set in `config.yaml` (`eval.farmer_practice`); it was chosen on dev only.
+
+## Results
+
+Score (reward) = profit minus a per-kg penalty for nitrate leached, in USD/ha per season (formula and prices
+above). Higher is better. One saved run per policy and season; intervals are paired 95% normal intervals.
+
+**Held-out test, Gainesville FL (split test, 15 seasons, 2010-2024), final design d1c_multi**
+
+| | Farmer practice | Grid hindsight | Single agent | Five-agent team |
+|---|---:|---:|---:|---:|
+| Reward (USD/ha) | 1,074.14 | 1,265.22 | 1,237.97 | **1,306.27** |
+| Irrigation (mm) | 264.00 | 124.27 | 156.60 | 170.20 |
+| Nitrogen applied (kg/ha) | 116.00 | 135.73 | 212.07 | 204.07 |
+| Nitrogen leached (kg/ha) | 23.043 | 12.917 | 21.245 | 19.689 |
+| Fallback weeks | n/a | n/a | 11 | **0** |
+
+- Team vs farmer practice (test): **+$232.13/ha**, 95% interval [$115.36, $348.89], 12/15 seasons won.
+  Reward +21.61%, irrigation 35.53% lower, nitrogen leached 14.55% lower.
+- Team vs grid hindsight (test): the team scores higher in 10 of 15 seasons (mean 1,306.27 vs 1,265.22).
+
+**New site, never used for tuning (split tift_test: Tifton GA, 15 seasons, 2010-2024)**
+
+| | Farmer practice | Grid hindsight | Five-agent team |
+|---|---:|---:|---:|
+| Reward (USD/ha) | 1,062.94 | 1,270.78 | **1,297.29** |
+| Irrigation (mm) | 264.00 | 140.40 | 157.13 |
+| Nitrogen leached (kg/ha) | 21.81 | 14.05 | 17.95 |
+| Fallback weeks | n/a | n/a | **0** |
+
+- Team vs farmer practice (tift_test): **+$234.35/ha**, 95% interval [$120.18, $348.52], 12/15 seasons won.
+
+**Team vs single agent (same model, same agronomy), two ways**
+
+| Seasons | Gain (USD/ha) | 95% interval | Seasons won | Fallback weeks (team / single) |
+|---|---:|---:|---:|---:|
+| test only (15) | +68.30 | [-6.10, 142.69] | 11/15 | 0 / 11 |
+| dev-check 2005-2009 + test (20; neither design was tuned on them; shown in the UI) | +81.33 | [20.50, 142.16] | 15/20 | 0 / 15 |
+
+The team makes about 3.01x as many model calls as the single agent (test).
+Sources: `agents_a/designs/{d0b_single,d1c_multi}/results/eval.csv`, `results_baseline/eval.csv`.
 
 ## For person B: building the agents
 
 1. **Get a simulator running.** Either your own env server from this repo (Quick start; toy if you cannot install
    gym-DSSAT) or the shared one on Brev. Point `config.yaml` `env.url` at it (default `http://localhost:9000`).
-2. **Model endpoint.** Export `VLLM_BASE_URL` (`.env.example` is a reference; dotenv is not loaded automatically) (default `http://localhost:8000/v1`) and
-   `VLLM_MODEL`. `config.yaml` `agents.base_url_env` / `agents.model_env` name these variables.
+2. **Model endpoint.** Set `VLLM_BASE_URL` (default `http://localhost:8000/v1`) and `VLLM_MODEL` in `.env` (copy `.env.example`). The final team (`agents_a/`, including `run_design` and the live demo) loads `.env` automatically, and exported shell variables win. The older `agents/` and `fieldtwin_agents/` policies read only exported shell variables.
+   `config.yaml` `agents.base_url_env` / `agents.model_env` name these variables.
 3. **Policies are implemented** in `agents/policies/single.py`, `multi.py` and the shared `nemotron.py` adapter. The interface is in `agents/policies/base.py`:
    ```python
    class Policy(ABC):
@@ -165,7 +286,7 @@ Kinds: `tool_call`, `tool_result`, `message`, `decision` (`{n_kg_ha, irr_mm, rea
 
 - `env/`: `server.py` (HTTP API), `dssat_sim.py` + `dssat_worker.py` (gym-DSSAT), `toy_sim.py`, `weather.py` (NASA data loader), `sim_base.py`, simulator registry in `__init__.py`.
 - `agents/`: `client.py` (env client), `tools.json` (tool schemas), `policies/` (registry, `no_n`, `farmer`, `nemotron_stub`), `run.py` (season runner + logger).
-- `eval/`: `hindsight.py` (grid-search ceiling), `run_eval.py` (`results/eval.csv` + `results/summary.md`).
+- `eval/`: `hindsight.py` (grid hindsight: best fixed plan per season), `run_eval.py` (`results/eval.csv` + `results/summary.md`).
 - `gym_env/`: NeMo Gym environment, see `gym_env/README.md`.
 - `ui/`: static Three.js replay of two runs side by side.
 - `results_baseline/`: frozen baseline results and season logs (A2).
@@ -174,16 +295,22 @@ Kinds: `tool_call`, `tool_result`, `message`, `decision` (`{n_kg_ha, irr_mm, rea
 
 ## Who owns what
 
-- **A** (simulator, eval): done: gym-DSSAT, real weather, prices, NeMo Gym, baselines (A2). Next: A4 final test run
-  once B freezes the agents.
+- **A** (simulator, eval): done: gym-DSSAT, real weather, prices, NeMo Gym, baselines (A2).
 - **B** (agents): `single` and `multi` policies on Nemotron/vLLM, the improvement loop on `dev`, frozen prompts and ablations.
 - **C** (UI, demo): restyle `ui/`, vLLM metrics script, deck and video.
 
 ## Known limitations
 
 - An episode abandoned mid-season keeps its DSSAT process until the env server restarts.
-- Only the UFGA site is set up (Raleigh is defined in `scripts/fetch_power.py` but not fetched), hence 15 test seasons, not 20.
 - `soil_n_kg_ha` on gym-DSSAT is a mass-balance estimate (see above); the reward does not use it.
+- 2026 is one live run (split `live`): it is played once during the demo, and no 2026 result is stored or averaged.
+- DSSAT reads two-digit years, so it simulates 2026 on stand-in year 2025 with the real 2026 weather
+  (`env/dssat_sim.py` `dssat_year_for`); only the label and DSSAT's stored CO2 differ.
+- Grid hindsight is not an upper bound: it is the best of 56 fixed plans, and the adaptive team beats it in 10 of 15
+  test seasons.
+- No RL training: the model weights are unchanged. Gains come from prompt and multi-agent design changes, scored by the
+  direct runner; NeMo Gym wraps the same env server for evaluation.
+- One saved run per policy and season; intervals do not include sampling noise across repeated runs.
 
 ## Person B implementation and evidence
 
