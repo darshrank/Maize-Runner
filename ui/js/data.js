@@ -1,13 +1,15 @@
 // Loaders and the log -> weeks model (UI_SPEC.md section 3). Everything else in the UI reads these structures.
 //
-// Real sources only, dev seasons only (task ids from tasks/dev.jsonl, UFGA-1990..2009):
+// Real sources only. Season (tab 1) lists seasons from SEASON_MIN_YEAR (2010) on, from every task file (A's test
+// run is final; the dev-only rule is lifted, per the user, Sun Oct 18), each labelled with its split from the Season
+// agent run's eval.csv. Everything else stays dev only (task ids from tasks/dev.jsonl, UFGA-1990..2009):
 //   B (agent runs)   runs/<config>/<task_id>.jsonl, listed in runs/index.json (fake_* configs ignored)
 //   A (baselines)    results_baseline/runs/<config>/<task_id>.jsonl for BASELINE_CONFIGS, dev task ids only
 //   A (results)      results_baseline/eval.csv rows with split = dev; results_baseline/summary.md "Split: dev" table
 //   A (agent designs) agents_a/designs/<design>/runs/<config>/<task_id>.jsonl, listed in that design's
 //                    runs/index.json (dev ids only), and agents_a/designs/<design>/results/eval.csv rows with split = dev
-// tasks/test.jsonl, test-year logs and test rows are never fetched or parsed: every run path is built from a dev
-// task id, and eval.csv / summary.md are cut to their dev rows before any value is read. results_baseline's
+// Outside Season's list, every run path is built from a dev task id, and eval.csv / summary.md are cut to their
+// dev rows before any value is read (loadSeasonSplits reads only the config, task_id and split cells). results_baseline's
 // runs/index.json is never read (it lists test years). Fake mode is retired: ui/fake/ and
 // lanec/scripts/fake_logs.py stay on disk, unused.
 // Every request goes through net.js (at most 4 in flight, network errors / resets retried). A missing file (HTTP
@@ -19,7 +21,8 @@
 // {text, objection: bool}; other messages {text} or {content}; messages with neither (inference records,
 // proposal records) are not chat. A's design logs keep message text empty and put the content in
 // data.tool_calls[{name, arguments: JSON string}]: report tools become chat (see A_REPORT_TOOLS); a review_plan
-// verdict other than "accept" is a Critic objection. Fallbacks {why} (UI_SPEC) or {text}.
+// verdict other than "accept" is a Critic objection. Fallbacks {why} (UI_SPEC), {reason} (A's runner, live_season.py) or
+// {text}.
 
 import { request, fail, LoadError, loadFailures, onLoadFailures } from "./net.js";
 
@@ -46,6 +49,7 @@ export const paths = {
   aEval: (design) => `${aRoot(design)}/results/eval.csv`,
   run: (config, task) => `${runRoot(config)}/${config}/${task}.jsonl`,
   devTasks: "../tasks/dev.jsonl",
+  taskFiles: ["../tasks/dev.jsonl", "../tasks/test.jsonl", "../tasks/tift_test.jsonl"],
   weather: (site, year) => `../data/weather/${site}_${year}.json`,
   eval: "../results_baseline/eval.csv",
   summary: "../results_baseline/summary.md",
@@ -56,17 +60,19 @@ export const paths = {
 export const AGENTS = ["weather", "crop", "planner", "critic", "coordinator"];
 export const AGENT_NAMES = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coordinator: "Coordinator",
   policy: "Agent" };
-// Plain labels, in table order. Unknown configs show their raw name. The (D1c) / (B) / (D0) labels hold until
-// the team confirms the official config.
+// Plain labels, in table order (no design ids on screen). Unknown configs show their raw name.
 const CONFIG_NAMES = {
   farmer_ufga: "Farmer practice", farmer: "Fixed split schedule", no_n: "No fertilizer", hindsight: "Grid hindsight",
-  a_d1c_multi: "FieldTwin agent team (D1c)", multi: "FieldTwin agent team (B)", a_d0_single: "Single agent (D0)",
+  a_d1c_multi: "FieldTwin team", multi: "Team, earlier build (B)", a_d0_single: "Single agent",
+  a_d1_multi: "Team, design 1", a_d1b_multi: "Team, design 1b",
   single: "Single agent", multi_no_critic: "Team without Critic",
   multi_no_weather: "Team without Weather", multi_no_tools: "Team without tools",
 };
 const CONFIG_ORDER = Object.keys(CONFIG_NAMES);
 // The Season page shows this pair and nothing else (R7 pivot, STATE.md); every other config appears on Results only.
 export const SEASON_PAIR = { left: "farmer_ufga", right: "a_d1c_multi" };
+// Site codes -> plain names (env/weather.py SITES comments: UFGA Gainesville, FL; TIFT Tifton, GA). Codes never show.
+export const SITE_NAMES = { UFGA: "Gainesville, FL", TIFT: "Tifton, GA" };
 
 // ---------------------------------------------------------------- fetch helpers
 
@@ -128,6 +134,34 @@ export function isDev(task) {
   return devTasks.includes(task);
 }
 
+// Every season in the task files ({task_id, site, year, split}), in file order (dev, test, tift_test). The year is
+// the task file's year field; an entry without a numeric year is skipped, never guessed from the id.
+export const SEASON_MIN_YEAR = 2010;
+const allTasks = [];
+let allTasksLoaded = false;
+
+async function loadAllTasks() {
+  if (allTasksLoaded) return;
+  allTasksLoaded = true;
+  const texts = await Promise.all(paths.taskFiles.map(fetchText));
+  for (const text of texts) {
+    if (typeof text !== "string") continue;   // missing (404) or failed (listed on the load card)
+    for (const line of text.split("\n")) {
+      try {
+        const t = JSON.parse(line);
+        if (t && typeof t.task_id === "string" && Number.isInteger(t.year) && !allTasks.some((x) => x.task_id === t.task_id)) {
+          allTasks.push({ task_id: t.task_id, site: t.site || null, year: t.year });
+        }
+      } catch { /* blank or broken line */ }
+    }
+  }
+}
+
+// A season the UI may open: a dev task, or any task-file season once Season's list has loaded them.
+function isTask(task) {
+  return isDev(task) || allTasks.some((t) => t.task_id === task);
+}
+
 // Live seasons (tasks/live.jsonl): listed in the Season picker after the dev seasons. Their logs exist only while
 // scripts/live_season.py plays them (runs/live/); nothing is stored ahead of time. ?livetask=UFGA-2025 swaps in
 // another live season (for testing without touching 2026).
@@ -173,11 +207,11 @@ export async function loadIndex() {
 }
 
 // Does the log file exist? HEAD request, cached: true, false (404), or a LoadError (not cached, so a later call
-// asks again). Dev seasons only.
+// asks again). Task-file seasons only.
 const logExists = new Map();
 
 export function hasLog(config, task) {
-  if (!isDev(task)) return Promise.resolve(false);
+  if (!isTask(task)) return Promise.resolve(false);
   const key = `${config}/${task}`;
   if (!logExists.has(key)) {
     const p = request(paths.run(config, task), { method: "HEAD" }).then((r) => {
@@ -189,18 +223,42 @@ export function hasLog(config, task) {
   return logExists.get(key);
 }
 
-// Season picker: dev seasons where the index lists both SEASON_PAIR configs and both logs exist (dev order).
-// hidden: the dev seasons left out. One season at a time: 40 HEAD requests at once make the local http.server reset
-// connections, and the next fetch (e.g. an eval.csv) then fails. A HEAD that fails after its retries (LoadError)
-// keeps the season: only a 404 hides it, and loading that season shows the load-failure card if the log fails too.
-export async function pairSeasons(index) {
-  const pair = Object.values(SEASON_PAIR), shown = [], hidden = [];
-  for (const t of devTasks) {
-    const ok = pair.every((c) => ((index && index[c]) || []).includes(t))
-      && (await Promise.all(pair.map((c) => hasLog(c, t)))).every((r) => r !== false);
-    (ok ? shown : hidden).push(t);
+// Season's split per season, from the eval.csv of the Season agent run (agents_a/designs/<design>/results/eval.csv,
+// rows of SEASON_PAIR.right; run loadIndex first so the design is known): {task_id: split}. Only the config,
+// task_id and split cells are read. {} when there is no such file (or it failed: listed on the load card).
+export async function loadSeasonSplits() {
+  const config = SEASON_PAIR.right, design = aDesignOf[config];
+  if (!design) return {};
+  const text = await fetchText(paths.aEval(design));
+  if (typeof text !== "string") return {};
+  const lines = text.split(/\r?\n/).filter((l) => l.trim() && !l.startsWith("#"));
+  const cut = (l) => l.split(",").map((c) => c.trim());
+  const head = lines.length ? cut(lines[0]) : [];
+  const [ci, ti, si] = ["config", "task_id", "split"].map((h) => head.indexOf(h));
+  const splits = {};
+  if (ci < 0 || ti < 0 || si < 0) return splits;
+  for (const l of lines.slice(1)) {
+    const c = cut(l);
+    if (c[ci] === config && c[ti] && c[si]) splits[c[ti]] = c[si];
   }
-  return { shown, hidden };
+  return splits;
+}
+
+// Season picker: every task-file season from SEASON_MIN_YEAR on, in file order: [{task, site, year, split, available}].
+// split from loadSeasonSplits (null = not in that eval.csv: "split unknown"). available: both SEASON_PAIR logs
+// exist. A 404 on either marks the season unavailable (listed, never hidden). A HEAD that fails after its retries
+// (LoadError) counts as available; loading that season then shows the load-failure card. One season at a time:
+// 40 HEAD requests at once make the local http.server reset connections.
+export async function seasonList(splits = {}) {
+  await loadAllTasks();
+  const pair = Object.values(SEASON_PAIR), list = [];
+  for (const t of allTasks) {
+    if (t.year < SEASON_MIN_YEAR) continue;
+    const logs = await Promise.all(pair.map((c) => hasLog(c, t.task_id)));
+    list.push({ task: t.task_id, site: t.site, year: t.year, split: splits[t.task_id] || null,
+      available: logs.every((r) => r !== false) });
+  }
+  return list;
 }
 
 // ---------------------------------------------------------------- run log -> weeks model
@@ -208,7 +266,7 @@ export async function pairSeasons(index) {
 // The run model, null (missing or empty log), or a LoadError.
 export async function loadRun(config, task) {
   if (isLive(task)) return loadLiveRun(config, task);
-  if (!isDev(task)) return null;   // never open a non-dev log
+  if (!isTask(task)) return null;   // only task-file seasons
   const text = await fetchText(paths.run(config, task));
   if (text === null || text instanceof LoadError) return text;
   const events = [];
@@ -282,7 +340,7 @@ export function buildRun(config, task, events) {
         if (e.agent === "policy") w.policyDecision = d;
         else if (e.agent === "coordinator" || !w.decision) w.decision = d;
         break;
-      case "fallback": w.fallbacks.push({ agent: e.agent, why: d.why || d.text || JSON.stringify(d) }); break;
+      case "fallback": w.fallbacks.push({ agent: e.agent, why: d.why || d.reason || d.text || JSON.stringify(d) }); break;
       case "tool_call": {
         const call = { agent: e.agent, name: d.name, args: d.args, result: undefined };
         w.tools.push(call);
@@ -351,9 +409,13 @@ export function buildRun(config, task, events) {
     if (typeof m === "string" && m) { model = m; break; }
   }
 
+  // Log timestamps (ISO strings -> ms): first event, last event, the final line, each week's step_result.
+  const ms = (e) => (e && typeof e.t === "string" && !Number.isNaN(Date.parse(e.t)) ? Date.parse(e.t) : null);
   const parsed = parseTaskId(task);
   return {
     config, task, W, weeks, final,
+    t0: ms(events[0]), tLast: ms(events[events.length - 1]), tFinal: ms(finalEvent),
+    stepT: weeks.map((w) => ms(w.events.find((e) => e.kind === "step_result"))),
     site: meta.site || (parsed && parsed.site) || null,
     year: num(meta.year) || (parsed && parsed.year) || null,
     split: meta.split || (isDev(task) ? "dev" : null),
@@ -381,6 +443,47 @@ export function weekEvents(run, k, stormMm) {
   const uptake = w.weekly ? num(w.weekly.n_uptake) : null;
   if (uptake !== null && uptake > 0.5) events.push({ kind: "uptake", amount: uptake });
   return events;
+}
+
+// The Critic's verdict for week k: "object", "accept", or null (no review_plan verdict that week: shown as
+// "no verdict", never as accept). A's logs carry it in review_plan tool calls; B's in critic {objection: bool}.
+export function weekVerdict(run, k) {
+  const w = run && run.weeks[k];
+  if (!w || w.harvest) return null;
+  for (const e of w.events) {
+    if (e.agent !== "critic" || e.kind !== "message" || !e.data) continue;
+    for (const c of Array.isArray(e.data.tool_calls) ? e.data.tool_calls : []) {
+      if (!c || c.name !== "review_plan") continue;
+      let a = null;
+      try { a = typeof c.arguments === "string" ? JSON.parse(c.arguments) : c.arguments; } catch { /* unreadable */ }
+      if (a && typeof a.verdict === "string") return a.verdict === "accept" ? "accept" : "object";
+    }
+    if (typeof e.data.objection === "boolean") return e.data.objection ? "object" : "accept";
+  }
+  return null;
+}
+
+// Repo facts the live season needs before its log exists, read from the files that set them (null when missing):
+//   weeksPerSeason  config.yaml env.weeks_per_season (env/server.py ends the season after that many weeks)
+//   plantingDoy     env/weather.py SITES[site].planting_doy (both simulators plant on that day)
+let factsP = null;
+export function loadSeasonFacts() {
+  if (!factsP) {
+    factsP = Promise.all([fetchText("../config.yaml"), fetchText("../env/weather.py")]).then(([cfg, wx]) => {
+      const m = typeof cfg === "string" ? /^\s*weeks_per_season:\s*(\d+)/m.exec(cfg) : null;
+      const plantingDoy = {};
+      if (typeof wx === "string") for (const s of wx.matchAll(/"([A-Z]+)":\s*\{\s*"planting_doy":\s*(\d+)/g)) plantingDoy[s[1]] = +s[2];
+      return { weeksPerSeason: m ? +m[1] : null, plantingDoy };
+    });
+  }
+  return factsP;
+}
+
+// NeMo Gym dataset rows (gym_env/environments/fieldtwin/data/<split>.jsonl, built by gym_env/prepare.py): the
+// number of non-empty lines, null when missing.
+export async function countGymRows(split) {
+  const text = await fetchText(`../gym_env/environments/fieldtwin/data/${split}.jsonl`);
+  return typeof text === "string" ? text.split("\n").filter((l) => l.trim()).length : null;
 }
 
 // ---------------------------------------------------------------- weather

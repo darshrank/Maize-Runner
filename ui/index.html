@@ -24,8 +24,21 @@
     </filter>
   </svg>
 
-  <div id="wordmark"><i class="mark"></i><span>FieldTwin</span></div>
-  <span id="src" class="badge" hidden title="Data source of every number on screen"></span>
+  <!-- Top bar (every page): wordmark, live chip during a live run (click: back to Season), the split badge for the
+       current tab. Pages are switched by the dock at the bottom (dock.js) or keys 1-6. -->
+  <header id="topbar">
+    <div id="wordmark"><i class="mark"></i><span>FieldTwin</span></div>
+    <div id="topright">
+      <button id="livechip" class="live-chip" hidden aria-label="Live season: back to Season"><i class="live-dot"></i><span class="t mono"></span></button>
+      <span id="src" class="badge split" hidden title="Split of every number on this tab"></span>
+    </div>
+  </header>
+
+  <!-- Season headline (3D and 2D): what the tab proves, then the season in plain words. Live: the run's status line. -->
+  <header id="season-head" class="head">
+    <h1 id="season-h1"></h1>
+    <p id="season-sub" class="sub"></p>
+  </header>
 
   <!-- 1 Season, 3D (default): canvas plus HTML overlays that season3d.js places from the projected field anchors
        every frame: field names above each field, the finale in one row under the fields. The only numbers here: one
@@ -42,21 +55,40 @@
       <div class="cfg-none quiet" data-side="right" hidden>No run for this season</div>
     </div></div>
     <div class="s3-anchor" id="s3-fin-left"><div class="s3-in down">
-      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
-      <div class="fin-leach" hidden></div>
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">Profit ($/ha)</span></div>
+      <div class="ctr" data-side="left" hidden>
+        <div class="c"><span class="k">Nitrogen (kg/ha)</span><span class="v mono" data-k="n"></span></div>
+        <div class="c"><span class="k">Water (mm)</span><span class="v mono" data-k="w"></span></div>
+        <div class="c"><span class="k">Leaching (kg/ha)</span><span class="v mono leach" data-k="l"></span></div>
+      </div>
     </div></div>
     <div class="s3-anchor" id="s3-fin-right"><div class="s3-in down">
-      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">profit per ha</span></div>
-      <div class="fin-leach" hidden></div>
+      <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">Profit ($/ha)</span></div>
+      <div class="ctr" data-side="right" hidden>
+        <div class="c"><span class="k">Nitrogen (kg/ha)</span><span class="v mono" data-k="n"></span></div>
+        <div class="c"><span class="k">Water (mm)</span><span class="v mono" data-k="w"></span></div>
+        <div class="c"><span class="k">Leaching (kg/ha)</span><span class="v mono leach" data-k="l"></span></div>
+      </div>
     </div></div>
     <div class="s3-anchor" id="s3-fin-mid"><div class="s3-in down">
-      <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge"></span></div>
+      <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge split"></span></div>
     </div></div>
     <div id="s3-week" aria-live="polite"></div>
   </div>
 
   <!-- Week cards (3D Season): one card per week, left side, synced with the week; key N toggles them -->
   <aside id="weekcards" hidden></aside>
+
+  <!-- Live season before Play: never empty. One line of facts (weather file, env/weather.py) and one button. -->
+  <section id="livepanel" class="card" hidden>
+    <span class="label">2026 live season</span>
+    <button id="livestart" class="btn-hero">Start live season</button>
+    <p id="livefacts" class="sub"></p>
+    <p id="livemsg" class="live-msg" hidden></p>
+  </section>
+
+  <!-- Live season finished: Farmer vs FieldTwin from the live logs' final lines, plus the run time. -->
+  <section id="seasonend" class="card" hidden aria-live="polite"></section>
 
   <!-- 1 Season controls; with ?view2d=1 also the R1 2D side view (fallback) -->
   <main id="season" class="view">
@@ -70,7 +102,7 @@
           <h2 class="cfg-name" data-side="left"></h2>
           <span class="cfg-model quiet mono" data-side="left" hidden></span>
           <span class="cfg-none quiet" data-side="left" hidden>No run for this season</span>
-          <span id="fb-left" class="badge fallback" hidden></span>
+          <span id="fb-left" class="flag-pill" hidden></span>
         </header>
         <div class="plot" id="plot-left"></div>
         <div class="tally" id="tally-left">
@@ -81,8 +113,8 @@
           </div>
         </div>
         <div class="lines">
-          <div class="objection" id="obj-left" hidden><span class="who">Critic</span><span class="t"></span></div>
-          <div class="why" id="why-left"><span class="who"></span><span class="t"></span><span class="flag" hidden>fallback</span></div>
+          <div class="objection" id="obj-left" hidden><span class="who">Critic</span><span class="flag-pill">Objection</span><span class="t"></span></div>
+          <div class="why" id="why-left"><span class="who"></span><span class="t"></span><span class="flag flag-pill" hidden>Fallback</span></div>
         </div>
       </section>
 
@@ -91,7 +123,7 @@
           <h2 class="cfg-name" data-side="right"></h2>
           <span class="cfg-model quiet mono" data-side="right" hidden></span>
           <span class="cfg-none quiet" data-side="right" hidden>No run for this season</span>
-          <span id="fb-right" class="badge fallback" hidden></span>
+          <span id="fb-right" class="flag-pill" hidden></span>
         </header>
         <div class="plot" id="plot-right"></div>
         <div class="tally" id="tally-right">
@@ -102,8 +134,8 @@
           </div>
         </div>
         <div class="lines">
-          <div class="objection" id="obj-right" hidden><span class="who">Critic</span><span class="t"></span></div>
-          <div class="why" id="why-right"><span class="who"></span><span class="t"></span><span class="flag" hidden>fallback</span></div>
+          <div class="objection" id="obj-right" hidden><span class="who">Critic</span><span class="flag-pill">Objection</span><span class="t"></span></div>
+          <div class="why" id="why-right"><span class="who"></span><span class="t"></span><span class="flag flag-pill" hidden>Fallback</span></div>
         </div>
       </section>
     </div>
@@ -117,6 +149,9 @@
         <div class="seg speed" role="group" aria-label="Speed ([ and ] keys)">
           <button data-speed="0.5">0.5x</button><button data-speed="1" class="on">1x</button><button data-speed="2">2x</button><button data-speed="4">4x</button>
         </div>
+        <div class="seg site" id="site" role="group" aria-label="Site">
+          <button data-site="UFGA" class="on">Gainesville</button><button data-site="TIFT">Georgia</button>
+        </div>
         <label class="pick"><span class="label">Season</span><select id="task" class="task" aria-label="Season"></select></label>
         <span class="keys quiet">Space play · arrows step · [ ] speed · R reset</span>
       </div>
@@ -124,46 +159,45 @@
     </section>
   </main>
 
-  <!-- 2 Agents: the full weekly chat for one run -->
+  <!-- 2 How it works: one real team week, step by step (howitworks.js); follows the live season when one runs -->
+  <main id="how" class="view" hidden>
+    <div class="hiw-wrap" id="how-body"></div>
+  </main>
+
+  <!-- 3 Results: held-out test headline (agents_a/demo_results.json); dev tables collapsed -->
+  <main id="results" class="view" hidden>
+    <div class="page results-wrap" id="results-body"></div>
+  </main>
+
+  <!-- 4 Serving: vLLM metrics from results/vllm_metrics.json (serving.js), plus this live run when there is one -->
+  <main id="serving" class="view" hidden>
+    <div class="page srv-wrap" id="serving-body"></div>
+  </main>
+
+  <!-- 5 Agents: every agent's message for one week of the FieldTwin team (Season's season and week) -->
   <main id="agents" class="view" hidden>
-    <div class="agents-wrap">
-      <header class="agents-bar">
-        <div class="seg cfg" id="cfg" role="group" aria-label="Run"></div>
-        <label class="pick"><span class="label">Season</span><select id="task-agents" class="task" aria-label="Season"></select></label>
+    <div class="page agents-wrap">
+      <header class="page-head">
+        <div class="head"><h1>Five agents, one weekly decision</h1><p class="sub" id="a-sub"></p></div>
         <div class="stepper">
           <button id="a-prev" class="btn" aria-label="Previous week">&lsaquo;</button>
           <span id="a-week" class="mono" aria-live="polite">Week 0</span>
           <button id="a-next" class="btn" aria-label="Next week">&rsaquo;</button>
         </div>
-        <span id="a-fb" class="badge fallback" hidden></span>
       </header>
       <div id="agents-body"></div>
     </div>
   </main>
 
-  <!-- 3 Results: A's dev baselines (summary.md "Split: dev", eval.csv dev rows) -->
-  <main id="results" class="view" hidden>
-    <div class="results-wrap" id="results-body"></div>
+  <!-- 6 Gym: the NeMo Gym packaging, facts from gym_env/ only (main.js renderGym) -->
+  <main id="gym" class="view" hidden>
+    <div class="page" id="gym-body"></div>
   </main>
-
-  <!-- 6 How it works: one static diagram of a team week (howitworks.js), no data, no animation -->
-  <main id="how" class="view" hidden>
-    <div class="hiw-wrap" id="how-body"></div>
-  </main>
-
-  <!-- 4-5 Gym, Serving: quiet placeholders until their units -->
-  <main id="placeholder" class="view" hidden>
-    <div class="placeholder">
-      <span class="label" id="placeholder-title"></span>
-      <span id="placeholder-text">Coming soon</span>
-      <span class="quiet mono" id="placeholder-file"></span>
-    </div>
-  </main>
-
-  <nav id="dock" aria-label="Pages"></nav>
   <div id="notice" class="quiet" hidden></div>
   <!-- Load failures (net.js, after retries): each file that failed and why. Season shows it centered instead of a half scene. -->
   <aside id="loadfail" role="status" aria-live="polite" hidden></aside>
+  <!-- Page dock (dock.js): one icon per tab in the demo order, its key under the icon. -->
+  <nav id="dock" aria-label="Pages"></nav>
 
   <script type="module" src="js/main.js"></script>
 </body>

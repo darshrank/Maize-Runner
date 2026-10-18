@@ -472,8 +472,8 @@ export class Diorama {
         }
         case "leach":
           m.trail.unshift(m.y);
-          if (m.trail.length > 4) m.trail.pop();
-          m.vy -= 5 * dt; m.y += m.vy * dt;
+          if (m.trail.length > 6) m.trail.pop();
+          m.vy -= 3 * dt; m.y += m.vy * dt;   // slow enough to read as drips on video
           if (m.y <= this.slabTop) {
             keep.push({ kind: "splash", x: m.x, y: this.slabTop, z: m.z, t: 0, life: 0.6, size: m.size });
             this.pulse = Math.min(1.6, this.pulse + 0.03 * (0.6 + m.share));

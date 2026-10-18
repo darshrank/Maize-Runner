@@ -5,7 +5,7 @@
 
 // style.css token names (kebab case) -> theme.color keys (camel case).
 const TOKENS = ["bg", "surface-1", "surface-2", "border", "text", "muted", "accent",
-  "water", "nitrogen", "plant", "leach", "rain", "warn", "tassel", "thirst"];
+  "water", "nitrogen", "plant", "leach", "rain", "tassel", "thirst"];
 
 export const theme = {
   color: {},                     // filled by readCssTheme() from the style.css tokens
@@ -45,23 +45,25 @@ export const theme = {
       edgeOpacity: 0.34, slabRed: 0.9,
       ambient: 0.35, key: 1.1,
     },
-    water: { fill: 0.84, emit: 0.32 },   // inner cyan fill, as a share of the cube
+    water: { fill: 0.84, emit: 0.9 },    // inner cyan fill, as a share of the cube (fix1: emit 0.32 -> 0.9, reads as cyan on video)
     // N and leaching cores (small emissive cubes). soil: cores at the task's max soil_n_kg_ha (perCube slots in
     // each top cube); dose / uptake / leach: counts at the task's max of that value. ?lite=1 halves dose and leach.
-    cores: { perCube: 3, size: 0.075, dose: 36, uptake: 18, leach: 80, capN: 360, capLeach: 520 },
-    plants: { maxH: 2.4, sprout: 0.1 },
-    labelY: 3.55,                 // field names sit above this height (above the tallest plant, room for the model line)
-    camera: { fov: 38, pos: [0, 1.9, 16.2], target: [0, -1.2, 0], dollyX: 2.2, dollyPeriod: 44 },
+    // fix1: size 0.075 -> 0.095 and leach 80 -> 110 so the N cores and leaching drips read on video.
+    cores: { perCube: 3, size: 0.095, dose: 36, uptake: 18, leach: 110, capN: 360, capLeach: 720 },
+    plants: { maxH: 2.1, sprout: 0.1 },   // fix1: 2.4 -> 2.1, more of the frame for the soil grid
+    labelY: 2.75,                 // field names sit above this height (just above the tallest plant)
+    // fix1: camera closer (z 16.2 -> 13), smaller sideways sway (2.2 -> 1.2); fitView still backs off when needed.
+    camera: { fov: 38, pos: [0, 2.1, 13.0], target: [0, -1.2, 0], dollyX: 1.2, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
     // Bloom between R2 (1.0 / 0.0) and R3 (0.5 / 0.15). Selective: plants (rim), water fill, N and leach cores,
     // groundwater fluid, lightning bolt. glow: per-kind gain in the bloom pass only (the scene itself is unchanged).
     // R5 (browser check): water 0.7 and pool 1.0 washed a full soil profile into solid cyan and the slab into a red
     // haze over the controls; both lowered so the glass and edges stay readable.
     bloom: { strength: 0.6, radius: 0.52, threshold: 0.1 },
-    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.22, core: 1.0, pool: 0.35 },
+    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.3, core: 1.25, pool: 0.4 },
     // Leaching pulse (each splash adds to it, capped at 1.6, decays): gain on the groundwater fluid's emission and
     // on the slab's red tint. R4 used 1.7 and 0.5; one leaching week saturated the slab.
-    leachPulse: { fluid: 0.6, slab: 0.2 },
+    leachPulse: { fluid: 0.8, slab: 0.25 },
     thirst: { start: 0.32, full: 0.15 },   // obs.soil_water_frac where leaves start to droop / droop fully
     stormLean: 0.55,              // bend at the plant top in a storm week (logged rain > stormMm)
     wind: 0.09, stormWind: 0.22,  // sway amplitude, calm and storm
@@ -71,9 +73,10 @@ export const theme = {
     cards: { objectionChars: 100, stiffness: 150, damping: 24 },   // week cards (carousel.js)
     // Camera refit (season3d.js fitView): the scene centers in the space right of the week cards (gap px past their
     // right edge) and backs off when both fields (plus margin world units and the dolly sway) would not fit that
-    // width, or when the label anchors (labelY) to the slab bottom would not fit between `top` px (top bar and
-    // field names) and `bottom` px above the controls (the finale row).
-    fit: { margin: 0.5, gap: 24, top: 124, bottom: 150 },
+    // width, or when the label anchors (labelY) to the slab bottom would not fit between `top` px (top bar, Season
+    // headline and field names) and `bottom` px above the controls (counters and the finale row). headTop: field names
+    // never sit above this y (px).
+    fit: { margin: 0.3, gap: 20, top: 182, bottom: 158, headTop: 150 },
   },
   // Mote counts at full scale (each scaled by its value over the max across both fields for this task).
   motes: {

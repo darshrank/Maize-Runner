@@ -1,7 +1,7 @@
 // Agent text. weekLines feeds the 2D Season fallback (?view2d=1): the week's reason (the Coordinator's, or the
-// policy's for non-LLM configs) and, in a week where the Critic objects, the objection as one orange line.
+// policy's for non-LLM configs) and, in a week where the Critic objects, the objection as one line with the Objection pill.
 // chatHtml renders the full weekly chat on the Agents page (R2): decision, every message in log order (Critic
-// objections in orange), fallbacks, and the tool calls collapsed under <details>. Message text is basic markdown
+// objections with the Objection pill), fallbacks (Fallback pill), and the tool calls collapsed under <details>. Message text is basic markdown
 // (mdHtml: bold, italics, lists, line breaks) rendered after every character is HTML-escaped.
 
 import { AGENT_NAMES } from "./data.js";
@@ -89,11 +89,11 @@ export function chatHtml(run, k) {
       + `<div class="quiet">No agent chat: fixed policy.</div>`;
   }
   const items = w.chat.map((m) => `<div class="bubble ${m.agent}${m.objection ? " objection" : ""}">`
-    + `<span class="who">${esc(AGENT_NAMES[m.agent] || m.agent)}${m.objection ? " · objection" : ""}</span>`
+    + `<span class="who">${esc(AGENT_NAMES[m.agent] || m.agent)}${m.objection ? ' <span class="flag-pill">Objection</span>' : ""}</span>`
     + `<div class="md">${mdHtml(m.text)}</div></div>`);
   const tools = w.tools.map((t) => `<details class="tool"><summary><span class="who ${esc(t.agent)}">${esc(AGENT_NAMES[t.agent] || t.agent)}</span>${esc(t.name || "tool")}</summary>`
     + `<pre>${esc(toolText(t.args))}\n→ ${esc(toolText(t.result))}</pre></details>`).join("");
-  const falls = w.fallbacks.map((f) => `<div class="bubble fallback"><span class="who">Fallback</span><div class="md">${mdHtml(f.why)}</div></div>`).join("");
+  const falls = w.fallbacks.map((f) => `<div class="bubble fallback"><span class="who"><span class="flag-pill">Fallback</span></span><div class="md">${mdHtml(f.why)}</div></div>`).join("");
   return card + items.join("") + falls
     + (tools ? `<div class="tools"><span class="label">Tool calls (${w.tools.length})</span>${tools}</div>` : "");
 }
