@@ -18,7 +18,7 @@ Rule sources:
 - index.json: update_index() in agents/run.py.
 - eval.csv columns: COLUMNS imported from eval.run_eval. Leading "# ..." lines are comments (FAKE marker).
 - weather day: data/README.md on a-env. iterations.json: UI_SPEC.md section 3 (pending ask to B).
-- vllm_metrics.json: STATE.md contracts.
+- vllm_metrics.json: STATE.md contracts (+ Lane C row fields setting, split, calls, fallbacks unless --fake).
 """
 
 import csv
@@ -37,6 +37,7 @@ KINDS = {"tool_call", "tool_result", "message", "decision", "fallback", "step_re
 
 NUM, INT, STR, BOOL, OBJ, LIST, ANY = "number", "int", "str", "bool", "object", "list", "any"
 NUM_NULL = "number or null"   # vllm_metrics: null = not measured (needs vLLM /metrics)
+INT_NULL = "int or null"      # vllm_metrics: null = not measured
 
 # SKELETON_SPEC.md section 5 (obs, weekly, simulator final) and section 7 (/step response, money).
 OBS = {"day": INT, "week": INT, "stage": STR, "soil_water_frac": NUM, "soil_n_kg_ha": NUM,
@@ -56,6 +57,11 @@ ITERATION = {"version": STR, "change": STR, "dev_reward_mean": NUM, "dev_gap_clo
 VLLM = {"vllm_version": STR, "model": STR, "measured_at": STR, "rows": LIST}
 VLLM_ROW = {"parallel": INT, "seasons_per_hour": NUM_NULL, "p50_ms": NUM_NULL, "p99_ms": NUM_NULL,
             "prefix_cache_hit_rate": NUM_NULL}
+# Lane C's own row fields (results/vllm_metrics.json; not in the fake file): required unless --fake.
+VLLM_ROW_LANEC = {"setting": STR, "split": STR, "calls": INT_NULL, "fallbacks": INT_NULL}
+# Optional row fields: type-checked when present.
+VLLM_ROW_OPT = {"peak_overlap_seasons": INT_NULL, "peak_running": INT_NULL, "max_waiting": INT_NULL,
+                "cached_prompt_share": NUM_NULL, "vllm_requests": INT_NULL}
 RAIN_TOL_MM = 0.5   # weekly sum vs daily file (values rounded to 0.1 and 0.01)
 
 DATA_RULES = {"decision": DECISION, "step_result": STEP, "final": FINAL,
@@ -77,6 +83,8 @@ def type_ok(value, kind: str) -> bool:
         return isinstance(value, (int, float)) and not isinstance(value, bool)
     if kind == NUM_NULL:
         return value is None or type_ok(value, NUM)
+    if kind == INT_NULL:
+        return value is None or type_ok(value, INT)
     if kind == STR:
         return isinstance(value, str)
     if kind == OBJ:
@@ -239,6 +247,13 @@ def validate_vllm(path: Path, fake: bool = False) -> list[str]:
     if isinstance(m, dict) and isinstance(m.get("rows"), list):
         for i, r in enumerate(m["rows"]):
             out += [f"{path}:1: {p}" for p in check_fields(r, VLLM_ROW, f"rows[{i}]")]
+            if not fake:
+                out += [f"{path}:1: {p}" for p in check_fields(r, VLLM_ROW_LANEC, f"rows[{i}]")]
+            if isinstance(r, dict):
+                present = {k: v for k, v in VLLM_ROW_OPT.items() if k in r}
+                out += [f"{path}:1: {p}" for p in check_fields(r, present, f"rows[{i}]")]
+                if "llm_calls" in r:
+                    out.append(f"{path}:1: rows[{i}] has llm_calls (renamed to calls)")
     if fake and not (isinstance(m, dict) and m.get("fake") is True):
         out.append(f"{path}:1: --fake: missing \"fake\": true")
     return out
