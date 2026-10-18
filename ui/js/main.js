@@ -26,12 +26,13 @@ import { weekLines, chatHtml, esc, mdPlain } from "./agents.js";
 import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
-import { renderHowItWorks } from "./howitworks.js";
+import { renderHowItWorks, howStep } from "./howitworks.js";
 
 export { theme };
 
 const $ = (id) => document.getElementById(id);
-// Each placeholder names the data file its page will read. How it works: one static diagram (howitworks.js), no data.
+// Each placeholder names the data file its page will read. How it works: step-by-step walkthrough of one real dev
+// week (howitworks.js; Back / Next, arrow keys).
 const PAGES = [
   { id: "season", label: "Season", icon: "sprout" },
   { id: "agents", label: "Agents", icon: "chats" },
@@ -603,6 +604,11 @@ function bind() {
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("select, input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key >= "1" && e.key <= String(VIEWS.length)) { setView(VIEWS[+e.key - 1]); return; }
+    if (state.view === "how") {
+      if (e.key === "ArrowRight") { e.preventDefault(); howStep(1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); howStep(-1); }
+      return;
+    }
     if (state.view === "agents") {
       if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }

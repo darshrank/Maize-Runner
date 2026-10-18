@@ -330,28 +330,51 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .bubble .md b { font-weight: 600; }
 .res-note { font-size: 14px; }
 
-/* ---------------------------------------------------------------- How it works (howitworks.js): one static SVG */
-.hiw-wrap { height: 100%; max-width: 1500px; margin: 0 auto; padding: 4px var(--gutter) 8px; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
+/* ---------------------------------------------------------------- How it works (howitworks.js): one-week walkthrough */
+.hiw-wrap { height: 100%; max-width: 1500px; margin: 0 auto; padding: 4px var(--gutter) 8px; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px; }
 .hiw-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
 .hiw-head h1 { margin: 0; font-size: 22px; font-weight: 600; }
 .hiw-head p { margin: 0; font-size: 15px; }
+.hiw-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hiw-bar .btn:disabled { opacity: 0.35; cursor: default; border-color: var(--hairline-strong); }
+.hiw-count { font-size: 15px; color: var(--quiet); }
+.hiw-step-label { font-size: 18px; font-weight: 600; min-width: 280px; }
+.hiw-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.hiw-pill { background: none; border: 1px solid var(--hairline); padding: 3px 9px; font-size: 14px; color: var(--quiet); cursor: pointer; }
+.hiw-pill.on { border-color: var(--accent); color: var(--text); }
+.hiw-stage { position: relative; min-height: 0; }
 .hiw-svg { width: 100%; height: 100%; display: block; }
-.hiw-svg text { font-family: var(--sans); }
-.hiw-svg .hiw-name { font-size: 18px; font-weight: 600; }
-.hiw-svg .hiw-sub { font-size: 15px; fill: var(--quiet); }
-.hiw-svg .hiw-mono { font: 500 14px var(--mono); fill: var(--quiet); }
-.hiw-svg .hiw-num { font: 700 15px var(--mono); }
-.hiw-svg .hiw-obj-label { font-size: 15px; font-weight: 600; }
-.hiw-svg .hiw-box { fill: #000; stroke-width: 2; }
-.hiw-svg .hiw-plain { stroke: var(--hairline-strong); }
-.hiw-svg .hiw-badge circle { fill: #000; stroke-width: 2; }
-.hiw-svg .hiw-icon { fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .hiw-svg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.hiw-svg .hiw-call { stroke-width: 2.4; }
+.hiw-svg .hiw-call { stroke-width: 2.6; }
 .hiw-svg .hiw-back { stroke: var(--quiet); stroke-width: 1.4; }
-.hiw-svg .hiw-obj { stroke-width: 2.4; }
-.hiw-svg .hiw-tool { stroke: var(--text); stroke-opacity: 0.55; stroke-width: 1.4; }
-.hiw-svg .hiw-model { stroke: var(--quiet); stroke-opacity: 0.55; stroke-width: 1; }
+.hiw-svg .hiw-obj { stroke-width: 2.8; }
+.hiw-svg .hiw-tool { stroke: var(--text); stroke-opacity: 0.6; stroke-width: 1.4; }
+.hiw-svg .hiw-model { stroke: var(--quiet); stroke-opacity: 0.7; stroke-width: 1; }
 .hiw-svg .hiw-halo { stroke: #000; stroke-width: 10; stroke-linecap: butt; }
-.hiw-svg .neon { filter: url(#hiw-glow); }
-.lite .hiw-svg .neon { filter: none; }
+.hiw-svg .hiw-box { stroke: none; }
+.hiw-svg .hiw-tools { fill: #2b3328; }
+.hiw-svg .hiw-field { fill: #000; stroke: var(--plant); stroke-width: 2.5; }
+.hiw-svg .hiw-icon { fill: none; stroke: var(--plant); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+/* White text on every fill: a dark outline drawn under each glyph keeps it readable on the light greens and cyan. */
+.hiw-svg .hiw-label { font: 700 20px var(--sans); fill: #fff; stroke: rgba(0, 0, 0, 0.6); stroke-width: 3.5px; paint-order: stroke; stroke-linejoin: round; }
+.hiw-svg .hiw-label-sm { font-size: 16px; font-weight: 600; }
+.hiw-svg .hiw-label, .hiw-svg .hiw-icon { pointer-events: none; }
+.hiw-part { transition: opacity var(--ms) var(--ease); }
+.hiw-part.dim { opacity: 0.18; }
+.hiw-node { cursor: default; outline: none; }
+.hiw-node:not(.dim) .hiw-box { filter: url(#hiw-glow); }
+.hiw-node:focus-visible .hiw-box { stroke: #fff; stroke-width: 2; }
+.lite .hiw-node .hiw-box { filter: none; }
+.hiw-pops { position: absolute; inset: 0; pointer-events: none; }
+.hiw-card, .hiw-tip {
+  position: absolute; max-width: 320px; padding: 10px 14px; background: #000; border: 1px solid var(--c);
+  border-left-width: 4px; display: grid; gap: 3px; font-size: 15px; line-height: 1.35;
+}
+.hiw-card-head { font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c); }
+.hiw-card-main { font-size: 19px; font-weight: 600; }
+.hiw-card-tools { font-size: 14px; color: var(--c); }
+.hiw-card-line { color: var(--text); }
+.hiw-tip { z-index: 2; pointer-events: none; max-width: 380px; }
+.hiw-tip-role { font-weight: 600; color: var(--c); }
+.hiw-tip-msg { color: var(--text); display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .hiw-part { transition: none; } }
