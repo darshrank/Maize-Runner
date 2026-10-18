@@ -36,6 +36,7 @@ AGENTS = {"weather", "crop", "planner", "critic", "coordinator", "policy", "env"
 KINDS = {"tool_call", "tool_result", "message", "decision", "fallback", "step_result", "final"}
 
 NUM, INT, STR, BOOL, OBJ, LIST, ANY = "number", "int", "str", "bool", "object", "list", "any"
+NUM_NULL = "number or null"   # vllm_metrics: null = not measured (needs vLLM /metrics)
 
 # SKELETON_SPEC.md section 5 (obs, weekly, simulator final) and section 7 (/step response, money).
 OBS = {"day": INT, "week": INT, "stage": STR, "soil_water_frac": NUM, "soil_n_kg_ha": NUM,
@@ -53,7 +54,8 @@ WEATHER_DAY = {"date": STR, "doy": INT, "tmax_c": NUM, "tmin_c": NUM, "rain_mm":
                "rh_pct": NUM, "wind_m_s": NUM}
 ITERATION = {"version": STR, "change": STR, "dev_reward_mean": NUM, "dev_gap_closed": NUM, "dev_leached_mean": NUM}
 VLLM = {"vllm_version": STR, "model": STR, "measured_at": STR, "rows": LIST}
-VLLM_ROW = {"parallel": INT, "seasons_per_hour": NUM, "p50_ms": NUM, "p99_ms": NUM, "prefix_cache_hit_rate": NUM}
+VLLM_ROW = {"parallel": INT, "seasons_per_hour": NUM_NULL, "p50_ms": NUM_NULL, "p99_ms": NUM_NULL,
+            "prefix_cache_hit_rate": NUM_NULL}
 RAIN_TOL_MM = 0.5   # weekly sum vs daily file (values rounded to 0.1 and 0.01)
 
 DATA_RULES = {"decision": DECISION, "step_result": STEP, "final": FINAL,
@@ -73,6 +75,8 @@ def type_ok(value, kind: str) -> bool:
         return isinstance(value, int) and not isinstance(value, bool)
     if kind == NUM:
         return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if kind == NUM_NULL:
+        return value is None or type_ok(value, NUM)
     if kind == STR:
         return isinstance(value, str)
     if kind == OBJ:

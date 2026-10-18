@@ -1,22 +1,24 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8). R2: pages Season, Agents, Results, Gym,
-// Serving, switched by the dock (dock.js) or keys 1-5; no top bar.
-// Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas. Each field header is a picker
-// of the configs that have a log for the selected season (defaults: LEFT farmer practice, RIGHT the FieldTwin agent
-// team or the best available LLM config), with the model name under it when the log records one. Its only
-// numbers: one week label and, at season end, the profit finale for the two selected fields (season3d.js places
-// both from the projected field anchors). Week cards on the left (carousel.js, cube effect): one card per week
+// Serving, How it works, switched by the dock (dock.js) or keys 1-6; no top bar.
+// Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR
+// (LEFT farmer practice, RIGHT the FieldTwin agent team; no config pickers). Each field header is the config's plain
+// label, with the model name under it when the log records one. The season picker lists only seasons with both
+// logs. Its only numbers: one week label and, at season end, the profit finale for the two fields (season3d.js
+// places both from the projected field anchors). Week cards on the left (carousel.js, cube effect): one card per week
 // plus harvest, synced with the week both ways; each holds the week's dates, the narrator line (narrator.js) and,
 // in Critic objection weeks, the objection in one orange line. Key N toggles the cards. No bottom caption.
 // Season with ?view2d=1 (or after a WebGL / shader failure): the R1 2D side view (fieldSvg.js), kept as the
 // fallback. Agents: the full weekly chat for one run (agents.js). Results: A's dev baselines
 // (results_baseline/summary.md "Split: dev" table, eval.csv dev rows for the season). Gym, Serving: placeholders.
-// Real data only, dev seasons only (data.js).
+// Real data only, dev seasons only (data.js). Load failures (data.LoadError, after net.js retries) show in one glass
+// card (#loadfail) listing each file and why; Season shows that card instead of a half scene when either
+// SEASON_PAIR log fails, and Results keeps a failed config's row marked "failed to load".
 //
 // Week semantics (STATE.md): position k in 0..W-1 shows week k's decision and its outcome (obs at the end of
 // week k); k = W is harvest (the final line). Data stays 0-based; every label shows weeks 1-based (weekNo):
 // "Week 1 / W" .. "Week W / W", then "Harvest". Every number on screen comes from data.js. Theme: js/theme.js.
 
-import { theme, applyCssTheme } from "./theme.js";
+import { theme, readCssTheme } from "./theme.js";
 import * as data from "./data.js";
 import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
@@ -24,17 +26,20 @@ import { weekLines, chatHtml, esc, mdPlain } from "./agents.js";
 import { Dock } from "./dock.js";
 import { weekLine } from "./narrator.js";
 import { Carousel } from "./carousel.js";
+import { renderHowItWorks, howStep } from "./howitworks.js";
 
 export { theme };
 
 const $ = (id) => document.getElementById(id);
-// "How it works" moved to the deck (R2). Each placeholder names the data file its page will read.
+// Each placeholder names the data file its page will read. How it works: step-by-step walkthrough of one real dev
+// week (howitworks.js; Back / Next, arrow keys).
 const PAGES = [
   { id: "season", label: "Season", icon: "sprout" },
   { id: "agents", label: "Agents", icon: "chats" },
   { id: "results", label: "Results", icon: "bars" },
   { id: "gym", label: "Gym", icon: "loop", file: "results/iterations.json" },
   { id: "serving", label: "Serving", icon: "chip", file: "results/vllm_metrics.json" },
+  { id: "how", label: "How it works", icon: "flow" },
 ];
 const VIEWS = PAGES.map((p) => p.id);
 const params = new URLSearchParams(location.search);
@@ -45,8 +50,9 @@ const SIDES = ["left", "right"];
 const SPEEDS = [0.5, 1, 2, 4];
 
 const state = {
-  index: null, task: null, configs: [], pair: { left: null, right: null }, runs: { left: null, right: null },
+  index: null, task: null, seasons: [], pair: { ...data.SEASON_PAIR }, runs: { left: null, right: null },
   days: null, dayStart: null, week: 0, playing: false, speed: 1, view: "season", agentSide: "right", cards: true,
+  pairFailed: false,   // a SEASON_PAIR log failed to load for this season: no scene, the load card instead
 };
 const fields = {};       // 2D FieldViews (view2d only)
 let s3d = null;          // Season3D (3D only)
@@ -128,10 +134,10 @@ function setView(view) {
   state.view = view;
   if (dock) dock.setActive(view);
   $("season").hidden = view !== "season";
-  $("stage3d").hidden = !s3d || view !== "season";
-  if (s3d) s3d.setActive(view === "season");
+  showScene();
   $("agents").hidden = view !== "agents";
   $("results").hidden = view !== "results";
+  $("how").hidden = view !== "how";
   $("placeholder").hidden = !page.file;
   if (page.file) {
     $("placeholder-title").textContent = page.label;
@@ -139,14 +145,33 @@ function setView(view) {
   }
   if (view === "agents") renderAgents();
   if (view === "results") renderResults();
+  if (view === "how") renderHowItWorks($("how-body"));
   showCards();
+}
+
+// The Season scene (3D stage, or the 2D fields) is withheld while a SEASON_PAIR log failed to load; the load card
+// sits centered in its place.
+function showScene() {
+  const on = state.view === "season" && !state.pairFailed;
+  $("stage3d").hidden = !s3d || !on;
+  if (s3d) s3d.setActive(on);
+  $("fields").hidden = !!s3d || state.pairFailed;
+  document.body.classList.toggle("pair-failed", state.view === "season" && state.pairFailed);
+}
+
+// One quiet glass card listing every file that failed to load and why (data.loadFailures()); hidden when none.
+function renderLoadCard() {
+  const list = data.loadFailures();
+  const el = $("loadfail");
+  el.hidden = !list.length;
+  el.innerHTML = list.length ? `<div class="lf-head">Failed to load</div><ul>${list.map((f) =>
+    `<li><span class="mono">${esc(f.url.replace(/^(\.\.\/)+/, ""))}</span><span>${esc(f.reason)}</span></li>`).join("")}</ul>` : "";
 }
 
 // ---------------------------------------------------------------- chrome
 
 function renderTaskPicker() {
-  const tasks = data.seasons();
-  const html = tasks.map((t) => {
+  const html = state.seasons.map((t) => {
     const p = data.parseTaskId(t), tag = data.tuneTag(t);
     return `<option value="${esc(t)}" title="${esc(t)}"${t === state.task ? " selected" : ""}>`
       + `${esc(p ? p.year : t)}${tag ? ` · ${esc(tag)}` : ""}</option>`;
@@ -202,19 +227,13 @@ function fieldName(side) {
   return config ? data.configName(config) : "No run for this season";
 }
 
-// Field headers: a picker per side of the configs with a log for this season (plain labels), the model name
-// small under it when the log records one, and a quiet "No run for this season" when the side has no log.
-// The same pickers serve the 3D overlays and the 2D fallback.
+// Field headers: the SEASON_PAIR config's plain label per side, the model name small under it when the log
+// records one, and a quiet "No run for this season" when the side has no log. The same heads serve the 3D
+// overlays and the 2D fallback.
 function renderFieldHeads() {
   for (const side of SIDES) {
     const config = state.pair[side], run = state.runs[side];
-    const opts = state.configs.length ? state.configs : config ? [config] : [];
-    document.querySelectorAll(`select.cfg-pick[data-side="${side}"]`).forEach((sel) => {
-      sel.innerHTML = opts.length
-        ? opts.map((c) => `<option value="${esc(c)}"${c === config ? " selected" : ""}>${esc(data.configName(c))}</option>`).join("")
-        : `<option value="">No run for this season</option>`;
-      sel.disabled = opts.length < 2;
-    });
+    document.querySelectorAll(`.cfg-name[data-side="${side}"]`).forEach((el) => (el.textContent = fieldName(side)));
     const model = run && run.model ? run.model : "";
     document.querySelectorAll(`.cfg-model[data-side="${side}"]`).forEach((el) => {
       el.textContent = model.split("/").pop();
@@ -342,6 +361,7 @@ function renderAgents() {
 // tuned (dev 1990-2004) and not-tuned (dev 2005-2009) seasons; configs on the Season page with no eval rows are
 // named. Then A's summary.md "Split: dev" baseline table (config cells in plain labels), then the eval.csv dev rows
 // for the selected season with its tuned / not-tuned tag. Hindsight reads "Grid hindsight" (STATE.md data rules).
+// A config whose eval.csv failed to load keeps its row in both tables, marked "failed to load" (never dropped).
 let summaryDev, evalDev;
 const REF = "farmer_ufga";
 
@@ -372,29 +392,42 @@ function plainConfigCell(cell) {
 async function renderResults() {
   if (summaryDev === undefined) [summaryDev, evalDev] = await Promise.all([data.loadSummaryDev(), data.loadEval()]);
   if (state.view !== "results") return;
+  // A row is an array of cells, or {failed: config} for a config whose eval.csv failed to load.
+  const failedRow = (head, c) => `<tr class="failed"><td>${esc(data.configName(c))}</td>`
+    + `<td colspan="${head.length - 1}" class="quiet">failed to load</td></tr>`;
   const table = (head, rows) => `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>`
-    + `<tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i ? "mono" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    + `<tbody>${rows.map((r) => (r.failed ? failedRow(head, r.failed)
+      : `<tr>${r.map((c, i) => `<td class="${i ? "mono" : ""}">${esc(c)}</td>`).join("")}</tr>`)).join("")}</tbody></table>`;
   const winCell = (st, w) => (st.config === REF ? "—" : w.n ? `${w.won} / ${w.n}` : "—");
-  const stats = configStats(evalDev || []);
+  const evalRows = (evalDev && evalDev.rows) || [];
+  const failed = new Set(((evalDev && evalDev.failed) || []).flatMap((f) => f.configs));
+  const stats = configStats(evalRows).filter((st) => !failed.has(st.config));
+  const statsHead = ["config", "seasons", "mean profit $/ha", "mean N leached kg/ha", "mean grain kg/ha", "profit wins, tuned", "profit wins, not tuned"];
   let html = `<div class="res-head"><span class="label">All configs vs Farmer practice, dev seasons</span><span class="badge">dev</span></div>`;
-  html += stats.length ? table(["config", "seasons", "mean profit $/ha", "mean N leached kg/ha", "mean grain kg/ha", "profit wins, tuned", "profit wins, not tuned"],
-    stats.map((st) => [data.configName(st.config), String(st.n), fmt(st.profit, 2), fmt(st.leached, 2), fmt(st.grain, 0), winCell(st, st.tuned), winCell(st, st.notTuned)]))
-    : `<div class="quiet">No eval.csv dev rows.</div>`;
-  const noRows = Object.keys(state.index || {}).filter((c) => !stats.some((st) => st.config === c));
+  html += stats.length || failed.size ? table(statsHead, data.sortConfigs([...stats.map((st) => st.config), ...failed]).map((c) => {
+    const st = stats.find((x) => x.config === c);
+    return st ? [data.configName(st.config), String(st.n), fmt(st.profit, 2), fmt(st.leached, 2), fmt(st.grain, 0), winCell(st, st.tuned), winCell(st, st.notTuned)]
+      : { failed: c };
+  })) : `<div class="quiet">No eval.csv dev rows.</div>`;
+  const noRows = Object.keys(state.index || {}).filter((c) => !failed.has(c) && !stats.some((st) => st.config === c));
   html += `<div class="quiet res-note">Means over each config's eval.csv dev rows. A win: profit_usd_ha above Farmer practice in the same season. `
     + `Tuned: dev 1990–2004 (prompts tuned on these). Not tuned: dev 2005–2009.`
     + `${noRows.length ? ` No eval.csv dev rows: ${esc(data.sortConfigs(noRows).map(data.configName).join(", "))}.` : ""}</div>`;
   html += `<div class="res-head"><span class="label">Baselines, all dev seasons</span><span class="badge">dev</span></div>`;
-  html += summaryDev ? table(summaryDev.head, summaryDev.rows.map((r) => [plainConfigCell(r[0]), ...r.slice(1)]))
+  html += summaryDev instanceof data.LoadError ? `<div class="quiet">No dev summary: results_baseline/summary.md failed to load.</div>`
+    : summaryDev ? table(summaryDev.head, summaryDev.rows.map((r) => [plainConfigCell(r[0]), ...r.slice(1)]))
     : `<div class="quiet">No dev summary: results_baseline/summary.md is missing.</div>`;
   const p = data.parseTaskId(state.task);
-  const rows = (evalDev || []).filter((r) => r.task_id === state.task);
+  const rows = evalRows.filter((r) => r.task_id === state.task && !failed.has(r.config));
+  // Failed configs that would have a row this season (the index lists the season, or the config is not indexed).
+  const failedHere = [...failed].filter((c) => !(state.index && state.index[c]) || state.index[c].includes(state.task));
   const tag = data.tuneTag(state.task);
   html += `<div class="res-head"><span class="label">Season ${esc(p ? p.year : state.task || "")}</span><span class="badge">dev</span>`
     + `${tag ? `<span class="badge tag">${esc(tag)}</span>` : ""}</div>`;
   const cols = ["profit_usd_ha", "grain_kg_ha", "n_applied", "n_leached", "irr_mm", "reward"];
-  html += rows.length ? table(["config", ...cols], data.sortConfigs(rows.map((r) => r.config))
-    .map((c) => rows.find((r) => r.config === c)).map((r) => [data.configName(r.config), ...cols.map((h) => fmt(r[h], h === "profit_usd_ha" || h === "grain_kg_ha" || h === "n_applied" || h === "irr_mm" ? 0 : 1))]))
+  html += rows.length || failedHere.length ? table(["config", ...cols], data.sortConfigs([...rows.map((r) => r.config), ...failedHere])
+    .map((c) => rows.find((r) => r.config === c) || { failed: c })
+    .map((r) => (r.failed ? r : [data.configName(r.config), ...cols.map((h) => fmt(r[h], h === "profit_usd_ha" || h === "grain_kg_ha" || h === "n_applied" || h === "irr_mm" ? 0 : 1))])))
     : `<div class="quiet">No eval.csv dev rows for this season.</div>`;
   $("results-body").innerHTML = html;
 }
@@ -475,14 +508,19 @@ function showCards() {
 
 // ---------------------------------------------------------------- loading
 
-// Load the logs for the current pair, then rescale and redraw everything.
+// Load the logs for the current pair, then rescale and redraw everything. If either log fails to load (LoadError),
+// neither field is shown: the load card stands in for the scene (no half scene).
 async function loadPair() {
   const task = state.task;
   const loaded = await Promise.all(SIDES.map((s) => (state.pair[s] ? data.loadRun(state.pair[s], task) : null)));
   if (task !== state.task) return;   // the season changed while loading
-  SIDES.forEach((s, i) => (state.runs[s] = loaded[i]));
-  const ref = loaded.find(Boolean);
-  state.days = ref ? await data.loadWeather(ref.site, ref.year) : null;
+  state.pairFailed = loaded.some((r) => r instanceof data.LoadError);
+  SIDES.forEach((s, i) => (state.runs[s] = state.pairFailed ? null : loaded[i]));
+  showScene();
+  const ref = state.pairFailed ? null : loaded.find(Boolean);
+  const days = ref ? await data.loadWeather(ref.site, ref.year) : null;
+  if (task !== state.task) return;
+  state.days = days instanceof data.LoadError ? null : days;   // listed on the load card; the rain strip says so
   state.dayStart = data.seasonStart(ref, state.days);
   const scale = taskScale();
   if (s3d) s3d.setRuns(scale);
@@ -501,20 +539,9 @@ async function loadPair() {
   setWeek(state.week, { force: true });
 }
 
-// New season: keep each side's config when this season has a log for it, else the default.
+// New season: the pair stays SEASON_PAIR.
 async function selectTask(task) {
   state.task = task;
-  state.configs = await data.availableConfigs(state.index, task);
-  if (task !== state.task) return;
-  const def = data.defaultPair(state.configs);
-  for (const s of SIDES) state.pair[s] = state.configs.includes(state.pair[s]) ? state.pair[s] : def[s];
-  await loadPair();
-}
-
-// Field header picker: show another config on one side. The harvest finale compares whichever two are selected.
-async function selectConfig(side, config) {
-  if (!state.configs.includes(config) || state.pair[side] === config) return;
-  state.pair[side] = config;
   await loadPair();
 }
 
@@ -567,10 +594,6 @@ function stepSpeed(dir) {
 
 function bind() {
   document.querySelectorAll("select.task").forEach((s) => (s.onchange = (e) => selectTask(e.target.value)));
-  document.querySelectorAll("select.cfg-pick").forEach((s) => (s.onchange = (e) => {
-    selectConfig(s.dataset.side, e.target.value);
-    e.target.blur();
-  }));
   $("play").onclick = () => setPlaying(!state.playing);
   $("prev").onclick = () => setWeek(state.week - 1);
   $("next").onclick = () => setWeek(state.week + 1);
@@ -580,7 +603,12 @@ function bind() {
   document.querySelectorAll(".speed button").forEach((b) => (b.onclick = () => setSpeed(+b.dataset.speed)));
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("select, input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key >= "1" && e.key <= "5") { setView(VIEWS[+e.key - 1]); return; }
+    if (e.key >= "1" && e.key <= String(VIEWS.length)) { setView(VIEWS[+e.key - 1]); return; }
+    if (state.view === "how") {
+      if (e.key === "ArrowRight") { e.preventDefault(); howStep(1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); howStep(-1); }
+      return;
+    }
     if (state.view === "agents") {
       if (e.key === "ArrowRight") { e.preventDefault(); setWeek(state.week + 1); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); setWeek(state.week - 1); }
@@ -669,19 +697,27 @@ function loaded() {
 }
 
 async function main() {
-  applyCssTheme();
+  readCssTheme();
   if (data.LITE) document.body.classList.add("lite");
   if (STORY) document.body.classList.add("story");   // story mode (later unit) hides the dock
   dock = new Dock($("dock"), PAGES.map((p, i) => ({ id: p.id, label: p.label, icon: p.icon, key: String(i + 1) })),
     { onSelect: setView, reduceMotion: REDUCE });
   dock.setHidden(STORY);
+  data.onLoadFailures(renderLoadCard);
   if (!(await initSeason())) return;
   setView(state.view);
   bind();
   state.index = await data.loadIndex();
-  const task = state.index && data.defaultTask(state.index);
+  const { shown, hidden } = await data.pairSeasons(state.index);
+  state.seasons = shown;
+  if (hidden.length) console.info(`FieldTwin: seasons without both Season logs (hidden): ${hidden.join(", ")}`);
+  const task = shown[0] || null;
+  if (state.index instanceof data.LoadError) state.index = null;   // tasks/dev.jsonl failed: the load card says why
+  else if (!task) {
+    notice(state.index ? `No dev season has both ${Object.values(data.SEASON_PAIR).map(data.configName).join(" and ")} logs.`
+      : "No dev seasons: tasks/dev.jsonl is missing or empty.");
+  }
   if (!task) {
-    notice("No dev seasons: tasks/dev.jsonl is missing or empty.");
     renderFieldHeads();
     setWeek(0, { force: true });
     loaded();

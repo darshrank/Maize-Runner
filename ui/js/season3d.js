@@ -1,5 +1,5 @@
 // 3D Season view, three.js 0.160.0 (vendored, import map in index.html). Pure black background, black fog for
-// depth, two floating glass-grid dioramas (diorama3d.js), one config per side (main.js pickers).
+// depth, two floating glass-grid dioramas (diorama3d.js), one config per side (data.SEASON_PAIR).
 //
 //   camera   slow dolly between the two fields; drag to orbit (OrbitControls), double click to reset
 //   light    one ambient and one key light plus a dim room environment, for the glass only (every other material
@@ -14,7 +14,7 @@
 //            along its home direction when both fields would not fit that width or the labels-to-slab height would
 //            not fit between the top bar and the finale row, and the camera moves up or down to center the scene in
 //            that height, so no field slides under the cards or the finale (fitView, theme.three.fit)
-//   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): field pickers
+//   overlays HTML elements placed from each field's projected anchors every frame (placeOverlays): field names
 //            centered above their field, the finale in one row under the fields (each field's number centered on
 //            its projected x, the gap centered between them). Labels are pushed apart so none overlaps another,
 //            and the finale row stays between the scene's lowest point and the controls
@@ -71,7 +71,7 @@ export class Season3D {
     this.canvas = canvas;
     // Throws when WebGL is unavailable; main.js catches it and falls back to ?view2d=1.
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-    this.renderer.setClearColor(0x000000, 1);
+    this.renderer.setClearColor(theme.color.bg, 1);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lite ? 1.25 : 2));
     this.renderer.debug.checkShaderErrors = true;
     this.renderer.debug.onShaderError = (gl, program, vs, fs) => {
@@ -82,8 +82,8 @@ export class Season3D {
     };
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000000);
-    if (!lite) this.scene.fog = new THREE.Fog(0x000000, T.fog.near, T.fog.far);
+    this.scene.background = new THREE.Color(theme.color.bg);
+    if (!lite) this.scene.fog = new THREE.Fog(theme.color.bg, T.fog.near, T.fog.far);
     this.shared = {
       uTime: { value: 0 }, uFlash: { value: 0 }, uPx: { value: 600 },
       uFogOn: { value: lite ? 0 : 1 }, uFogNear: { value: T.fog.near }, uFogFar: { value: T.fog.far },
@@ -188,7 +188,7 @@ export class Season3D {
     this.boltPos = new THREE.BufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage);
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", this.boltPos);
-    this.boltMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+    this.boltMat = new THREE.LineBasicMaterial({ color: theme.color.text, transparent: true, opacity: 0, depthWrite: false });
     this.bolt = new THREE.Line(g, this.boltMat);
     this.bolt.frustumCulled = false;
     this.bolt.visible = false;
