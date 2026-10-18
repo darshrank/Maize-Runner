@@ -18,7 +18,7 @@ function sprite(color, halo) {
   c.width = c.height = size;
   const g = c.getContext("2d"), r = size / 2;
   const grad = g.createRadialGradient(r, r, 0, r, r, r);
-  grad.addColorStop(0, "#ffffff");
+  grad.addColorStop(0, theme.color.text);
   grad.addColorStop(halo ? 0.12 : 0.3, color);
   if (halo) {
     grad.addColorStop(0.32, color + "88");

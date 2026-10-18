@@ -71,7 +71,7 @@ export class Season3D {
     this.canvas = canvas;
     // Throws when WebGL is unavailable; main.js catches it and falls back to ?view2d=1.
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-    this.renderer.setClearColor(0x000000, 1);
+    this.renderer.setClearColor(theme.color.bg, 1);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lite ? 1.25 : 2));
     this.renderer.debug.checkShaderErrors = true;
     this.renderer.debug.onShaderError = (gl, program, vs, fs) => {
@@ -82,8 +82,8 @@ export class Season3D {
     };
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000000);
-    if (!lite) this.scene.fog = new THREE.Fog(0x000000, T.fog.near, T.fog.far);
+    this.scene.background = new THREE.Color(theme.color.bg);
+    if (!lite) this.scene.fog = new THREE.Fog(theme.color.bg, T.fog.near, T.fog.far);
     this.shared = {
       uTime: { value: 0 }, uFlash: { value: 0 }, uPx: { value: 600 },
       uFogOn: { value: lite ? 0 : 1 }, uFogNear: { value: T.fog.near }, uFogFar: { value: T.fog.far },
@@ -188,7 +188,7 @@ export class Season3D {
     this.boltPos = new THREE.BufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage);
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", this.boltPos);
-    this.boltMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+    this.boltMat = new THREE.LineBasicMaterial({ color: theme.color.text, transparent: true, opacity: 0, depthWrite: false });
     this.bolt = new THREE.Line(g, this.boltMat);
     this.bolt.frustumCulled = false;
     this.bolt.visible = false;

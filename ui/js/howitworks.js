@@ -18,7 +18,6 @@ const CONFIG = "a_d1c_multi";
 const PREFERRED = "UFGA-2006";
 const W = 1400, H = 770;
 const C = theme.color;
-const RED = C.leach;
 
 const BOX = {
   tools:   { x: 180,  y: 24,  w: 860, h: 64 },
@@ -42,7 +41,6 @@ const ROLE = {
   field: "gym-DSSAT maize simulation: one step per weekly decision.",
 };
 const NAME = { weather: "Weather", crop: "Crop", planner: "Planner", critic: "Critic", coord: "Coordinator" };
-const FILL = { weather: C.weather, crop: C.crop, planner: C.planner, critic: C.critic, coord: C.coordinator };
 
 const STEPS = [
   "Weather and Crop gather data",
@@ -230,7 +228,8 @@ function line(d, cls, on, { color, marker, halo = false, dash = false } = {}) {
     + `<path class="${cls}" ${attrs}${marker ? ` marker-end="url(#hiw-arrow-${marker})"` : ""}/></g>`;
 }
 
-// Hub <-> agent: the call arrow (agent color) and the return arrow (quiet), side by side.
+// Hub <-> agent: the call arrow (accent) and the return arrow (muted), side by side. Agents are told apart by their
+// name labels, not by color.
 function spoke(to) {
   const hub = center(BOX.coord), dst = center(BOX[to]);
   const len = Math.hypot(dst[0] - hub[0], dst[1] - hub[1]);
@@ -241,7 +240,7 @@ function spoke(to) {
     const p = exit(BOX.coord, a, b), q = exit(BOX[to], b, a);
     return [[p[0] + u[0] * 9, p[1] + u[1] * 9], [q[0] - u[0] * 9, q[1] - u[1] * 9]];
   };
-  return line(`M${pts(seg(-6))}`, "hiw-call", `s:${to}`, { color: FILL[to], marker: to })
+  return line(`M${pts(seg(-6))}`, "hiw-call", `s:${to}`, { color: C.accent, marker: "call" })
     + line(`M${pts(seg(6).reverse())}`, "hiw-back", `r:${to}`, { marker: "back" });
 }
 
@@ -249,17 +248,16 @@ function box(key, label, inner) {
   return `<g class="hiw-part hiw-node" data-on="${key}" data-box="${key}" tabindex="0" aria-label="${esc(label)}">${inner(BOX[key])}</g>`;
 }
 
-const rect = (b, cls, fill) => `<rect class="hiw-box ${cls}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"${fill ? ` fill="${fill}"` : ""}/>`;
+const rect = (b, cls = "") => `<rect class="hiw-box ${cls}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="10"/>`;
 const label = (x, y, s, cls = "") => `<text class="hiw-label ${cls}" x="${x}" y="${y}" text-anchor="middle">${esc(s)}</text>`;
 
 function agentBox(key) {
-  return box(key, NAME[key], (b) => rect(b, "", FILL[key]) + label(b.x + b.w / 2, b.y + b.h / 2 + 7, NAME[key]));
+  return box(key, NAME[key], (b) => rect(b) + label(b.x + b.w / 2, b.y + b.h / 2 + 7, NAME[key]));
 }
 
 function diagramSvg() {
   const B = BOX, hub = center(B.coord);
-  const markers = [["weather", C.weather], ["crop", C.crop], ["planner", C.planner], ["critic", C.critic],
-    ["coord", C.coordinator], ["back", C.quiet], ["red", RED]]
+  const markers = [["call", C.accent], ["back", C.muted], ["warn", C.warn]]
     .map(([id, c]) => `<marker id="hiw-arrow-${id}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7"`
       + ` orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.8 L9 5 L0 9.2 z" style="fill:${c};stroke:none"/></marker>`)
     .join("");
@@ -284,26 +282,29 @@ function diagramSvg() {
   ].join("");
   const objX = 1085;
   const objection = line(`M${pts([[objX, B.critic.y - 4], [objX, B.planner.y + B.planner.h + 9]])}`, "hiw-obj", "obj",
-    { color: RED, marker: "red" });
+    { color: C.warn, marker: "warn" });
   const decision = line(`M${pts([[B.coord.x + B.coord.w + 9, hub[1]], [B.field.x - 9, hub[1]]])}`, "hiw-call", "dec",
-    { color: C.coordinator, marker: "coord", halo: true });
+    { color: C.accent, marker: "call", halo: true });
 
   const fc = B.field.x + B.field.w / 2;
   const field = box("field", "gym-DSSAT field", (b) => rect(b, "hiw-field")
     + `<g class="hiw-icon" transform="translate(${fc - 24} ${b.y + 26}) scale(2)">${DOCK_ICONS.sprout}</g>`
     + label(fc, b.y + 106, "gym-DSSAT") + label(fc, b.y + 132, "field", "hiw-label-sm"));
-  const toolBox = box("tools", "Tools", (b) => rect(b, "hiw-tools")
+  const toolBox = box("tools", "Tools", (b) => rect(b)
     + label(b.x + b.w / 2, b.y + b.h / 2 + 7, "Tools · env server, port 9000"));
-  const modelBox = box("model", "Nemotron 3.5 Lightning on vLLM", (b) => rect(b, "", C.accent)
+  const modelBox = box("model", "Nemotron 3.5 Lightning on vLLM", (b) => rect(b)
     + label(b.x + b.w / 2, b.y + b.h / 2 + 7, "Nemotron 3.5 Lightning on vLLM"));
 
   return `<svg class="hiw-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img"
     aria-label="One week of the FieldTwin agent team, step by step">
     <defs>${markers}
-      <!-- userSpaceOnUse: a straight horizontal / vertical line has a zero-height box, so a bounding-box filter region would hide it -->
+      <!-- Soft accent glow around the active boxes (the box's alpha, blurred, filled with --accent). userSpaceOnUse:
+           a bounding-box filter region would clip the halo. -->
       <filter id="hiw-glow" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" color-interpolation-filters="sRGB">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="blur"/>
+        <feFlood style="flood-color: var(--accent)" flood-opacity="0.45"/>
+        <feComposite in2="blur" operator="in" result="glow"/>
+        <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>
     ${model}${tools}${["weather", "crop", "planner", "critic"].map(spoke).join("")}${objection}${decision}
@@ -318,7 +319,8 @@ const ui = { root: null, wk: null, step: 0 };
 // objection arrow between them stays visible.
 const SIDE = { weather: "below", crop: "above", planner: "right", critic: "right", coord: "below", field: "below",
   tools: "below", model: "above" };
-const tint = (key) => FILL[key] || (key === "model" ? C.accent : key === "field" ? C.plant : C.quiet);
+// Card / tip edge: the accent, or --warn for the Critic in an objection week.
+const tint = (key) => (key === "critic" && ui.wk && ui.wk.review && ui.wk.review.verdict === "object" ? C.warn : C.accent);
 
 function cardHtml(c) {
   return [c.head ? `<div class="hiw-card-head">${esc(c.head)}</div>` : "",
@@ -398,7 +400,7 @@ export async function renderHowItWorks(root) {
   if (root.dataset.built) { requestAnimationFrame(layout); return; }
   root.dataset.built = "1";
   ui.root = root;
-  root.innerHTML = `<header class="hiw-head"><h1>How it works</h1><p class="quiet hiw-sub">Loading the week…</p></header>`;
+  root.innerHTML = `<header class="hiw-head"><h1>How it works</h1><p class="hiw-sub">Loading the week…</p></header>`;
   const pick = await pickWeek();
   if (pick.error) {
     root.querySelector(".hiw-sub").textContent = pick.error;
@@ -408,7 +410,7 @@ export async function renderHowItWorks(root) {
   if (ui.wk.missing.length) console.info("How it works: not in the log:", ui.wk.missing.join(", "));
   root.innerHTML = `<header class="hiw-head">
       <h1>How it works</h1>
-      <p class="quiet hiw-sub mono">${esc(ui.wk.split || "dev")} · ${esc(ui.wk.task)} · Week ${ui.wk.k + 1}</p>
+      <p class="hiw-sub mono">${esc(ui.wk.split || "dev")} · ${esc(ui.wk.task)} · Week ${ui.wk.k + 1}</p>
     </header>
     <div class="hiw-bar">
       <button class="btn hiw-back" aria-label="Previous step">&lsaquo; Back</button>

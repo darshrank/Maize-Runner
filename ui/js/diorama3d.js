@@ -123,7 +123,7 @@ function voxels(count, U, { emit = 1, glow = 1, color = null, emitColor = null }
 // Frosted glass. ?lite=1: no transmission, plain translucent.
 function glassMaterial(lite) {
   return new THREE.MeshPhysicalMaterial({
-    color: GL.tint, emissive: GL.soil, emissiveIntensity: GL.soilGlow,
+    color: theme.color.text, emissive: theme.color.surface2, emissiveIntensity: GL.soilGlow,
     roughness: GL.roughness, metalness: 0, ior: GL.ior, envMapIntensity: GL.env,
     transmission: lite ? 0 : GL.transmission, thickness: lite ? 0 : GL.thickness,
     transparent: lite, opacity: lite ? GL.liteOpacity : 1, depthWrite: !lite,
@@ -213,21 +213,21 @@ export class Diorama {
     this.slab.renderOrder = 2;
     g.add(this.slab);
     this.red = col(c.leach);
-    this.soilColor = col(GL.soil);
-    this.fluid = voxels(1, U, { emit: 0.06, glow: T.glow.pool, color: col("#1a0606"), emitColor: this.red });
+    this.soilColor = col(c.surface2);
+    this.fluid = voxels(1, U, { emit: 0.06, glow: T.glow.pool, color: this.red.clone().multiplyScalar(0.01), emitColor: this.red });
     this.fluid.mesh.setMatrixAt(0, m.makeScale(this.W - 0.08, G.slabH * 0.5, this.D - 0.08).setPosition(0, this.slab.position.y, 0));
     g.add(this.fluid.mesh);
 
     // Edge lines: every cube and the slab, one draw call.
     const boxes = this.cubes.map((q) => ({ x: q.x, y: q.y, z: q.z, sx: s, sy: s, sz: s }));
     boxes.push({ x: 0, y: this.slab.position.y, z: 0, sx: this.W, sy: G.slabH, sz: this.D });
-    this.edgeMat = new THREE.LineBasicMaterial({ color: GL.edge, transparent: true, opacity: GL.edgeOpacity, depthWrite: false });
+    this.edgeMat = new THREE.LineBasicMaterial({ color: c.text, transparent: true, opacity: GL.edgeOpacity, depthWrite: false });
     this.edges = new THREE.LineSegments(edgeGeometry(boxes), this.edgeMat);
     this.edges.renderOrder = 3;
     g.add(this.edges);
 
     // Water: one inner box per cube, scaled by its fill (0 = hidden).
-    this.waterBox = voxels(this.cubes.length, U, { emit: T.water.emit, glow: T.glow.water, color: col(T.water.color), emitColor: col(c.water) });
+    this.waterBox = voxels(this.cubes.length, U, { emit: T.water.emit, glow: T.glow.water, color: col(c.water).multiplyScalar(0.06), emitColor: col(c.water) });
     this.waterBox.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     g.add(this.waterBox.mesh);
 
@@ -241,7 +241,7 @@ export class Diorama {
     this.plantAt = new Map(this.plants.map((p) => [`${p.ix},${p.iz}`, p]));
     this.maizeMat = maizeMaterial({ uTime: U.uTime, uFlash: U.uFlash, uFogOn: U.uFogOn, uFogNear: U.uFogNear,
       uFogFar: U.uFogFar, uBloomPass: U.uBloomPass },
-    { maxH: P.maxH, sprout: P.sprout, colors: { plant: c.plant, ...T.maize }, glow: T.glow });
+    { maxH: P.maxH, sprout: P.sprout, colors: { plant: c.plant, body: c.bg, tassel: c.tassel, thirst: c.thirst }, glow: T.glow });
     const geo = maizeGeometry();
     const seeds = new Float32Array(this.plants.length * 3);
     this.state = new THREE.InstancedBufferAttribute(new Float32Array(this.plants.length * 3), 3);

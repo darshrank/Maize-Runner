@@ -1,36 +1,14 @@
-// All colors and sizes in one place (UI_SPEC.md sections 5 and 8). main.js writes the colors onto :root as
-// custom properties, so style.css, the SVG fields and the mote canvas read the same values.
-//
-// R1 theme (every view): pure black background, neon foreground only, one shared SVG glow filter
-// (#glow in index.html; ?lite=1 removes it). Display scales only map data to pixels; they are not facts.
+// Sizes, motion and display scales in one place (UI_SPEC.md sections 5 and 8). Colors and fonts are not here: the
+// theme tokens live once, in the :root block of style.css, and readCssTheme() copies the colors into theme.color at
+// boot, so the SVG fields, the mote canvas and the 3D scene read the same values as the CSS.
+// Display scales only map data to pixels; they are not facts.
+
+// style.css token names (kebab case) -> theme.color keys (camel case).
+const TOKENS = ["bg", "surface-1", "surface-2", "border", "text", "muted", "accent",
+  "water", "nitrogen", "plant", "leach", "rain", "warn", "tassel", "thirst"];
 
 export const theme = {
-  color: {
-    bg: "#000000",
-    text: "#e8efe0",
-    quiet: "#8a9a80",
-    faint: "#3a4436",
-    hairline: "rgba(232, 239, 224, 0.12)",
-    hairlineStrong: "rgba(232, 239, 224, 0.26)",
-    accent: "#76b900",
-    // Meaning colors, used consistently everywhere.
-    plant: "#76b900",
-    nitrogen: "#76b900",
-    water: "#3fd7ff",
-    leach: "#ff4d4d",
-    rain: "#7a93ad",
-    gas: "#ffb020",
-    // Agents (chat tags).
-    weather: "#7a93ad",
-    crop: "#9be15d",
-    planner: "#3fd7ff",
-    critic: "#ff8a3d",
-    coordinator: "#76b900",
-  },
-  font: {
-    sans: '"Inter", system-ui, sans-serif',
-    mono: '"JetBrains Mono", ui-monospace, monospace',
-  },
+  color: {},                     // filled by readCssTheme() from the style.css tokens
   motion: {
     ms: 340,                     // counters and panel transitions (< 400 ms, eased, no bounce)
     growMs: 700,                 // plant height / leaf transitions
@@ -59,18 +37,19 @@ export const theme = {
     grid: { cols: 6, rows: 6, layers: 4, pitch: 0.62, gap: 0.08, slabGap: 0.55, slabH: 0.14 },
     // Frosted glass (MeshPhysicalMaterial). soil / soilGlow: the faint brown in every cube (emissive). ?lite=1:
     // no transmission, plain translucent at liteOpacity. edge: the thin bright edge lines.
+    // Neutral (no meaning): the glass is white-tinted (--text), its faint inner glow and the slab base are --surface-2,
+    // the edges --text at edgeOpacity. Only water (cyan), N (green) and leaching (red) color the field.
     glass: {
-      transmission: 0.9, roughness: 0.35, ior: 1.3, thickness: 0.5, tint: "#e6d2bc",
-      soil: "#3a2410", soilGlow: 0.5, liteOpacity: 0.2, env: 0.45,
-      edge: "#d9ecd0", edgeOpacity: 0.34, slabRed: 0.9,
+      transmission: 0.9, roughness: 0.35, ior: 1.3, thickness: 0.5,
+      soilGlow: 0.5, liteOpacity: 0.2, env: 0.45,
+      edgeOpacity: 0.34, slabRed: 0.9,
       ambient: 0.35, key: 1.1,
     },
-    water: { fill: 0.84, color: "#0b3a46", emit: 0.32 },   // inner cyan fill, as a share of the cube
+    water: { fill: 0.84, emit: 0.32 },   // inner cyan fill, as a share of the cube
     // N and leaching cores (small emissive cubes). soil: cores at the task's max soil_n_kg_ha (perCube slots in
     // each top cube); dose / uptake / leach: counts at the task's max of that value. ?lite=1 halves dose and leach.
     cores: { perCube: 3, size: 0.075, dose: 36, uptake: 18, leach: 80, capN: 360, capLeach: 520 },
     plants: { maxH: 2.4, sprout: 0.1 },
-    maize: { body: "#050a03", tassel: "#d6f25a", thirst: "#c9a227" },
     labelY: 3.55,                 // field names sit above this height (above the tallest plant, room for the model line)
     camera: { fov: 38, pos: [0, 1.9, 16.2], target: [0, -1.2, 0], dollyX: 2.2, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
@@ -107,12 +86,15 @@ export const theme = {
   },
 };
 
-export function applyCssTheme(root = document.documentElement) {
-  for (const [k, v] of Object.entries(theme.color)) {
-    root.style.setProperty(`--${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, v);
+// Copies the style.css color tokens into theme.color (6-digit hex strings; motes.js appends alpha digits) and writes the
+// motion timings onto :root. Call once at boot, before any view builds.
+export function readCssTheme(root = document.documentElement) {
+  const css = getComputedStyle(root);
+  for (const name of TOKENS) {
+    const v = css.getPropertyValue(`--${name}`).trim();
+    if (!v) console.error(`FieldTwin theme: style.css token --${name} is missing`);
+    theme.color[name.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = v;
   }
-  root.style.setProperty("--sans", theme.font.sans);
-  root.style.setProperty("--mono", theme.font.mono);
   root.style.setProperty("--ms", `${theme.motion.ms}ms`);
   root.style.setProperty("--grow-ms", `${theme.motion.growMs}ms`);
 }

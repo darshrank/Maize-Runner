@@ -18,7 +18,7 @@
 // week k); k = W is harvest (the final line). Data stays 0-based; every label shows weeks 1-based (weekNo):
 // "Week 1 / W" .. "Week W / W", then "Harvest". Every number on screen comes from data.js. Theme: js/theme.js.
 
-import { theme, applyCssTheme } from "./theme.js";
+import { theme, readCssTheme } from "./theme.js";
 import * as data from "./data.js";
 import { FieldView } from "./fieldSvg.js";
 import { Timeline } from "./timeline.js";
@@ -697,7 +697,7 @@ function loaded() {
 }
 
 async function main() {
-  applyCssTheme();
+  readCssTheme();
   if (data.LITE) document.body.classList.add("lite");
   if (STORY) document.body.classList.add("story");   // story mode (later unit) hides the dock
   dock = new Dock($("dock"), PAGES.map((p, i) => ({ id: p.id, label: p.label, icon: p.icon, key: String(i + 1) })),
