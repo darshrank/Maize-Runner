@@ -13,7 +13,9 @@
 import { theme } from "./theme.js";
 
 const NS = "http://www.w3.org/2000/svg";
-const FULL = { H: 74, LABEL_W: 96, RIGHT_PAD: 124, RAIN_TOP: 4, RAIN_H: 28, TRACK_Y: 48 };
+const FULL = { H: 74, LABEL_W: 96, RIGHT_PAD: 124, RAIN_TOP: 4, RAIN_H: 28, TRACK_Y: 48, WK_DY: 21 };
+// 3D Season (fix2): a thin strip along the bottom, over the fields.
+const COMPACT = { H: 54, LABEL_W: 88, RIGHT_PAD: 112, RAIN_TOP: 2, RAIN_H: 18, TRACK_Y: 34, WK_DY: 16 };
 
 function el(name, attrs = {}, text) {
   const e = document.createElementNS(NS, name);
@@ -23,9 +25,9 @@ function el(name, attrs = {}, text) {
 }
 
 export class Timeline {
-  constructor(svg, { onSeek }) {
+  constructor(svg, { onSeek, compact = false }) {
     this.svg = svg;
-    this.g = FULL;
+    this.g = compact ? COMPACT : FULL;
     this.onSeek = onSeek;
     this.model = null;
     this.week = 0;
@@ -65,7 +67,7 @@ export class Timeline {
 
   draw() {
     const svg = this.svg, m = this.model;
-    const { H, LABEL_W, RIGHT_PAD, RAIN_TOP, RAIN_H, TRACK_Y } = this.g;
+    const { H, LABEL_W, RIGHT_PAD, RAIN_TOP, RAIN_H, TRACK_Y, WK_DY } = this.g;
     const width = svg.clientWidth || 1200;
     svg.setAttribute("viewBox", `0 0 ${width} ${H}`);
     svg.replaceChildren();
@@ -93,15 +95,16 @@ export class Timeline {
         width: Math.max(1, daily ? bw - 1 : bw * 0.5), height: h,
       }));
     });
-    svg.append(el("text", { class: "axis-label", x: 0, y: RAIN_TOP + 22 }, "Rain (mm)"));
-    if (m.rainNote) svg.append(el("text", { class: "axis-sub", x: x0 + 8, y: RAIN_TOP + 22 }, m.rainNote));
+    const ry = RAIN_TOP + Math.round(RAIN_H * 0.75);
+    svg.append(el("text", { class: "axis-label", x: 0, y: ry }, "Rain (mm)"));
+    if (m.rainNote) svg.append(el("text", { class: "axis-sub", x: x0 + 8, y: ry }, m.rainNote));
 
     svg.append(el("line", { class: "track", x1: x0, x2: x0 + cells * cw, y1: TRACK_Y, y2: TRACK_Y }));
     this.progress = el("line", { class: "track-on", x1: x0, x2: x0, y1: TRACK_Y, y2: TRACK_Y });
     svg.append(this.progress);
     for (let k = 0; k < cells; k++) {
       svg.append(el("line", { class: "tick", x1: x0 + k * cw, x2: x0 + k * cw, y1: TRACK_Y - 3, y2: TRACK_Y + 3 }));
-      svg.append(el("text", { class: "wk", "data-week": k, x: x0 + (k + 0.5) * cw, y: TRACK_Y + 21, "text-anchor": "middle" },
+      svg.append(el("text", { class: "wk", "data-week": k, x: x0 + (k + 0.5) * cw, y: TRACK_Y + WK_DY, "text-anchor": "middle" },
         k === W ? "H" : String(k + 1)));
     }
     const pill = (cls, k, y, h) => el("rect", { class: cls, x: x0 + (k + 0.18) * cw, y, width: 0.64 * cw, height: h, rx: h / 2 });

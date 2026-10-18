@@ -1,13 +1,15 @@
 // Boot, page routing, keyboard, playback (UI_SPEC.md section 8).
 // Demo flow (STATE.md): Season plays a past Gainesville test season, the presenter starts 2026 live (about 20 s a
 // week), moves to How it works, Results and Serving while it runs, and ends on the 2026 season-end result. Tabs follow
-// that order: 1 Season, 2 How it works, 3 Results, 4 Serving, 5 Agents, 6 Gym (the dock at the bottom, dock.js, with
-// each tab's key on its icon; keys 1-6). The top bar holds the wordmark, the live chip during a live run (click: back
+// that order: 1 Season, 2 How it works, 3 Results, 4 Serving, 5 Agents, 6 Gym (the dock at the bottom, dock.js;
+// keys 1-6). No top bar (fix3): bottom right, level with the dock, the live chip during a live run (click: back
 // to Season) and the split badge of the current tab. Each tab has one headline saying what it proves.
 //
 // Season (default): the 3D view (season3d.js), two floating glass-grid field dioramas, always data.SEASON_PAIR (LEFT
-// farmer practice, RIGHT the Maize Runner team). Under each field: running counters (nitrogen, water, leaching) and, at
-// harvest, the profit. Week cards on the left (carousel.js): one card per week, the team's decision in plain words,
+// farmer practice, RIGHT the Maize Runner team), filling the window. Everything else is a frosted overlay on the
+// fields: headline top left, controls and picker top right, the weather strip along the bottom, under each field one
+// slim strip (name + running nitrogen, water, leaching) and, at harvest, the profit. Week cards bottom left
+// (carousel.js): one card per week, the team's decision in plain words,
 // the Critic's verdict pill (Objection, Accept, No verdict) and the Coordinator's one-line reason. The scrubber marks
 // objection and fallback weeks. Picker: live seasons first ("<year> live"), then Gainesville seasons by year; a
 // "Georgia" toggle swaps in the Tifton seasons. Default: Gainesville 2024.
@@ -1110,10 +1112,9 @@ async function initSeason() {
       $("stage3d").hidden = false;
       s3d = new Season3D($("stage3d"), { lite: data.LITE, reduceMotion: REDUCE, onFail: fallback2D });
       s3d.setOverlays({
-        heads: { left: $("s3-head-left"), right: $("s3-head-right") },
         fins: { left: $("s3-fin-left"), right: $("s3-fin-right") },
         mid: $("s3-fin-mid"),
-        floor: $("bottom"),
+        floor: $("timeline"),
         side: $("weekcards"),
       });
       cards = new Carousel($("weekcards"), { stiffness: theme.three.cards.stiffness, damping: theme.three.cards.damping,
@@ -1126,7 +1127,7 @@ async function initSeason() {
   } else {
     for (const s of SIDES) fields[s] = new FieldView($(`plot-${s}`), { lite: data.LITE, reduceMotion: REDUCE });
   }
-  timeline = new Timeline($("timeline"), { onSeek: (k) => setWeek(k) });
+  timeline = new Timeline($("timeline"), { onSeek: (k) => setWeek(k), compact: !!s3d });
   return true;
 }
 

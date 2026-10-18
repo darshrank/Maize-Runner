@@ -24,15 +24,12 @@
     </filter>
   </svg>
 
-  <!-- Top bar (every page): wordmark, live chip during a live run (click: back to Season), the split badge for the
-       current tab. Pages are switched by the dock at the bottom (dock.js) or keys 1-6. -->
-  <header id="topbar">
-    <div id="wordmark"><i class="mark"></i><span>Maize Runner</span></div>
-    <div id="topright">
-      <button id="livechip" class="live-chip" hidden aria-label="Live season: back to Season"><i class="live-dot"></i><span class="t mono"></span></button>
-      <span id="src" class="badge split" hidden title="Split of every number on this tab"></span>
-    </div>
-  </header>
+  <!-- No top bar (fix3). Bottom right, level with the dock (every page): the live chip during a live run (click: back
+       to Season) and the split badge for the current tab. Pages are switched by the dock (dock.js) or keys 1-6. -->
+  <div id="corner">
+    <button id="livechip" class="live-chip" hidden aria-label="Live season: back to Season"><i class="live-dot"></i><span class="t mono"></span></button>
+    <span id="src" class="badge split" hidden title="Split of every number on this tab"></span>
+  </div>
 
   <!-- Season headline (3D and 2D): what the tab proves, then the season in plain words. Live: the run's status line. -->
   <header id="season-head" class="head">
@@ -40,43 +37,47 @@
     <p id="season-sub" class="sub"></p>
   </header>
 
-  <!-- 1 Season, 3D (default): canvas plus HTML overlays that season3d.js places from the projected field anchors
-       every frame: field names above each field, the finale in one row under the fields. The only numbers here: one
-       week label and, at season end, the profit finale. -->
+  <!-- 1 Season, 3D (default): the canvas fills the window; HTML overlays that season3d.js places from the projected
+       field anchors every frame: one slim frosted strip under each field (field name + nitrogen, water, leaching so
+       far), the harvest profit just above it, and the gap between the profits in the middle. -->
   <div id="stage3d" hidden>
-    <div class="s3-anchor" id="s3-head-left"><div class="s3-in up">
-      <div class="s3-name cfg-name" data-side="left"></div>
-      <div class="cfg-model quiet mono" data-side="left" hidden></div>
-      <div class="cfg-none quiet" data-side="left" hidden>No run for this season</div>
-    </div></div>
-    <div class="s3-anchor" id="s3-head-right"><div class="s3-in up">
-      <div class="s3-name cfg-name" data-side="right"></div>
-      <div class="cfg-model quiet mono" data-side="right" hidden></div>
-      <div class="cfg-none quiet" data-side="right" hidden>No run for this season</div>
-    </div></div>
-    <div class="s3-anchor" id="s3-fin-left"><div class="s3-in down">
+    <div class="s3-anchor" id="s3-fin-left"><div class="s3-in up">
       <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">Profit ($/ha)</span></div>
-      <div class="ctr" data-side="left" hidden>
-        <div class="c"><span class="k">Nitrogen (kg/ha)</span><span class="v mono" data-k="n"></span></div>
-        <div class="c"><span class="k">Water (mm)</span><span class="v mono" data-k="w"></span></div>
-        <div class="c"><span class="k">Leaching (kg/ha)</span><span class="v mono leach" data-k="l"></span></div>
+      <div class="fstrip" data-side="left">
+        <div class="fs-name">
+          <div class="s3-name cfg-name" data-side="left"></div>
+          <div class="cfg-model quiet mono" data-side="left" hidden></div>
+          <div class="cfg-none quiet" data-side="left" hidden>No run for this season</div>
+        </div>
+        <div class="ctr" data-side="left" hidden>
+          <div class="c"><span class="k">Nitrogen (kg/ha)</span><span class="v mono" data-k="n"></span></div>
+          <div class="c"><span class="k">Water (mm)</span><span class="v mono" data-k="w"></span></div>
+          <div class="c"><span class="k">Leaching (kg/ha)</span><span class="v mono leach" data-k="l"></span></div>
+        </div>
       </div>
     </div></div>
-    <div class="s3-anchor" id="s3-fin-right"><div class="s3-in down">
+    <div class="s3-anchor" id="s3-fin-right"><div class="s3-in up">
       <div class="fin-profit" hidden><span class="v mono"></span><span class="unit">Profit ($/ha)</span></div>
-      <div class="ctr" data-side="right" hidden>
-        <div class="c"><span class="k">Nitrogen (kg/ha)</span><span class="v mono" data-k="n"></span></div>
-        <div class="c"><span class="k">Water (mm)</span><span class="v mono" data-k="w"></span></div>
-        <div class="c"><span class="k">Leaching (kg/ha)</span><span class="v mono leach" data-k="l"></span></div>
+      <div class="fstrip" data-side="right">
+        <div class="fs-name">
+          <div class="s3-name cfg-name" data-side="right"></div>
+          <div class="cfg-model quiet mono" data-side="right" hidden></div>
+          <div class="cfg-none quiet" data-side="right" hidden>No run for this season</div>
+        </div>
+        <div class="ctr" data-side="right" hidden>
+          <div class="c"><span class="k">Nitrogen (kg/ha)</span><span class="v mono" data-k="n"></span></div>
+          <div class="c"><span class="k">Water (mm)</span><span class="v mono" data-k="w"></span></div>
+          <div class="c"><span class="k">Leaching (kg/ha)</span><span class="v mono leach" data-k="l"></span></div>
+        </div>
       </div>
     </div></div>
-    <div class="s3-anchor" id="s3-fin-mid"><div class="s3-in down">
+    <div class="s3-anchor" id="s3-fin-mid"><div class="s3-in up">
       <div class="fin-delta" hidden><span class="v mono"></span><span class="fin-src badge split"></span></div>
     </div></div>
     <div id="s3-week" aria-live="polite"></div>
   </div>
 
-  <!-- Week cards (3D Season): one card per week, left side, synced with the week; key N toggles them -->
+  <!-- Week cards (3D Season): one card per week, bottom left over the field, synced with the week; key N toggles them -->
   <aside id="weekcards" hidden></aside>
 
   <!-- Live season before Play: never empty. One line of facts (weather file, env/weather.py) and one button. -->

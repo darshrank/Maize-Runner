@@ -31,7 +31,7 @@ export const theme = {
   },
   // 3D Season view (season3d.js, diorama3d.js, maize3d.js), in world units. Display mappings only, not facts.
   three: {
-    fieldX: 3.5,                  // |x| of each field center
+    fieldX: 3.2,                  // |x| of each field center (fix2: 3.5 -> 3.2, so both fields can fill the height)
     // Glass cube grid under each field: cols x rows columns, `layers` deep; gap = fraction of the pitch left
     // between cubes. One plant stands on the center of each top cube. The groundwater slab sits slabGap under it.
     grid: { cols: 6, rows: 6, layers: 4, pitch: 0.62, gap: 0.08, slabGap: 0.55, slabH: 0.14 },
@@ -45,22 +45,25 @@ export const theme = {
       edgeOpacity: 0.34, slabRed: 0.9,
       ambient: 0.35, key: 1.1,
     },
-    water: { fill: 0.84, emit: 0.9 },    // inner cyan fill, as a share of the cube (fix1: emit 0.32 -> 0.9, reads as cyan on video)
+    water: { fill: 0.84, emit: 0.5 },    // inner cyan fill, as a share of the cube (fix1: emit 0.32 -> 0.9; fix2b: 0.5, less glare)
     // N and leaching cores (small emissive cubes). soil: cores at the task's max soil_n_kg_ha (perCube slots in
     // each top cube); dose / uptake / leach: counts at the task's max of that value. ?lite=1 halves dose and leach.
     // fix1: size 0.075 -> 0.095 and leach 80 -> 110 so the N cores and leaching drips read on video.
     cores: { perCube: 3, size: 0.095, dose: 36, uptake: 18, leach: 110, capN: 360, capLeach: 720 },
     plants: { maxH: 2.1, sprout: 0.1 },   // fix1: 2.4 -> 2.1, more of the frame for the soil grid
-    labelY: 2.75,                 // field names sit above this height (just above the tallest plant)
-    // fix1: camera closer (z 16.2 -> 13), smaller sideways sway (2.2 -> 1.2); fitView still backs off when needed.
-    camera: { fov: 38, pos: [0, 2.1, 13.0], target: [0, -1.2, 0], dollyX: 1.2, dollyPeriod: 44 },
+    labelY: 2.7,                  // top of the frame fit, above the back row's tallest plant + tassel (names sit in the strips now)
+    // fix1: camera closer (z 16.2 -> 13), smaller sideways sway (2.2 -> 1.2). fix2: pos / target give only the
+    // direction; the camera sits `dist` from the target (about fix1's fitted distance, so the black fog dims the
+    // fields as before) and fitView zooms with the field of view (at most `fov`) to fill the window. Sway 1.4 at
+    // dist 20 = fix1's 1.2 at about 17 (same angle).
+    camera: { fov: 38, pos: [0, 2.1, 13.0], target: [0, -1.2, 0], dist: 20, dollyX: 1.4, dollyPeriod: 44 },
     fog: { near: 13, far: 30 },
     // Bloom between R2 (1.0 / 0.0) and R3 (0.5 / 0.15). Selective: plants (rim), water fill, N and leach cores,
     // groundwater fluid, lightning bolt. glow: per-kind gain in the bloom pass only (the scene itself is unchanged).
     // R5 (browser check): water 0.7 and pool 1.0 washed a full soil profile into solid cyan and the slab into a red
     // haze over the controls; both lowered so the glass and edges stay readable.
     bloom: { strength: 0.6, radius: 0.52, threshold: 0.1 },
-    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.3, core: 1.25, pool: 0.4 },
+    glow: { plant: 0.85, rim: 1.4, leafEdge: 0.85, water: 0.18, core: 1.25, pool: 0.4 },   // fix2b: water 0.3 -> 0.18
     // Leaching pulse (each splash adds to it, capped at 1.6, decays): gain on the groundwater fluid's emission and
     // on the slab's red tint. R4 used 1.7 and 0.5; one leaching week saturated the slab.
     leachPulse: { fluid: 0.8, slab: 0.25 },
@@ -71,12 +74,11 @@ export const theme = {
     bolt: 1.4,                    // lightning bolt line brightness at the flash peak (bloomed)
     rain: 520,                    // rain streaks at full storm (weekly.rain_mm / 100)
     cards: { objectionChars: 100, stiffness: 150, damping: 24 },   // week cards (carousel.js)
-    // Camera refit (season3d.js fitView): the scene centers in the space right of the week cards (gap px past their
-    // right edge) and backs off when both fields (plus margin world units and the dolly sway) would not fit that
-    // width, or when the label anchors (labelY) to the slab bottom would not fit between `top` px (top bar, Season
-    // headline and field names) and `bottom` px above the controls (counters and the finale row). headTop: field names
-    // never sit above this y (px).
-    fit: { margin: 0.3, gap: 20, top: 182, bottom: 158, headTop: 150 },
+    // Camera refit (season3d.js fitView, fix2): backs off when both fields (plus margin world units and the dolly
+    // sway) would not fit the window width, or when the plant-top anchors (labelY) to the slab bottom would not fit
+    // between `top` px (just under the top bar) and `bottom` px above the weather strip (the strips under the fields
+    // overlap the slab's front edge a little).
+    fit: { margin: 0.1, top: 72, bottom: 34, zoom: 0.84 },   // zoom: share of that box the fields fill (fix2b)
   },
   // Mote counts at full scale (each scaled by its value over the max across both fields for this task).
   motes: {

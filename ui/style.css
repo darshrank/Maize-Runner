@@ -55,7 +55,7 @@
   --fs-h1: calc(clamp(30px, 2.3vw, 42px) * var(--type-scale));    /* tab headline */
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);   /* spring-like ease-out, no overshoot */
-  --gutter: 32px; --top: 56px; --dock: 84px; --radius: 20px; --blur: 18px;
+  --gutter: 32px; --top: 0px; --dock: 84px; --radius: 20px; --blur: 18px;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -107,16 +107,12 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .glow { filter: url(#glow); }
 .lite .glow { filter: none; }
 
-/* ---------------------------------------------------------------- top bar: wordmark, live chip, split */
-#topbar {
-  position: fixed; top: 0; left: 0; right: 0; height: var(--top); z-index: 9;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 var(--gutter);
-  border-bottom: 1px solid var(--glass-border);
-  background: rgba(10, 10, 11, 0.55); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+/* ---------------------------------------------------------------- corner: live chip, split (fix3: no top bar, --top 0) */
+#corner {
+  position: fixed; right: var(--gutter); bottom: 27px; z-index: 9;
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0;
 }
-#wordmark { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: var(--fs-3); letter-spacing: -0.01em; }
-#wordmark .mark { width: 10px; height: 10px; background: var(--accent); display: inline-block; border-radius: 2px; }
-#topright { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+#corner .badge.split { background: var(--glass-scene); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur)); }
 .live-chip {
   display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--glass-border); background: var(--accent-soft); color: var(--text); font-size: var(--fs-1); white-space: nowrap;
@@ -151,14 +147,7 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
   font-size: var(--fs-1); color: var(--text); white-space: nowrap; pointer-events: none;
   opacity: 0; transition: opacity 150ms var(--ease);
 }
-.dock-key { font-variant-numeric: tabular-nums; color: var(--muted); margin-left: 4px; }
 .dock-item.hover .dock-label, .dock-item:focus-visible .dock-label { opacity: 1; }
-/* Key hint on every icon (top-right corner), so the 1-6 keys show without hover. */
-.dock-kbd {
-  position: absolute; top: 0; right: -6px; font: 500 var(--fs-1)/1 var(--font); font-variant-numeric: tabular-nums;
-  color: var(--muted); pointer-events: none;
-}
-.dock-item.active .dock-kbd { color: var(--accent); }
 .dock-dot {
   position: absolute; bottom: -6px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
   background: var(--accent); opacity: 0; transition: opacity var(--ms) var(--ease);
@@ -304,19 +293,30 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 /* Field header names (3D overlays and the 2D heads): plain labels of data.SEASON_PAIR, no pickers. */
 .cfg-model { font-size: var(--fs-1); }
 .cfg-none { font-size: var(--fs-2); }
-/* 3D heads: the name's bottom edge sits on the anchor on both sides; the model line hangs just under it. */
-.s3-in.up .cfg-model, .s3-in.up .cfg-none { position: absolute; top: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
+/* Strip under each field (fix2): field name, then the three running counters, one slim frosted row. */
+.fstrip {
+  display: flex; align-items: center; gap: 20px; padding: 8px 18px; border-radius: 14px;
+  background: var(--glass-scene); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+}
+.fs-name { display: grid; justify-items: start; gap: 0; }
+.fstrip .s3-name { font-size: var(--fs-3); }
 .fin-profit { display: grid; justify-items: center; gap: 4px; animation: rise 600ms var(--ease) both; }
+/* fix2: the profit and the gap sit over the field, so each gets the frosted backing of the strips. */
+.fin-profit, .fin-delta {
+  padding: 10px 18px; border-radius: 14px; border: 1px solid var(--glass-border);
+  background: var(--glass-scene); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+}
 .fin-profit .v { font-size: var(--fs-7); font-weight: 650; line-height: 1; letter-spacing: -0.03em; }
 .fin-profit .unit { font-size: var(--fs-1); color: var(--muted); }
 #s3-fin-left .fin-profit .v { color: var(--muted); }
-.fin-delta { display: grid; justify-items: center; gap: 8px; padding-bottom: 6px; animation: rise 600ms var(--ease) both; }
+.fin-delta { display: grid; justify-items: center; gap: 8px; animation: rise 600ms var(--ease) both; }
 .fin-delta .v { font-size: var(--fs-6); font-weight: 650; line-height: 1; letter-spacing: -0.03em; color: var(--accent); }
 /* The right field earned the same or less: muted text, no accent, no rise. */
 .fin-delta.behind { animation: none; }
 .fin-delta.behind .v { font-size: var(--fs-4); font-weight: 500; color: var(--muted); }
 /* Counters under each field: Farmer (muted) vs Maize Runner (white), leaching red on both. */
-.ctr { display: flex; gap: 16px; }
+.ctr { display: flex; gap: 18px; }
 .ctr .c { display: grid; justify-items: center; gap: 0; }
 .ctr .k { font-size: var(--fs-1); color: var(--muted); }
 .ctr .v { font-size: var(--fs-4); font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
@@ -324,15 +324,46 @@ body.not-loaded *, body.not-loaded *::before, body.not-loaded *::after { animati
 .ctr .v.leach { color: var(--leach); }
 .ctr .v.pending { color: var(--muted); font-size: var(--fs-2); font-weight: 500; letter-spacing: 0; }
 #s3-week { position: fixed; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-/* In 3D the Season page holds only the controls and the scrubber; the canvas fills the window behind. */
-.s3d #season { z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; padding: 0 var(--gutter) 4px; }
+/* In 3D (fix2) the canvas fills the window behind; the Season page holds frosted overlays only: the headline top
+   left, the controls top right (picker and Play first row, stepping and speed second), the weather strip thin along
+   the bottom. */
+.s3d #season { z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; padding: 0 var(--gutter) 6px; }
 .s3d #week, .s3d #fields, .s3d .keys { display: none; }
-.s3d #bottom { pointer-events: auto; width: min(1180px, 100%); margin: 0 auto; }
-.s3d #controls { justify-content: center; }
+.s3d #season-head {
+  top: calc(var(--top) + 12px); max-width: min(600px, 38vw); padding: 10px 18px 11px; border-radius: 14px;
+  background: var(--glass-scene); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+}
+.s3d #season-head h1 { font-size: var(--fs-5); }
+.s3d #season-head .sub { margin-top: 3px; }
+/* The weather strip's glass is a pseudo-element of #season: a backdrop-filter on #bottom itself would make it the
+   containing block of the absolutely placed controls. */
+.s3d #bottom { pointer-events: auto; width: 100%; padding: 5px 17px; }
+.s3d #season::after {
+  content: ""; position: absolute; z-index: -1; left: var(--gutter); right: var(--gutter); bottom: 6px; height: 64px;
+  border-radius: 14px; border: 1px solid var(--glass-border);
+  background: var(--glass-scene); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+}
+.s3d #timeline { height: 54px; }
+.s3d #controls {
+  position: absolute; top: 12px; right: var(--gutter); max-width: 520px; justify-content: flex-end; gap: 8px; pointer-events: auto;
+  padding: 10px 12px; border-radius: 14px;
+  background: var(--glass-scene); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+}
+.s3d #controls::before { content: ""; flex-basis: 100%; order: 4; }
+.s3d #controls #site { order: 1; }
+.s3d #controls .pick { order: 2; }
+.s3d #controls #play { order: 3; min-width: 84px; }
+.s3d #controls #prev { order: 5; }
+.s3d #controls #next { order: 6; }
+.s3d #controls #reset { order: 7; }
+.s3d #controls .speed { order: 8; }
 
-/* Week cards (carousel.js, cube effect): left side, one card per week, only the current one visible. */
+/* Week cards (carousel.js, cube effect): bottom left over the field, just above the weather strip, one card per
+   week, only the current one visible. */
 #weekcards {
-  position: fixed; left: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 3; width: clamp(250px, 16.5vw, 320px);
+  position: fixed; left: var(--gutter); bottom: calc(var(--dock) + 84px); z-index: 3; width: clamp(240px, 15.5vw, 300px);
   display: grid; gap: 10px; outline: none; touch-action: pan-y; user-select: none; cursor: grab;
 }
 #weekcards.dragging { cursor: grabbing; }

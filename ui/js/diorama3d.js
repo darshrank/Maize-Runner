@@ -288,12 +288,13 @@ export class Diorama {
     return [this.glassMat, this.slabMat, this.edgeMat, this.fluid.mat, this.waterBox.mat, this.maizeMat, this.nCubes.mat, this.leachCubes.mat];
   }
 
-  // World-space points for the HTML overlays (season3d.js): the label anchor above the field, the field center,
-  // and the slab's front-bottom corners (the lowest part of the field on screen).
+  // World-space points for the HTML overlays and the camera fit (season3d.js): the top anchor above the back row's
+  // plants (the highest part of the field on screen; fix2: was the middle row), the field center, and the slab's
+  // front-bottom corners (the lowest part of the field on screen).
   anchors() {
     const x = this.group.position.x;
     return {
-      head: new THREE.Vector3(x, T.labelY, 0),
+      head: new THREE.Vector3(x, T.labelY, -this.D / 2),
       center: new THREE.Vector3(x, -this.depth / 2, 0),
       bottom: [-1, 1].map((sx) => new THREE.Vector3(x + sx * this.W / 2, this.slabBottom, this.D / 2)),
     };
